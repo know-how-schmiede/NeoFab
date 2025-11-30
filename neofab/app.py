@@ -60,11 +60,35 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     last_login_at = db.Column(db.DateTime, nullable=True)
 
+    # Beziehung zu Aufträgen
+    orders = db.relationship("Order", back_populates="user", lazy=True)
+
     def set_password(self, password: str):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password: str) -> bool:
         return check_password_hash(self.password_hash, password)
+
+
+# === Order-Modell ===
+class Order(db.Model):
+    __tablename__ = "orders"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+
+    # Status: z. B. "neu", "in_bearbeitung", "abgeschlossen"
+    status = db.Column(db.String(50), nullable=False, default="neu")
+
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Zuordnung zum User
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    user = db.relationship("User", back_populates="orders")
+
 
 
 
@@ -190,11 +214,54 @@ def register():
     return render_template("register.html")
 
 
+@app.route("/orders/new", methods=["GET", "POST"])
+@login_required
+def new_order():
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        description = request.form.get("description", "").strip()
+
+        if not title:
+            flash("Bitte einen Titel für den Auftrag angeben.", "danger")
+            return render_template("orders_new.html")
+
+        order = Order(
+            title=title,
+            description=description or None,
+            status="neu",
+            user_id=current_user.id,
+        )
+        db.session.add(order)
+        db.session.commit()
+
+        flash("Auftrag wurde erstellt.", "success")
+        return redirect(url_for("dashboard"))
+
+    return render_template("orders_new.html")
+
+
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    """Platzhalter für spätere Auftragsverwaltung."""
-    return render_template("dashboard.html")
+    # Admin sieht alle neuen Aufträge
+    if current_user.role == "admin":
+        orders = (
+            Order.query
+            .filter_by(status="neu")
+            .order_by(Order.created_at.desc())
+            .all()
+        )
+    else:
+        # Normaler User sieht nur seine eigenen Aufträge
+        orders = (
+            Order.query
+            .filter_by(user_id=current_user.id)
+            .order_by(Order.created_at.desc())
+            .all()
+        )
+
+    return render_template("dashboard.html", orders=orders)
+
 
 @app.route("/admin")
 @roles_required("admin")

@@ -1,0 +1,21 @@
+{# templates/orders_new.html #}
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Neuer Auftrag</h1>
+
+<form method="post">
+    <div class="mb-3">
+        <label for="title" class="form-label">Titel *</label>
+        <input type="text" class="form-control" id="title" name="title" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="description" class="form-label">Beschreibung</label>
+        <textarea class="form-control" id="description" name="description" rows="4"></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Auftrag speichern</button>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Abbrechen</a>
+</form>
+{% endblock %}
