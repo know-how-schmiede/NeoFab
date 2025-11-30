@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard – NeoFab{% endblock %}
+
+{% block content %}
+<h1 class="mb-3">Dashboard</h1>
+<p>Welcome, {{ current_user.email }} (role: {{ current_user.role }}).</p>
+{% if current_user.role == 'admin' %}
+    <p><strong>You are an admin.</strong> You will see additional management features here later.</p>
+{% endif %}
+
+<p>This is a placeholder for the future job management view.</p>
+{% endblock %}

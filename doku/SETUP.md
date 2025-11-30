@@ -114,3 +114,19 @@ Dienst aktivieren:
 sudo systemctl daemon-reload
 sudo systemctl enable --now neofab
 ```
+
+## 🚀 Starten
+### Windows PowerShell
+```
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+python app.py
+```
+### Debian 13 / Linux
+```
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python3 app.py
+```

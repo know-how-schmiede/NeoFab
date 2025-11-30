@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}NeoFab – Welcome{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="text-center">
+        <h1 class="display-4 fw-bold">Welcome to NeoFab</h1>
+        <p class="lead mt-3">
+            Your platform for managing 3D printing jobs efficiently.
+        </p>
+
+        <a class="btn btn-primary btn-lg mt-4" href="{{ url_for('login') }}">
+            Log In
+        </a>
+
+    </div>
+</div>
+{% endblock %}
