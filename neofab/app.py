@@ -1,4 +1,6 @@
 from version import APP_VERSION
+from datetime import datetime
+
 
 from flask import Flask, render_template, redirect, url_for, request, flash
 from flask_sqlalchemy import SQLAlchemy
@@ -42,7 +44,21 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(255), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(50), nullable=False, default="user")  # <- NEU
+    role = db.Column(db.String(50), nullable=False, default="user")
+
+    # Zusatzfelder
+    salutation = db.Column(db.String(50))        # Anrede
+    first_name = db.Column(db.String(100))      # Vorname
+    last_name = db.Column(db.String(100))       # Nachname
+    address = db.Column(db.String(255))         # Adresse
+    position = db.Column(db.String(100))        # Position
+    cost_center = db.Column(db.String(100))     # Kostenstelle
+    study_program = db.Column(db.String(150))   # Studiengang
+    note = db.Column(db.Text)                   # Bemerkung
+
+    # Timestamps
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    last_login_at = db.Column(db.DateTime, nullable=True)
 
     def set_password(self, password: str):
         self.password_hash = generate_password_hash(password)
@@ -122,9 +138,13 @@ def login():
         user = User.query.filter_by(email=email).first()
         if user and user.check_password(password):
             login_user(user)
+            user.last_login_at = datetime.utcnow()
+            db.session.commit()
+
             flash("Login successful.", "success")
             next_page = request.args.get("next")
             return redirect(next_page or url_for("dashboard"))
+
         else:
             flash("Invalid email or password.", "danger")
 
@@ -149,7 +169,18 @@ def register():
         elif User.query.filter_by(email=email).first():
             flash("This email is already registered.", "warning")
         else:
-            user = User(email=email, role="user")  # <- Rolle setzen
+            user = User(
+                email=email,
+                role="user",
+                salutation=request.form.get("salutation") or None,
+                first_name=request.form.get("first_name") or None,
+                last_name=request.form.get("last_name") or None,
+                address=request.form.get("address") or None,
+                position=request.form.get("position") or None,
+                cost_center=request.form.get("cost_center") or None,
+                study_program=request.form.get("study_program") or None,
+                note=request.form.get("note") or None,
+            )
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
@@ -169,6 +200,63 @@ def dashboard():
 @roles_required("admin")
 def admin_panel():
     return render_template("admin.html")
+
+@app.route("/admin/users")
+@roles_required("admin")
+def admin_user_list():
+    users = User.query.order_by(User.id.asc()).all()
+    return render_template("admin_users.html", users=users)
+
+
+@app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
+@roles_required("admin")
+def admin_user_edit(user_id):
+    user = User.query.get_or_404(user_id)
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        role = request.form.get("role", "user").strip()
+        new_password = request.form.get("password", "")
+
+        salutation = request.form.get("salutation") or None
+        first_name = request.form.get("first_name") or None
+        last_name = request.form.get("last_name") or None
+        address = request.form.get("address") or None
+        position = request.form.get("position") or None
+        cost_center = request.form.get("cost_center") or None
+        study_program = request.form.get("study_program") or None
+        note = request.form.get("note") or None
+
+        if not email:
+            flash("Email is required.", "danger")
+        else:
+            existing = User.query.filter_by(email=email).first()
+            if existing and existing.id != user.id:
+                flash("Another user with this email already exists.", "danger")
+            else:
+                user.email = email
+                user.role = role
+
+                user.salutation = salutation
+                user.first_name = first_name
+                user.last_name = last_name
+                user.address = address
+                user.position = position
+                user.cost_center = cost_center
+                user.study_program = study_program
+                user.note = note
+
+                if new_password:
+                    user.set_password(new_password)
+
+                db.session.commit()
+                flash("User updated.", "success")
+                return redirect(url_for("admin_user_list"))
+
+
+
+    return render_template("admin_user_edit.html", user=user)
+
 
 
 @app.route("/logout")

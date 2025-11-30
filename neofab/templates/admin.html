@@ -3,12 +3,33 @@
 {% block title %}Admin – NeoFab{% endblock %}
 
 {% block content %}
-<h1 class="mb-3">Admin Panel</h1>
-<p>Only admins can see this page.</p>
+<h1 class="mb-4">Admin Panel</h1>
 
-<ul>
-    <li>Later: User management</li>
-    <li>Later: Job overview</li>
-    <li>Later: System settings</li>
-</ul>
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">User Management</h5>
+                <p class="card-text">
+                    View and edit registered users and their roles.
+                </p>
+                <a href="{{ url_for('admin_user_list') }}" class="btn btn-primary">
+                    Open User List
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Platzhalter für zukünftige Admin-Funktionen -->
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Coming soon</h5>
+                <p class="card-text">
+                    More admin tools will be added here later.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

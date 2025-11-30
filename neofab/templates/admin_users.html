@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}User Management – NeoFab{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">User Management</h1>
+
+<table class="table table-striped align-middle">
+    <thead>
+        <tr>
+            <th scope="col">ID</th>
+            <th scope="col">Name</th>
+            <th scope="col">Email</th>
+            <th scope="col">Role</th>
+            <th scope="col">Last login</th>
+            <th scope="col" class="text-end">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for user in users %}
+        <tr>
+            <td>{{ user.id }}</td>
+            <td>
+                {{ user.salutation or "" }}
+                {{ user.first_name or "" }}
+                {{ user.last_name or "" }}
+            </td>
+            <td>{{ user.email }}</td>
+            <td>
+                {% if user.role == 'admin' %}
+                    <span class="badge bg-danger">admin</span>
+                {% else %}
+                    <span class="badge bg-secondary">{{ user.role }}</span>
+                {% endif %}
+            </td>
+            <td>
+                {{ user.last_login_at or "never" }}
+            </td>
+            <td class="text-end">
+                <a href="{{ url_for('admin_user_edit', user_id=user.id) }}"
+                   class="btn btn-sm btn-outline-primary">
+                    Edit
+                </a>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<a href="{{ url_for('admin_panel') }}" class="btn btn-link">&laquo; Back to Admin Panel</a>
+{% endblock %}
