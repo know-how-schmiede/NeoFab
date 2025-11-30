@@ -130,3 +130,43 @@ source .venv/bin/activate
 pip install -r requirements.txt
 python3 app.py
 ```
+
+## App zum ersten Mal mit DB starten
+im Projekt-Ordner:
+### Windows PowerShell
+```
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+
+# Datenbank erzeugen
+flask --app app init-db
+
+# App starten
+flask --app app run
+```
+
+### Debian / Linux
+```
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+flask --app app init-db
+flask --app app run
+```
+
+## CLI-Kommandos
+### Version anzeigen
+```
+flask --app app version
+```
+### Admin erstellen
+```
+flask --app app create-admin
+```
+### Datenbank neu erstellen
+Zuvor die alte Datenbank löschen:
+```
+flask --app app init-db
+```
