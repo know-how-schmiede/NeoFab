@@ -1,3 +1,6 @@
+![NeoFab Logo](images/Logo_NeoFab.png)
+
+
 # NeoFab – Multilingual 3D Print Order Management System
 
 NeoFab is a modern, multilingual web application designed for managing 3D printing orders in academic, maker, and research environments.  
