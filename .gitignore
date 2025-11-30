@@ -1,0 +1,6 @@
+# Bytecode
+app/__pycache__/
+/.venv
+
+# Local DB
+*.sqlite3
