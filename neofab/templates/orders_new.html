@@ -2,20 +2,46 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Neuer Auftrag</h1>
+<h1>Create new order</h1>
 
 <form method="post">
     <div class="mb-3">
-        <label for="title" class="form-label">Titel *</label>
-        <input type="text" class="form-control" id="title" name="title" required>
+        <label for="title" class="form-label">Title *</label>
+        <input type="text"
+               class="form-control"
+               id="title"
+               name="title"
+               required>
     </div>
 
     <div class="mb-3">
-        <label for="description" class="form-label">Beschreibung</label>
-        <textarea class="form-control" id="description" name="description" rows="4"></textarea>
+        <label for="description" class="form-label">Description</label>
+        <textarea class="form-control"
+                  id="description"
+                  name="description"
+                  rows="4"></textarea>
     </div>
 
-    <button type="submit" class="btn btn-primary">Auftrag speichern</button>
-    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Abbrechen</a>
+    {# Status: only admin can choose, user sees fixed "New" #}
+    {% if current_user.role == 'admin' %}
+        <div class="mb-3">
+            <label for="status" class="form-label">Status</label>
+            <select class="form-select" id="status" name="status">
+                {% for value, label in order_statuses %}
+                    <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    {% else %}
+        <div class="mb-3">
+            <label class="form-label">Initial status</label><br>
+            <span class="badge bg-secondary">New</span>
+            <!-- hidden field is optional, Backend ignoriert es sowieso für User -->
+            <input type="hidden" name="status" value="new">
+        </div>
+    {% endif %}
+
+    <button type="submit" class="btn btn-primary">Create order</button>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
 </form>
 {% endblock %}

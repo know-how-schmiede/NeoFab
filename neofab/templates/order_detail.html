@@ -1,0 +1,123 @@
+{# templates/order_detail.html #}
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Order #{{ order.id }}</h1>
+
+    <div>
+        {# User/Admin may cancel only if order is not completed/cancelled #}
+        {% if (current_user.role == 'admin' or order.user_id == current_user.id)
+              and order.status not in ['completed', 'cancelled'] %}
+            <form method="post" class="d-inline">
+                <input type="hidden" name="action" value="cancel_order">
+                <button type="submit" class="btn btn-outline-danger btn-sm">
+                    Cancel order
+                </button>
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+<hr>
+
+{# ===================== ORDER BASIC INFO ===================== #}
+<h3>Order information</h3>
+
+<form method="post">
+    <input type="hidden" name="action" value="update_order">
+
+    <div class="mb-3">
+        <label class="form-label">Title:</label>
+        <input type="text" name="title" class="form-control"
+               value="{{ order.title }}"
+               {% if current_user.role != 'admin' %}readonly{% endif %}>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Description:</label>
+        <textarea name="description" class="form-control" rows="3"
+                  {% if current_user.role != 'admin' %}readonly{% endif %}>{{ order.description }}</textarea>
+    </div>
+
+    <div class="mb-3">
+    <label class="form-label">Status:</label>
+
+    {% if current_user.role == 'admin' %}
+        <select name="status" class="form-select">
+            {% for value, label in order_statuses %}
+                {# 
+                   Wenn alte deutsche Codes in der DB stehen, 
+                   mappen wir sie auf die neuen, damit der richtige Eintrag ausgewählt ist.
+                #}
+                {% set is_selected = (
+                    order.status == value
+                    or (order.status == 'neu' and value == 'new')
+                    or (order.status == 'in_bearbeitung' and value == 'in_progress')
+                    or (order.status == 'abgeschlossen' and value == 'completed')
+                ) %}
+
+                <option value="{{ value }}" {% if is_selected %}selected{% endif %}>
+                    {{ label }}
+                </option>
+            {% endfor %}
+        </select>
+    {% else %}
+        <input class="form-control"
+               value="{{ status_labels.get(order.status, order.status) }}"
+               readonly>
+    {% endif %}
+</div>
+
+
+    {% if current_user.role == 'admin' %}
+        <button type="submit" class="btn btn-primary mt-2">Save changes</button>
+    {% endif %}
+</form>
+
+<hr>
+
+{# ===================== MESSAGE SECTION ===================== #}
+<h3>Messages</h3>
+
+{% if messages %}
+    <ul class="list-group mb-3">
+        {% for msg in messages %}
+            <li class="list-group-item">
+                <strong>{{ msg.user.first_name }} {{ msg.user.last_name }}</strong>
+                <small class="text-muted">
+                    ({{ msg.created_at.strftime('%Y-%m-%d %H:%M') }})
+                </small>
+                <br>
+                {{ msg.content }}
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p class="text-muted">No messages yet.</p>
+{% endif %}
+
+{# ===================== ADD NEW MESSAGE ===================== #}
+<form method="post">
+    <input type="hidden" name="action" value="add_message">
+
+    <div class="mb-3">
+        <label class="form-label">Write a new message:</label>
+        <textarea name="content" class="form-control" rows="3" required></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-secondary">Send message</button>
+</form>
+
+
+<hr>
+
+{# ===================== META INFORMATION ===================== #}
+<h5 class="mt-4">Order metadata</h5>
+<p>
+    <strong>Created:</strong>
+    {{ order.created_at.strftime('%Y-%m-%d %H:%M') }}
+</p>
+
+{% endblock %}
