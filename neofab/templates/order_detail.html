@@ -85,19 +85,41 @@
     </div>
 
     <!-- Farb-Auswahl -->
+    <!-- Color selection with preview -->
     <div class="mb-3">
         <label for="color_id" class="form-label">Color</label>
-        <select class="form-select" id="color_id" name="color_id">
-            <option value="">– Please select –</option>
-            {% for c in colors %}
-                <option value="{{ c.id }}"
-                        {% if order.color_id == c.id %}selected{% endif %}>
-                    {{ c.name }}
-                    {% if c.hex_code %} ({{ c.hex_code }}){% endif %}
-                </option>
-            {% endfor %}
-        </select>
+
+        <div class="input-group">
+            <select class="form-select" id="color_id" name="color_id" onchange="updateColorPreview()">
+                <option value="">– Please select –</option>
+                {% for c in colors %}
+                    <option value="{{ c.id }}"
+                            data-hex="{{ c.hex_code if c.hex_code else '' }}"
+                            {% if order.color_id == c.id %}selected{% endif %}>
+                        {{ c.name }}{% if c.hex_code %} ({{ c.hex_code }}){% endif %}
+                    </option>
+                {% endfor %}
+            </select>
+
+            <span class="input-group-text p-0">
+                <div id="colorPreview"
+                    style="
+                        width: 32px;
+                        height: 32px;
+                        border-radius: 4px;
+                        border: 1px solid #ccc;
+                        background-color:
+                            {% if order.color and order.color.hex_code %}
+                                {{ order.color.hex_code }}
+                            {% else %}
+                                transparent
+                            {% endif %};
+                    ">
+                </div>
+            </span>
+        </div>
     </div>
+
 
     {% if current_user.role == 'admin' %}
         <button type="submit" class="btn btn-primary mt-2">Save changes</button>

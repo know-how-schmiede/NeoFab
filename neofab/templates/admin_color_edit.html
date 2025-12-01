@@ -12,6 +12,7 @@
 <div class="card">
     <div class="card-body">
         <form method="post">
+            <!-- NAME -->
             <div class="mb-3">
                 <label for="name" class="form-label">Color Name</label>
                 <input type="text"
@@ -23,22 +24,62 @@
                 <div class="form-text">e.g. Black, White, Red, Blue …</div>
             </div>
 
+            <!-- HEX CODE -->
             <div class="mb-3">
                 <label for="hex_code" class="form-label">Hex Code (optional)</label>
-                <input type="text"
-                       class="form-control"
-                       id="hex_code"
-                       name="hex_code"
-                       placeholder="#RRGGBB"
-                       value="{{ color.hex_code if color else '' }}">
-                <div class="form-text">e.g. #000000 for black, #FFFFFF for white.</div>
+
+                <div class="input-group">
+                    <input type="text"
+                           class="form-control"
+                           id="hex_code"
+                           name="hex_code"
+                           placeholder="#RRGGBB"
+                           value="{{ color.hex_code if color else '' }}"
+                           oninput="updateColorPreview()">
+
+                    <!-- Vorschau-Feld -->
+                    <span class="input-group-text p-0">
+                        <div id="colorPreview"
+                             style="
+                                   width: 32px;
+                                   height: 32px;
+                                   border-radius: 4px;
+                                   border: 1px solid #ccc;
+                                   background-color: {{ color.hex_code if color else '#ffffff' }};
+                             ">
+                        </div>
+                    </span>
+                </div>
+
+                <div class="form-text">
+                    Example: <code>#000000</code> for black, <code>#FF0000</code> for red.
+                </div>
             </div>
 
+            <!-- BUTTONS -->
             <button type="submit" class="btn btn-primary">Save</button>
-            <a href="{{ url_for('admin_color_list') }}" class="btn btn-secondary">
-                Cancel
-            </a>
+            <a href="{{ url_for('admin_color_list') }}" class="btn btn-secondary">Cancel</a>
         </form>
     </div>
 </div>
+
+<!-- LIVE-FARBVORSCHAU SCRIPT -->
+<script>
+function updateColorPreview() {
+    const input = document.getElementById("hex_code");
+    const preview = document.getElementById("colorPreview");
+    let value = input.value.trim();
+
+    // Hex-Wert validieren (# + 6 Hex-Zeichen)
+    const isHex = /^#([0-9A-Fa-f]{6})$/.test(value);
+
+    if (isHex) {
+        preview.style.backgroundColor = value;
+    } else {
+        preview.style.backgroundColor = "transparent";
+        preview.style.border = "1px solid #ccc";
+    }
+}
+</script>
+
 {% endblock %}

@@ -1,4 +1,8 @@
 # Timeline NeoFab
+## Version 0.2.0
+TemplateSystem integriert
+## Version 0.1.7
+Farbvorschau in Stammdaten, OrderNew und OrderEdit
 ## Version 0.1.6
 Farben und Material (Admin / Orders)
 ## Version 0.1.5

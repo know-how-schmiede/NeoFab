@@ -1,72 +1,156 @@
-{# templates/orders_new.html #}
 {% extends "base.html" %}
 
+{% block title %}New Order – NeoFab{% endblock %}
+
 {% block content %}
-<h1>Create new order</h1>
 
-<form method="post">
-    <div class="mb-3">
-        <label for="title" class="form-label">Title *</label>
-        <input type="text"
-               class="form-control"
-               id="title"
-               name="title"
-               required>
-    </div>
+<div class="card mb-3">
+  <div class="card-header">
+    <h2 class="h5 mb-0">
+      <i class="bi bi-plus-circle me-1"></i>
+      New Order
+    </h2>
+  </div>
 
-    <div class="mb-3">
-        <label for="description" class="form-label">Description</label>
-        <textarea class="form-control"
-                  id="description"
-                  name="description"
-                  rows="4"></textarea>
-    </div>
+  <div class="card-body">
+    <form method="post" novalidate>
 
-    {# Status: only admin can choose, user sees fixed "New" #}
-    {% if current_user.role == 'admin' %}
-        <div class="mb-3">
-            <label for="status" class="form-label">Status</label>
-            <select class="form-select" id="status" name="status">
-                {% for value, label in order_statuses %}
-                    <option value="{{ value }}">{{ label }}</option>
-                {% endfor %}
-            </select>
+      <div class="row g-3">
+
+        <!-- Title -->
+        <div class="col-12">
+          <label for="title" class="form-label">
+            <i class="bi bi-card-text me-1"></i>
+            Title*
+          </label>
+          <input
+            type="text"
+            class="form-control"
+            id="title"
+            name="title"
+            required
+          >
         </div>
-    {% else %}
-        <div class="mb-3">
-            <label class="form-label">Initial status</label><br>
-            <span class="badge bg-secondary">New</span>
-            <!-- hidden field is optional, Backend ignoriert es sowieso für User -->
-            <input type="hidden" name="status" value="new">
-        </div>
-    {% endif %}
 
-    <!-- NEU: Material-Auswahl -->
-    <div class="mb-3">
-        <label for="material_id" class="form-label">Material</label>
-        <select class="form-select" id="material_id" name="material_id">
+        <!-- Description -->
+        <div class="col-12">
+          <label for="description" class="form-label">
+            <i class="bi bi-journal-text me-1"></i>
+            Description
+          </label>
+          <textarea
+            class="form-control"
+            id="description"
+            name="description"
+            rows="4"
+          ></textarea>
+        </div>
+
+        <!-- Material -->
+        <div class="col-md-6">
+          <label for="material_id" class="form-label">
+            <i class="bi bi-box-seam me-1"></i>
+            Material
+          </label>
+          <select
+            id="material_id"
+            name="material_id"
+            class="form-select"
+          >
             <option value="">– Please select –</option>
             {% for m in materials %}
-                <option value="{{ m.id }}">{{ m.name }}</option>
+              <option value="{{ m.id }}">{{ m.name }}</option>
             {% endfor %}
-        </select>
-    </div>
+          </select>
+        </div>
 
-    <!-- NEU: Farb-Auswahl -->
-    <div class="mb-3">
-        <label for="color_id" class="form-label">Color</label>
-        <select class="form-select" id="color_id" name="color_id">
-            <option value="">– Please select –</option>
-            {% for c in colors %}
-                <option value="{{ c.id }}">
-                    {{ c.name }}
-                    {% if c.hex_code %} ({{ c.hex_code }}){% endif %}
+        <!-- Color mit Vorschau -->
+        <div class="col-md-6">
+          <label for="color_id" class="form-label">
+            <i class="bi bi-palette me-1"></i>
+            Color
+          </label>
+          <div class="input-group">
+            <select
+              id="color_id"
+              name="color_id"
+              class="form-select"
+              onchange="updateColorPreview()"
+            >
+              <option value="">– Please select –</option>
+              {% for c in colors %}
+                <option value="{{ c.id }}"
+                        data-hex="{{ c.hex_code if c.hex_code else '' }}">
+                  {{ c.name }}{% if c.hex_code %} ({{ c.hex_code }}){% endif %}
                 </option>
-            {% endfor %}
-        </select>
-    </div>
+              {% endfor %}
+            </select>
+            <span class="input-group-text p-0">
+              <div id="colorPreview"
+                   style="width: 32px; height: 32px; border-radius: 4px;
+                          border: 1px solid #ccc; background-color: transparent;">
+              </div>
+            </span>
+          </div>
+        </div>
 
-    <button type="submit" class="btn btn-primary">Create order</button>
-    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
-</form>
+        {% if current_user.role == 'admin' %}
+        <!-- Status (nur Admin) -->
+        <div class="col-md-6">
+          <label for="status" class="form-label">
+            <i class="bi bi-flag me-1"></i>
+            Status
+          </label>
+          <select
+            id="status"
+            name="status"
+            class="form-select"
+          >
+            {% for value, label in order_statuses %}
+              <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+
+      </div>
+
+      <!-- Buttons -->
+      <div class="d-flex gap-2 mt-3">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-save me-1"></i>
+          Create Order
+        </button>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+          <i class="bi bi-arrow-left me-1"></i>
+          Back to dashboard
+        </a>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updateColorPreview() {
+  const select = document.getElementById("color_id");
+  const preview = document.getElementById("colorPreview");
+
+  if (!select || !preview) return;
+
+  const selected = select.options[select.selectedIndex];
+  const hex = selected.getAttribute("data-hex");
+
+  if (hex && /^#([0-9A-Fa-f]{6})$/.test(hex)) {
+    preview.style.backgroundColor = hex;
+    preview.style.border = "1px solid #ccc";
+  } else {
+    preview.style.backgroundColor = "transparent";
+    preview.style.border = "1px solid #ccc";
+  }
+}
+</script>
 {% endblock %}

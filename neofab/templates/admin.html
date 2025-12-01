@@ -3,52 +3,73 @@
 {% block title %}Admin – NeoFab{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">Admin Panel</h1>
 
-<div class="row g-3">
-    <!-- User Management -->
-    <div class="col-md-4">
-        <div class="card h-100">
-            <div class="card-body">
-                <h5 class="card-title">User Management</h5>
-                <p class="card-text">
-                    View and edit registered users and their roles.
-                </p>
-                <a href="{{ url_for('admin_user_list') }}" class="btn btn-primary">
-                    Open User List
-                </a>
-            </div>
-        </div>
-    </div>
+<div class="card mb-3">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h2 class="h5 mb-0">
+      <i class="bi bi-gear me-1"></i>
+      Admin Panel
+    </h2>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
 
-    <!-- Material Master Data -->
-    <div class="col-md-4">
+      <!-- User Management -->
+      <div class="col-md-4">
         <div class="card h-100">
-            <div class="card-body">
-                <h5 class="card-title">Material Master Data</h5>
-                <p class="card-text">
-                    Manage 3D printing materials (e.g. PLA, ABS, PETG, TPU).
-                </p>
-                <a href="{{ url_for('admin_material_list') }}" class="btn btn-primary">
-                    Open Material List
-                </a>
-            </div>
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title">
+              <i class="bi bi-people me-1"></i>
+              User Management
+            </h5>
+            <p class="card-text flex-grow-1">
+              View and edit registered users and their roles.
+            </p>
+            <a href="{{ url_for('admin_user_list') }}" class="btn btn-primary mt-auto">
+              Open User List
+            </a>
+          </div>
         </div>
-    </div>
+      </div>
 
-    <!-- Color Master Data -->
-    <div class="col-md-4">
+      <!-- Material Master Data -->
+      <div class="col-md-4">
         <div class="card h-100">
-            <div class="card-body">
-                <h5 class="card-title">Color Master Data</h5>
-                <p class="card-text">
-                    Manage filament colors (e.g. Black, White, Red, Blue).
-                </p>
-                <a href="{{ url_for('admin_color_list') }}" class="btn btn-primary">
-                    Open Color List
-                </a>
-            </div>
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title">
+              <i class="bi bi-box-seam me-1"></i>
+              Material Master Data
+            </h5>
+            <p class="card-text flex-grow-1">
+              Manage 3D printing materials (e.g. PLA, ABS, PETG, TPU).
+            </p>
+            <a href="{{ url_for('admin_material_list') }}" class="btn btn-primary mt-auto">
+              Open Material List
+            </a>
+          </div>
         </div>
+      </div>
+
+      <!-- Color Master Data -->
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title">
+              <i class="bi bi-palette me-1"></i>
+              Color Master Data
+            </h5>
+            <p class="card-text flex-grow-1">
+              Manage filament colors (e.g. Black, White, Red, Blue).
+            </p>
+            <a href="{{ url_for('admin_color_list') }}" class="btn btn-primary mt-auto">
+              Open Color List
+            </a>
+          </div>
+        </div>
+      </div>
+
     </div>
+  </div>
 </div>
+
 {% endblock %}
