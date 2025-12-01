@@ -1,173 +1,317 @@
-{# templates/order_detail.html #}
 {% extends "base.html" %}
+
+{% block title %}Order #{{ order.id }} – NeoFab{% endblock %}
 
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1>Order #{{ order.id }}</h1>
+<!-- ORDER FORMULAR / DETAILS -->
+<div class="card mb-3">
+  <div class="card-header">
+    <h2 class="h5 mb-0 d-flex align-items-center">
+      <i class="bi bi-file-earmark-text me-2"></i>
+      Order #{{ order.id }} – {{ order.title }}
+    </h2>
+  </div>
 
-    <div>
-        {# User/Admin may cancel only if order is not completed/cancelled #}
-        {% if (current_user.role == 'admin' or order.user_id == current_user.id)
-              and order.status not in ['completed', 'cancelled'] %}
-            <form method="post" class="d-inline">
-                <input type="hidden" name="action" value="cancel_order">
-                <button type="submit" class="btn btn-outline-danger btn-sm">
-                    Cancel order
-                </button>
-            </form>
-        {% endif %}
-    </div>
-</div>
+  <div class="card-body">
+    <form method="post" novalidate>
+      <input type="hidden" name="action" value="update_order">
 
-<hr>
+      <div class="row g-3">
 
-{# ===================== ORDER BASIC INFO ===================== #}
-<h3>Order information</h3>
+        <!-- Titel -->
+        <div class="col-12">
+          <label for="title" class="form-label">
+            <i class="bi bi-card-text me-1"></i>
+            Title*
+          </label>
+          <input
+            type="text"
+            class="form-control"
+            id="title"
+            name="title"
+            required
+            value="{{ order.title }}"
+          >
+        </div>
 
-<form method="post">
-    <input type="hidden" name="action" value="update_order">
+        <!-- Beschreibung -->
+        <div class="col-12">
+          <label for="description" class="form-label">
+            <i class="bi bi-journal-text me-1"></i>
+            Description
+          </label>
+          <textarea
+            class="form-control"
+            id="description"
+            name="description"
+            rows="4"
+          >{{ order.description or '' }}</textarea>
+        </div>
 
-    <div class="mb-3">
-        <label class="form-label">Title:</label>
-        <input type="text" name="title" class="form-control"
-               value="{{ order.title }}"
-               {% if current_user.role != 'admin' %}readonly{% endif %}>
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label">Description:</label>
-        <textarea name="description" class="form-control" rows="3"
-                  {% if current_user.role != 'admin' %}readonly{% endif %}>{{ order.description }}</textarea>
-    </div>
-
-    <div class="mb-3">
-    <label class="form-label">Status:</label>
-
-    {% if current_user.role == 'admin' %}
-        <select name="status" class="form-select">
-            {% for value, label in order_statuses %}
-                {# 
-                   Wenn alte deutsche Codes in der DB stehen, 
-                   mappen wir sie auf die neuen, damit der richtige Eintrag ausgewählt ist.
-                #}
-                {% set is_selected = (
-                    order.status == value
-                    or (order.status == 'neu' and value == 'new')
-                    or (order.status == 'in_bearbeitung' and value == 'in_progress')
-                    or (order.status == 'abgeschlossen' and value == 'completed')
-                ) %}
-
-                <option value="{{ value }}" {% if is_selected %}selected{% endif %}>
-                    {{ label }}
-                </option>
-            {% endfor %}
-        </select>
-    {% else %}
-        <input class="form-control"
-               value="{{ status_labels.get(order.status, order.status) }}"
-               readonly>
-    {% endif %}
-</div>
-
-     <!-- Material-Auswahl -->
-    <div class="mb-3">
-        <label for="material_id" class="form-label">Material</label>
-        <select class="form-select" id="material_id" name="material_id">
+        <!-- Material -->
+        <div class="col-md-6">
+          <label for="material_id" class="form-label">
+            <i class="bi bi-box-seam me-1"></i>
+            Material
+          </label>
+          <select
+            id="material_id"
+            name="material_id"
+            class="form-select"
+          >
             <option value="">– Please select –</option>
             {% for m in materials %}
-                <option value="{{ m.id }}"
-                        {% if order.material_id == m.id %}selected{% endif %}>
-                    {{ m.name }}
-                </option>
+              <option value="{{ m.id }}"
+                      {% if order.material_id == m.id %}selected{% endif %}>
+                {{ m.name }}
+              </option>
             {% endfor %}
-        </select>
-    </div>
-
-    <!-- Farb-Auswahl -->
-    <!-- Color selection with preview -->
-    <div class="mb-3">
-        <label for="color_id" class="form-label">Color</label>
-
-        <div class="input-group">
-            <select class="form-select" id="color_id" name="color_id" onchange="updateColorPreview()">
-                <option value="">– Please select –</option>
-                {% for c in colors %}
-                    <option value="{{ c.id }}"
-                            data-hex="{{ c.hex_code if c.hex_code else '' }}"
-                            {% if order.color_id == c.id %}selected{% endif %}>
-                        {{ c.name }}{% if c.hex_code %} ({{ c.hex_code }}){% endif %}
-                    </option>
-                {% endfor %}
-            </select>
-
-            <span class="input-group-text p-0">
-                <div id="colorPreview"
-                    style="
-                        width: 32px;
-                        height: 32px;
-                        border-radius: 4px;
-                        border: 1px solid #ccc;
-                        background-color:
-                            {% if order.color and order.color.hex_code %}
-                                {{ order.color.hex_code }}
-                            {% else %}
-                                transparent
-                            {% endif %};
-                    ">
-                </div>
-            </span>
+          </select>
         </div>
+
+        <!-- Farbe + Vorschau -->
+        <div class="col-md-6">
+          <label for="color_id" class="form-label">
+            <i class="bi bi-palette me-1"></i>
+            Color
+          </label>
+          <div class="input-group">
+            <select
+              id="color_id"
+              name="color_id"
+              class="form-select"
+              onchange="updateColorPreview()"
+            >
+              <option value="">– Please select –</option>
+              {% for c in colors %}
+                <option value="{{ c.id }}"
+                        data-hex="{{ c.hex_code if c.hex_code else '' }}"
+                        {% if order.color_id == c.id %}selected{% endif %}>
+                  {{ c.name }}{% if c.hex_code %} ({{ c.hex_code }}){% endif %}
+                </option>
+              {% endfor %}
+            </select>
+            <span class="input-group-text p-0">
+              <div id="colorPreview"
+                   style="
+                     width: 32px;
+                     height: 32px;
+                     border-radius: 4px;
+                     border: 1px solid #ccc;
+                     background-color:
+                       {% if order.color and order.color.hex_code %}
+                         {{ order.color.hex_code }}
+                       {% else %}
+                         transparent
+                       {% endif %};
+                   ">
+              </div>
+            </span>
+          </div>
+        </div>
+
+        <!-- Status & Meta-Infos -->
+        <div class="col-md-4">
+          <label class="form-label">
+            <i class="bi bi-flag me-1"></i>
+            Status
+          </label>
+
+          {% if current_user.role == 'admin' %}
+            <select
+              id="status"
+              name="status"
+              class="form-select"
+            >
+              {% for value, label in order_statuses %}
+                <option value="{{ value }}"
+                        {% if order.status == value %}selected{% endif %}>
+                  {{ label }}
+                </option>
+              {% endfor %}
+            </select>
+          {% else %}
+            <div>
+              <span class="badge
+                    {% if order.status == 'new' %}bg-primary
+                    {% elif order.status == 'in_progress' %}bg-info
+                    {% elif order.status == 'on_hold' %}bg-warning text-dark
+                    {% elif order.status == 'completed' %}bg-success
+                    {% elif order.status == 'cancelled' %}bg-secondary
+                    {% else %}bg-light text-dark
+                    {% endif %}
+              ">
+                {{ status_labels.get(order.status, order.status) }}
+              </span>
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">
+            <i class="bi bi-person-circle me-1"></i>
+            Owner
+          </label>
+          <div class="form-control-plaintext">
+            {{ order.user.email }}
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">
+            <i class="bi bi-clock-history me-1"></i>
+            Timestamps
+          </label>
+          <div class="small text-muted">
+            <div>Created: {{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '-' }}</div>
+            <div>Updated: {{ order.updated_at.strftime('%Y-%m-%d %H:%M') if order.updated_at else '-' }}</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Buttons -->
+      <div class="d-flex gap-2 mt-3">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-save me-1"></i>
+          Save changes
+        </button>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+          <i class="bi bi-arrow-left me-1"></i>
+          Back to dashboard
+        </a>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<!-- NACHRICHTEN / KOMMUNIKATION -->
+<div class="card mb-3">
+  <div class="card-header">
+    <h3 class="h6 mb-0 d-flex align-items-center">
+      <i class="bi bi-chat-dots me-2"></i>
+      Communication
+    </h3>
+  </div>
+  <div class="card-body">
+
+  <div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0">Messages</h5>
     </div>
 
+    <div class="card-body neo-chat-thread">
+        {% if messages %}
+            {% for msg in messages %}
+                {% set is_admin = (msg.user.role == 'admin') %}
 
-    {% if current_user.role == 'admin' %}
-        <button type="submit" class="btn btn-primary mt-2">Save changes</button>
+                <div class="neo-chat-message d-flex mb-3
+                            {% if is_admin %}justify-content-end{% else %}justify-content-start{% endif %}">
+                    <div class="neo-chat-bubble
+                                {% if is_admin %}neo-chat-bubble-admin{% else %}neo-chat-bubble-user{% endif %}">
+                        <div class="neo-chat-meta small mb-1">
+                            <strong>
+                                {% if is_admin %}
+                                    Admin
+                                {% else %}
+                                    {{ msg.user.email }}
+                                {% endif %}
+                            </strong>
+                            · {{ msg.created_at.strftime("%Y-%m-%d %H:%M") }}
+                        </div>
+                        <div class="neo-chat-text">
+                            {{ msg.content | nl2br }}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted mb-0">No messages yet. Be the first to write something.</p>
+        {% endif %}
+    </div>
+
+    <!-- Chat-Eingabefeld im Footer -->
+    <div class="card-footer bg-light">
+        <form method="post" class="neo-chat-input">
+            <input type="hidden" name="action" value="add_message">
+            <div class="input-group">
+                <textarea
+                    class="form-control"
+                    name="content"
+                    rows="1"
+                    placeholder="Write a message..."
+                    required
+                ></textarea>
+                <button class="btn btn-primary" type="submit">
+                    <i class="bi bi-send"></i>
+                    <span class="d-none d-sm-inline ms-1">Send</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+  
+
+
+    
+
+  </div>
+</div>
+
+<!-- ORDER STORNIEREN (ähnlich Delete-Card in PrintFleet) -->
+<div class="card border-danger">
+  <div class="card-header bg-danger text-white">
+    <h3 class="h6 mb-0 d-flex align-items-center">
+      <i class="bi bi-x-octagon me-2"></i>
+      Cancel Order
+    </h3>
+  </div>
+  <div class="card-body">
+    {% if order.status in ['completed', 'cancelled'] %}
+      <p class="mb-2">
+        This order is already <strong>{{ status_labels.get(order.status, order.status) }}</strong>
+        and can no longer be cancelled.
+      </p>
+    {% else %}
+      <p class="mb-2">
+        You can cancel this order. This will set the status to
+        <strong>cancelled</strong>. This cannot be undone.
+      </p>
+      <form method="post"
+            onsubmit="return confirm('Cancel this order?');">
+        <input type="hidden" name="action" value="cancel_order">
+        <button type="submit" class="btn btn-danger">
+          <i class="bi bi-x-circle me-1"></i>
+          Cancel this order
+        </button>
+      </form>
     {% endif %}
-</form>
+  </div>
+</div>
 
-<hr>
+{% endblock %}
 
-{# ===================== MESSAGE SECTION ===================== #}
-<h3>Messages</h3>
+{% block scripts %}
+{{ super() }}
+<script>
+function updateColorPreview() {
+  const select = document.getElementById("color_id");
+  const preview = document.getElementById("colorPreview");
 
-{% if messages %}
-    <ul class="list-group mb-3">
-        {% for msg in messages %}
-            <li class="list-group-item">
-                <strong>{{ msg.user.first_name }} {{ msg.user.last_name }}</strong>
-                <small class="text-muted">
-                    ({{ msg.created_at.strftime('%Y-%m-%d %H:%M') }})
-                </small>
-                <br>
-                {{ msg.content }}
-            </li>
-        {% endfor %}
-    </ul>
-{% else %}
-    <p class="text-muted">No messages yet.</p>
-{% endif %}
+  if (!select || !preview) return;
 
-{# ===================== ADD NEW MESSAGE ===================== #}
-<form method="post">
-    <input type="hidden" name="action" value="add_message">
+  const selected = select.options[select.selectedIndex];
+  const hex = selected.getAttribute("data-hex");
 
-    <div class="mb-3">
-        <label class="form-label">Write a new message:</label>
-        <textarea name="content" class="form-control" rows="3" required></textarea>
-    </div>
-
-    <button type="submit" class="btn btn-secondary">Send message</button>
-</form>
-
-
-<hr>
-
-{# ===================== META INFORMATION ===================== #}
-<h5 class="mt-4">Order metadata</h5>
-<p>
-    <strong>Created:</strong>
-    {{ order.created_at.strftime('%Y-%m-%d %H:%M') }}
-</p>
-
+  if (hex && /^#([0-9A-Fa-f]{6})$/.test(hex)) {
+    preview.style.backgroundColor = hex;
+    preview.style.border = "1px solid #ccc";
+  } else {
+    preview.style.backgroundColor = "transparent";
+    preview.style.border = "1px solid #ccc";
+  }
+}
+</script>
 {% endblock %}

@@ -1,0 +1,70 @@
+/* === NeoFab Chat-Ansicht im Order-Detail === */
+
+.neo-chat-thread {
+    background-color: #f8f9fa;
+    border-radius: 0 0 .5rem .5rem;
+}
+
+.neo-chat-message {
+    width: 100%;
+}
+
+.neo-chat-bubble {
+    max-width: 70%;
+    padding: .5rem .75rem;
+    border-radius: 1rem;
+    font-size: 0.9rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075);
+}
+
+/* normale User-Nachrichten (links) */
+.neo-chat-bubble-user {
+    background-color: rgba(13, 110, 253, 0.08);  /* helles Blau */
+    border: 1px solid rgba(13, 110, 253, 0.3);
+}
+
+/* Admin-Nachrichten (rechts) */
+.neo-chat-bubble-admin {
+    background-color: #0d6efd;   /* Bootstrap primary */
+    color: #fff;
+}
+
+/* Meta-Info oben in der Bubble */
+.neo-chat-bubble-admin .neo-chat-meta {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.neo-chat-bubble-user .neo-chat-meta {
+    color: #6c757d;
+}
+
+.neo-chat-text p {
+    margin-bottom: 0;
+}
+
+/* === Chat-Eingabefeld unter der Message-Liste === */
+
+.neo-chat-input .form-control {
+    resize: none;
+    /* verhindert riesiges Hochziehen */
+    max-height: 120px;
+}
+
+.neo-chat-input .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Variante A: Gemeinsamer Fokusrahmen um die gesamte Input-Gruppe */
+.neo-chat-input .input-group:focus-within {
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.35); /* Bootstrap-primary-Blau, weich */
+    border-radius: .5rem;
+}
+
+/* Standard-Fokus an Einzel-Controls ausblenden, damit nichts abgeschnitten wirkt */
+.neo-chat-input .form-control:focus,
+.neo-chat-input .btn:focus {
+    box-shadow: none !important;
+    outline: none !important;
+}

@@ -3,8 +3,9 @@ from datetime import datetime
 from sqlalchemy import func
 import os
 import logging
+from markupsafe import Markup, escape
 
-from flask import Flask, render_template, redirect, url_for, request, flash
+from flask import Flask, render_template, redirect, url_for, request, flash, session
 from flask_sqlalchemy import SQLAlchemy
 
 from flask_login import (
@@ -48,6 +49,7 @@ app.config["SECRET_KEY"] = os.environ.get("NEOFAB_SECRET_KEY", "dev-secret-chang
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///neofab.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+
 @app.context_processor
 def inject_globals():
     """
@@ -58,10 +60,24 @@ def inject_globals():
         "status_labels": STATUS_LABELS,
     }
 
+
 db = SQLAlchemy(app)
 
+
+@app.template_filter("nl2br")
+def nl2br_filter(s: str):
+    """
+    Wandelt Zeilenumbrüche in <br> um und escaped den Text zuvor.
+    """
+    if not s:
+        return ""
+    # Erst escapen, dann Zeilenumbrüche in <br> umwandeln
+    return Markup("<br>".join(escape(s).splitlines()))
+
+
 login_manager = LoginManager(app)
-login_manager.login_view = "login"   # wohin bei @login_required ohne Login?
+login_manager.login_view = "login"  # wohin bei @login_required ohne Login?
+
 
 # === User-Modell ===
 class User(UserMixin, db.Model):
@@ -71,14 +87,14 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(50), nullable=False, default="user")
 
     # Zusatzfelder
-    salutation = db.Column(db.String(50))        # Anrede
-    first_name = db.Column(db.String(100))      # Vorname
-    last_name = db.Column(db.String(100))       # Nachname
-    address = db.Column(db.String(255))         # Adresse
-    position = db.Column(db.String(100))        # Position
-    cost_center = db.Column(db.String(100))     # Kostenstelle
-    study_program = db.Column(db.String(150))   # Studiengang
-    note = db.Column(db.Text)                   # Bemerkung
+    salutation = db.Column(db.String(50))  # Anrede
+    first_name = db.Column(db.String(100))  # Vorname
+    last_name = db.Column(db.String(100))  # Nachname
+    address = db.Column(db.String(255))  # Adresse
+    position = db.Column(db.String(100))  # Position
+    cost_center = db.Column(db.String(100))  # Kostenstelle
+    study_program = db.Column(db.String(150))  # Studiengang
+    note = db.Column(db.Text)  # Bemerkung
 
     # Timestamps
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
@@ -92,6 +108,7 @@ class User(UserMixin, db.Model):
 
     def check_password(self, password: str) -> bool:
         return check_password_hash(self.password_hash, password)
+
 
 # === Order-Modell ===
 class Order(db.Model):
@@ -146,6 +163,7 @@ class OrderMessage(db.Model):
     order = db.relationship("Order", back_populates="messages")
     user = db.relationship("User")
 
+
 # === Order-Readstatus ===
 class OrderReadStatus(db.Model):
     __tablename__ = "order_read_status"
@@ -162,6 +180,7 @@ class OrderReadStatus(db.Model):
         db.UniqueConstraint("order_id", "user_id", name="uq_order_user"),
     )
 
+
 # === Modell Material ===
 class Material(db.Model):
     __tablename__ = "materials"
@@ -174,6 +193,7 @@ class Material(db.Model):
 
     def __repr__(self):
         return f"<Material {self.name}>"
+
 
 # === Modell Color ===
 class Color(db.Model):
@@ -188,9 +208,11 @@ class Color(db.Model):
     def __repr__(self):
         return f"<Color {self.name}>"
 
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
 
 def roles_required(*roles):
     """
@@ -199,6 +221,7 @@ def roles_required(*roles):
     @roles_required("admin")
     @roles_required("admin", "manager")
     """
+
     def decorator(view_func):
         @wraps(view_func)
         @login_required
@@ -206,8 +229,11 @@ def roles_required(*roles):
             if current_user.role not in roles:
                 abort(403)  # Forbidden
             return view_func(*args, **kwargs)
+
         return wrapped
+
     return decorator
+
 
 # === CLI-Helfer zum Initialisieren der DB ===
 @app.cli.command("init-db")
@@ -215,6 +241,7 @@ def init_db():
     """Initialisiert die Datenbank (einmalig ausführen)."""
     db.create_all()
     print("Datenbank initialisiert.")
+
 
 @app.cli.command("create-admin")
 def create_admin():
@@ -231,6 +258,7 @@ def create_admin():
     db.session.add(user)
     db.session.commit()
     print(f"Admin user '{email}' created.")
+
 
 # === NEU: Stammdaten (Material / Farbe) initial befüllen ===
 @app.cli.command("init-stammdaten")
@@ -262,16 +290,20 @@ def init_stammdaten():
     db.session.commit()
     print("Stammdaten initialisiert.")
 
+
 @app.cli.command("version")
 def show_version():
     """Zeigt die aktuelle NeoFab-Version an."""
     print(f"NeoFab version: {APP_VERSION}")
 
+
 # === Routen ===
+
 
 @app.route("/")
 def landing():
     return render_template("landing.html")
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -296,6 +328,7 @@ def login():
             flash("Invalid email or password.", "danger")
 
     return render_template("login.html")
+
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -413,7 +446,6 @@ def new_order():
     )
 
 
-
 @app.route("/orders/<int:order_id>", methods=["GET", "POST"])
 @login_required
 def order_detail(order_id):
@@ -465,7 +497,6 @@ def order_detail(order_id):
                         order.color_id = None
                 else:
                     order.color_id = None
-
 
                 # Only admin may change status
                 if current_user.role == "admin":
@@ -555,6 +586,15 @@ def order_detail(order_id):
             f"[order_detail] Updated read status for order={order.id}, user={current_user.email}"
         )
 
+    db.session.commit()
+
+    # Zusätzlich in Session merken (pro User, pro Order)
+    session_key = f"order_last_read_{order.id}"
+    session[session_key] = now.isoformat()
+    app.logger.debug(
+        f"[order_detail] Session last_read set for order={order.id}, key={session_key}, value={session[session_key]}"
+    )
+
     messages = order.messages
 
     # Stammdaten für Auswahlfelder laden
@@ -573,7 +613,7 @@ def order_detail(order_id):
         materials=materials,
         colors=colors,
     )
-    
+
 
 @app.route("/dashboard")
 @login_required
@@ -626,26 +666,24 @@ def dashboard():
     latest_by_order = {order_id: latest_created for order_id, latest_created in latest_messages}
     app.logger.debug(f"[dashboard] latest_by_order: {latest_by_order}")
 
-    # 3) Read status for current user
-    read_states = (
-        db.session.query(
-            OrderReadStatus.order_id,
-            OrderReadStatus.last_read_at,
-        )
-        .filter(
-            OrderReadStatus.user_id == current_user.id,
-            OrderReadStatus.order_id.in_(order_ids),
-        )
-        .all()
-    )
-    read_by_order = {order_id: last_read for order_id, last_read in read_states}
-    app.logger.debug(f"[dashboard] read_by_order: {read_by_order}")
+    # 3) Read-Zeitpunkte aus der Session holen
+    read_by_order = {}
+    for oid in order_ids:
+        session_key = f"order_last_read_{oid}"
+        iso_val = session.get(session_key)
+        if iso_val:
+            try:
+                read_by_order[oid] = datetime.fromisoformat(iso_val)
+            except Exception:
+                read_by_order[oid] = None
 
-    # 4) Compute "last new message" per order for this user
+    app.logger.debug(f"[dashboard] read_by_order (session): {read_by_order}")
+
+    # 4) Compute "last new message" per order
     last_new_message = {}
     for o in orders:
-        latest = latest_by_order.get(o.id)  # datetime or None
-        last_read = read_by_order.get(o.id)  # datetime or None
+        latest = latest_by_order.get(o.id)  # datetime oder None
+        last_read = read_by_order.get(o.id)  # datetime oder None
 
         if latest is None:
             last_new_message[o.id] = None
@@ -666,16 +704,19 @@ def dashboard():
         status_labels=STATUS_LABELS,
     )
 
+
 @app.route("/admin")
 @roles_required("admin")
 def admin_panel():
     return render_template("admin.html")
+
 
 @app.route("/admin/users")
 @roles_required("admin")
 def admin_user_list():
     users = User.query.order_by(User.id.asc()).all()
     return render_template("admin_users.html", users=users)
+
 
 @app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
 @roles_required("admin")
@@ -724,12 +765,14 @@ def admin_user_edit(user_id):
 
     return render_template("admin_user_edit.html", user=user)
 
+
 # === NEU: Admin-Stammdaten – Material ===
 @app.route("/admin/materials")
 @roles_required("admin")
 def admin_material_list():
     materials = Material.query.order_by(Material.name.asc()).all()
     return render_template("admin_materials.html", materials=materials)
+
 
 @app.route("/admin/materials/new", methods=["GET", "POST"])
 @roles_required("admin")
@@ -752,6 +795,7 @@ def admin_material_new():
                 return redirect(url_for("admin_material_list"))
 
     return render_template("admin_material_edit.html", material=None)
+
 
 @app.route("/admin/materials/<int:material_id>/edit", methods=["GET", "POST"])
 @roles_required("admin")
@@ -777,6 +821,7 @@ def admin_material_edit(material_id):
 
     return render_template("admin_material_edit.html", material=material)
 
+
 @app.route("/admin/materials/<int:material_id>/delete", methods=["POST"])
 @roles_required("admin")
 def admin_material_delete(material_id):
@@ -786,12 +831,14 @@ def admin_material_delete(material_id):
     flash("Material deleted.", "info")
     return redirect(url_for("admin_material_list"))
 
+
 # === NEU: Admin-Stammdaten – Farben ===
 @app.route("/admin/colors")
 @roles_required("admin")
 def admin_color_list():
     colors = Color.query.order_by(Color.name.asc()).all()
     return render_template("admin_colors.html", colors=colors)
+
 
 @app.route("/admin/colors/new", methods=["GET", "POST"])
 @roles_required("admin")
@@ -814,6 +861,7 @@ def admin_color_new():
                 return redirect(url_for("admin_color_list"))
 
     return render_template("admin_color_edit.html", color=None)
+
 
 @app.route("/admin/colors/<int:color_id>/edit", methods=["GET", "POST"])
 @roles_required("admin")
@@ -839,6 +887,7 @@ def admin_color_edit(color_id):
 
     return render_template("admin_color_edit.html", color=color)
 
+
 @app.route("/admin/colors/<int:color_id>/delete", methods=["POST"])
 @roles_required("admin")
 def admin_color_delete(color_id):
@@ -848,12 +897,14 @@ def admin_color_delete(color_id):
     flash("Color deleted.", "info")
     return redirect(url_for("admin_color_list"))
 
+
 @app.route("/logout")
 @login_required
 def logout():
     logout_user()
     flash("You have been logged out.", "info")
     return redirect(url_for("landing"))
+
 
 if __name__ == "__main__":
     app.run(debug=True)
