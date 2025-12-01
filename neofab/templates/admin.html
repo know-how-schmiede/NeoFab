@@ -6,6 +6,7 @@
 <h1 class="mb-4">Admin Panel</h1>
 
 <div class="row g-3">
+    <!-- User Management -->
     <div class="col-md-4">
         <div class="card h-100">
             <div class="card-body">
@@ -20,14 +21,32 @@
         </div>
     </div>
 
-    <!-- Platzhalter für zukünftige Admin-Funktionen -->
+    <!-- Material Master Data -->
     <div class="col-md-4">
         <div class="card h-100">
             <div class="card-body">
-                <h5 class="card-title">Coming soon</h5>
+                <h5 class="card-title">Material Master Data</h5>
                 <p class="card-text">
-                    More admin tools will be added here later.
+                    Manage 3D printing materials (e.g. PLA, ABS, PETG, TPU).
                 </p>
+                <a href="{{ url_for('admin_material_list') }}" class="btn btn-primary">
+                    Open Material List
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Color Master Data -->
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Color Master Data</h5>
+                <p class="card-text">
+                    Manage filament colors (e.g. Black, White, Red, Blue).
+                </p>
+                <a href="{{ url_for('admin_color_list') }}" class="btn btn-primary">
+                    Open Color List
+                </a>
             </div>
         </div>
     </div>

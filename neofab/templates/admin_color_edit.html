@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Admin – {% if color %}Edit Color{% else %}New Color{% endif %}
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">
+    {% if color %}Edit Color{% else %}New Color{% endif %}
+</h1>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            <div class="mb-3">
+                <label for="name" class="form-label">Color Name</label>
+                <input type="text"
+                       class="form-control"
+                       id="name"
+                       name="name"
+                       required
+                       value="{{ color.name if color else '' }}">
+                <div class="form-text">e.g. Black, White, Red, Blue …</div>
+            </div>
+
+            <div class="mb-3">
+                <label for="hex_code" class="form-label">Hex Code (optional)</label>
+                <input type="text"
+                       class="form-control"
+                       id="hex_code"
+                       name="hex_code"
+                       placeholder="#RRGGBB"
+                       value="{{ color.hex_code if color else '' }}">
+                <div class="form-text">e.g. #000000 for black, #FFFFFF for white.</div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Save</button>
+            <a href="{{ url_for('admin_color_list') }}" class="btn btn-secondary">
+                Cancel
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}

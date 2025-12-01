@@ -70,6 +70,34 @@
     {% endif %}
 </div>
 
+     <!-- Material-Auswahl -->
+    <div class="mb-3">
+        <label for="material_id" class="form-label">Material</label>
+        <select class="form-select" id="material_id" name="material_id">
+            <option value="">– Please select –</option>
+            {% for m in materials %}
+                <option value="{{ m.id }}"
+                        {% if order.material_id == m.id %}selected{% endif %}>
+                    {{ m.name }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Farb-Auswahl -->
+    <div class="mb-3">
+        <label for="color_id" class="form-label">Color</label>
+        <select class="form-select" id="color_id" name="color_id">
+            <option value="">– Please select –</option>
+            {% for c in colors %}
+                <option value="{{ c.id }}"
+                        {% if order.color_id == c.id %}selected{% endif %}>
+                    {{ c.name }}
+                    {% if c.hex_code %} ({{ c.hex_code }}){% endif %}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
 
     {% if current_user.role == 'admin' %}
         <button type="submit" class="btn btn-primary mt-2">Save changes</button>

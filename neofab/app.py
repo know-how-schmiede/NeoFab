@@ -4,7 +4,6 @@ from sqlalchemy import func
 import os
 import logging
 
-
 from flask import Flask, render_template, redirect, url_for, request, flash
 from flask_sqlalchemy import SQLAlchemy
 
@@ -44,8 +43,6 @@ STATUS_LABELS.setdefault("neu", "New")
 STATUS_LABELS.setdefault("in_bearbeitung", "In progress")
 STATUS_LABELS.setdefault("abgeschlossen", "Completed")
 
-
-
 # === Konfiguration ===
 app.config["SECRET_KEY"] = os.environ.get("NEOFAB_SECRET_KEY", "dev-secret-change-me")
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///neofab.db"
@@ -61,13 +58,10 @@ def inject_globals():
         "status_labels": STATUS_LABELS,
     }
 
-
-
 db = SQLAlchemy(app)
 
 login_manager = LoginManager(app)
 login_manager.login_view = "login"   # wohin bei @login_required ohne Login?
-
 
 # === User-Modell ===
 class User(UserMixin, db.Model):
@@ -99,7 +93,6 @@ class User(UserMixin, db.Model):
     def check_password(self, password: str) -> bool:
         return check_password_hash(self.password_hash, password)
 
-
 # === Order-Modell ===
 class Order(db.Model):
     __tablename__ = "orders"
@@ -112,7 +105,6 @@ class Order(db.Model):
     # Status: internal codes: "new", "in_progress", "on_hold", "completed", "cancelled"
     status = db.Column(db.String(50), nullable=False, default="new")
 
-
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime,
@@ -124,7 +116,14 @@ class Order(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     user = db.relationship("User", back_populates="orders")
 
-    # NEU: Nachrichten zum Auftrag
+    # NEU: Material- und Farb-Auswahl (optional)
+    material_id = db.Column(db.Integer, db.ForeignKey("materials.id"), nullable=True)
+    color_id = db.Column(db.Integer, db.ForeignKey("colors.id"), nullable=True)
+
+    material = db.relationship("Material")
+    color = db.relationship("Color")
+
+    # Nachrichten zum Auftrag
     messages = db.relationship(
         "OrderMessage",
         back_populates="order",
@@ -133,7 +132,7 @@ class Order(db.Model):
     )
 
 
-
+# === Order-Message ===
 class OrderMessage(db.Model):
     __tablename__ = "order_messages"
 
@@ -147,7 +146,7 @@ class OrderMessage(db.Model):
     order = db.relationship("Order", back_populates="messages")
     user = db.relationship("User")
 
-
+# === Order-Readstatus ===
 class OrderReadStatus(db.Model):
     __tablename__ = "order_read_status"
 
@@ -163,6 +162,31 @@ class OrderReadStatus(db.Model):
         db.UniqueConstraint("order_id", "user_id", name="uq_order_user"),
     )
 
+# === Modell Material ===
+class Material(db.Model):
+    __tablename__ = "materials"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+
+    # optional: Kurzbeschreibung / Notizen
+    description = db.Column(db.String(255))
+
+    def __repr__(self):
+        return f"<Material {self.name}>"
+
+# === Modell Color ===
+class Color(db.Model):
+    __tablename__ = "colors"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+
+    # optional: hex-Farbcode für spätere UI-Spielereien
+    hex_code = db.Column(db.String(7))  # z.B. '#FF0000'
+
+    def __repr__(self):
+        return f"<Color {self.name}>"
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -184,7 +208,6 @@ def roles_required(*roles):
             return view_func(*args, **kwargs)
         return wrapped
     return decorator
-
 
 # === CLI-Helfer zum Initialisieren der DB ===
 @app.cli.command("init-db")
@@ -209,18 +232,46 @@ def create_admin():
     db.session.commit()
     print(f"Admin user '{email}' created.")
 
+# === NEU: Stammdaten (Material / Farbe) initial befüllen ===
+@app.cli.command("init-stammdaten")
+def init_stammdaten():
+    """
+    Legt einige Standard-Materialien und -Farben an, falls sie noch nicht existieren.
+    Beispielaufruf:
+        flask --app app init-stammdaten
+    """
+    base_materials = ["PLA", "ABS", "PETG", "TPU"]
+    for name in base_materials:
+        if not Material.query.filter_by(name=name).first():
+            db.session.add(Material(name=name))
+            print(f"Material angelegt: {name}")
+
+    base_colors = [
+        ("Schwarz", "#000000"),
+        ("Weiß", "#FFFFFF"),
+        ("Rot", "#FF0000"),
+        ("Gelb", "#FFFF00"),
+        ("Blau", "#0000FF"),
+        ("Grau", "#808080"),
+    ]
+    for name, hex_code in base_colors:
+        if not Color.query.filter_by(name=name).first():
+            db.session.add(Color(name=name, hex_code=hex_code))
+            print(f"Farbe angelegt: {name} ({hex_code})")
+
+    db.session.commit()
+    print("Stammdaten initialisiert.")
+
 @app.cli.command("version")
 def show_version():
     """Zeigt die aktuelle NeoFab-Version an."""
     print(f"NeoFab version: {APP_VERSION}")
-
 
 # === Routen ===
 
 @app.route("/")
 def landing():
     return render_template("landing.html")
-
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -245,7 +296,6 @@ def login():
             flash("Invalid email or password.", "danger")
 
     return render_template("login.html")
-
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -289,6 +339,10 @@ def register():
 @app.route("/orders/new", methods=["GET", "POST"])
 @login_required
 def new_order():
+    # Stammdaten laden (für GET und POST)
+    materials = Material.query.order_by(Material.name.asc()).all()
+    colors = Color.query.order_by(Color.name.asc()).all()
+
     if request.method == "POST":
         title = request.form.get("title", "").strip()
         description = request.form.get("description", "").strip()
@@ -305,11 +359,17 @@ def new_order():
             status = "new"
         # ------------------------
 
+        # Material / Farbe aus Formular lesen (optional)
+        material_id = request.form.get("material_id") or None
+        color_id = request.form.get("color_id") or None
+
         if not title:
             flash("Please provide a title for the order.", "danger")
             return render_template(
                 "orders_new.html",
                 order_statuses=ORDER_STATUSES,
+                materials=materials,
+                colors=colors,
             )
 
         order = Order(
@@ -318,12 +378,27 @@ def new_order():
             status=status,
             user_id=current_user.id,
         )
+
+        # Nur sinnvolle IDs setzen
+        if material_id:
+            try:
+                order.material_id = int(material_id)
+            except ValueError:
+                pass
+
+        if color_id:
+            try:
+                order.color_id = int(color_id)
+            except ValueError:
+                pass
+
         db.session.add(order)
         db.session.commit()
 
         app.logger.debug(
             f"[new_order] Created order id={order.id}, title={order.title!r}, "
-            f"status={order.status!r}, user={current_user.email}"
+            f"status={order.status!r}, user={current_user.email}, "
+            f"material_id={order.material_id}, color_id={order.color_id}"
         )
 
         flash("Order has been created.", "success")
@@ -333,8 +408,9 @@ def new_order():
     return render_template(
         "orders_new.html",
         order_statuses=ORDER_STATUSES,
+        materials=materials,
+        colors=colors,
     )
-
 
 
 
@@ -369,6 +445,27 @@ def order_detail(order_id):
             else:
                 order.title = title
                 order.description = description or None
+
+                # Material / Farbe aktualisieren (für alle Rollen erlaubt)
+                material_id = request.form.get("material_id") or None
+                color_id = request.form.get("color_id") or None
+
+                if material_id:
+                    try:
+                        order.material_id = int(material_id)
+                    except ValueError:
+                        order.material_id = None
+                else:
+                    order.material_id = None
+
+                if color_id:
+                    try:
+                        order.color_id = int(color_id)
+                    except ValueError:
+                        order.color_id = None
+                else:
+                    order.color_id = None
+
 
                 # Only admin may change status
                 if current_user.role == "admin":
@@ -458,23 +555,25 @@ def order_detail(order_id):
             f"[order_detail] Updated read status for order={order.id}, user={current_user.email}"
         )
 
-    db.session.commit()
-    # -----------------------------------------------------
-
     messages = order.messages
+
+    # Stammdaten für Auswahlfelder laden
+    materials = Material.query.order_by(Material.name.asc()).all()
+    colors = Color.query.order_by(Color.name.asc()).all()
+
     app.logger.debug(
         f"[order_detail] Render detail for order {order.id}: status={order.status!r}, "
-        f"messages_count={len(messages)}"
+        f"messages_count={len(messages)}, material_id={order.material_id}, color_id={order.color_id}"
     )
     return render_template(
         "order_detail.html",
         order=order,
         messages=messages,
         order_statuses=ORDER_STATUSES,
+        materials=materials,
+        colors=colors,
     )
-
-
-
+    
 
 @app.route("/dashboard")
 @login_required
@@ -567,12 +666,6 @@ def dashboard():
         status_labels=STATUS_LABELS,
     )
 
-
-
-
-
-
-
 @app.route("/admin")
 @roles_required("admin")
 def admin_panel():
@@ -583,7 +676,6 @@ def admin_panel():
 def admin_user_list():
     users = User.query.order_by(User.id.asc()).all()
     return render_template("admin_users.html", users=users)
-
 
 @app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
 @roles_required("admin")
@@ -630,11 +722,131 @@ def admin_user_edit(user_id):
                 flash("User updated.", "success")
                 return redirect(url_for("admin_user_list"))
 
-
-
     return render_template("admin_user_edit.html", user=user)
 
+# === NEU: Admin-Stammdaten – Material ===
+@app.route("/admin/materials")
+@roles_required("admin")
+def admin_material_list():
+    materials = Material.query.order_by(Material.name.asc()).all()
+    return render_template("admin_materials.html", materials=materials)
 
+@app.route("/admin/materials/new", methods=["GET", "POST"])
+@roles_required("admin")
+def admin_material_new():
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        description = request.form.get("description", "").strip() or None
+
+        if not name:
+            flash("Material name is required.", "danger")
+        else:
+            existing = Material.query.filter_by(name=name).first()
+            if existing:
+                flash("A material with this name already exists.", "danger")
+            else:
+                m = Material(name=name, description=description)
+                db.session.add(m)
+                db.session.commit()
+                flash("Material created.", "success")
+                return redirect(url_for("admin_material_list"))
+
+    return render_template("admin_material_edit.html", material=None)
+
+@app.route("/admin/materials/<int:material_id>/edit", methods=["GET", "POST"])
+@roles_required("admin")
+def admin_material_edit(material_id):
+    material = Material.query.get_or_404(material_id)
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        description = request.form.get("description", "").strip() or None
+
+        if not name:
+            flash("Material name is required.", "danger")
+        else:
+            existing = Material.query.filter_by(name=name).first()
+            if existing and existing.id != material.id:
+                flash("Another material with this name already exists.", "danger")
+            else:
+                material.name = name
+                material.description = description
+                db.session.commit()
+                flash("Material updated.", "success")
+                return redirect(url_for("admin_material_list"))
+
+    return render_template("admin_material_edit.html", material=material)
+
+@app.route("/admin/materials/<int:material_id>/delete", methods=["POST"])
+@roles_required("admin")
+def admin_material_delete(material_id):
+    material = Material.query.get_or_404(material_id)
+    db.session.delete(material)
+    db.session.commit()
+    flash("Material deleted.", "info")
+    return redirect(url_for("admin_material_list"))
+
+# === NEU: Admin-Stammdaten – Farben ===
+@app.route("/admin/colors")
+@roles_required("admin")
+def admin_color_list():
+    colors = Color.query.order_by(Color.name.asc()).all()
+    return render_template("admin_colors.html", colors=colors)
+
+@app.route("/admin/colors/new", methods=["GET", "POST"])
+@roles_required("admin")
+def admin_color_new():
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        hex_code = request.form.get("hex_code", "").strip() or None
+
+        if not name:
+            flash("Color name is required.", "danger")
+        else:
+            existing = Color.query.filter_by(name=name).first()
+            if existing:
+                flash("A color with this name already exists.", "danger")
+            else:
+                c = Color(name=name, hex_code=hex_code)
+                db.session.add(c)
+                db.session.commit()
+                flash("Color created.", "success")
+                return redirect(url_for("admin_color_list"))
+
+    return render_template("admin_color_edit.html", color=None)
+
+@app.route("/admin/colors/<int:color_id>/edit", methods=["GET", "POST"])
+@roles_required("admin")
+def admin_color_edit(color_id):
+    color = Color.query.get_or_404(color_id)
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        hex_code = request.form.get("hex_code", "").strip() or None
+
+        if not name:
+            flash("Color name is required.", "danger")
+        else:
+            existing = Color.query.filter_by(name=name).first()
+            if existing and existing.id != color.id:
+                flash("Another color with this name already exists.", "danger")
+            else:
+                color.name = name
+                color.hex_code = hex_code
+                db.session.commit()
+                flash("Color updated.", "success")
+                return redirect(url_for("admin_color_list"))
+
+    return render_template("admin_color_edit.html", color=color)
+
+@app.route("/admin/colors/<int:color_id>/delete", methods=["POST"])
+@roles_required("admin")
+def admin_color_delete(color_id):
+    color = Color.query.get_or_404(color_id)
+    db.session.delete(color)
+    db.session.commit()
+    flash("Color deleted.", "info")
+    return redirect(url_for("admin_color_list"))
 
 @app.route("/logout")
 @login_required
@@ -642,7 +854,6 @@ def logout():
     logout_user()
     flash("You have been logged out.", "info")
     return redirect(url_for("landing"))
-
 
 if __name__ == "__main__":
     app.run(debug=True)

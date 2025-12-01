@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Admin – {% if material %}Edit Material{% else %}New Material{% endif %}
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">
+    {% if material %}Edit Material{% else %}New Material{% endif %}
+</h1>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            <div class="mb-3">
+                <label for="name" class="form-label">Material Name</label>
+                <input type="text"
+                       class="form-control"
+                       id="name"
+                       name="name"
+                       required
+                       value="{{ material.name if material else '' }}">
+                <div class="form-text">e.g. PLA, ABS, PETG, TPU …</div>
+            </div>
+
+            <div class="mb-3">
+                <label for="description" class="form-label">Description / Note (optional)</label>
+                <input type="text"
+                       class="form-control"
+                       id="description"
+                       name="description"
+                       value="{{ material.description if material else '' }}">
+            </div>
+
+            <button type="submit" class="btn btn-primary">Save</button>
+            <a href="{{ url_for('admin_material_list') }}" class="btn btn-secondary">
+                Cancel
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}

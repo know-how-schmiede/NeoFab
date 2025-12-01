@@ -41,6 +41,31 @@
         </div>
     {% endif %}
 
+    <!-- NEU: Material-Auswahl -->
+    <div class="mb-3">
+        <label for="material_id" class="form-label">Material</label>
+        <select class="form-select" id="material_id" name="material_id">
+            <option value="">– Please select –</option>
+            {% for m in materials %}
+                <option value="{{ m.id }}">{{ m.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- NEU: Farb-Auswahl -->
+    <div class="mb-3">
+        <label for="color_id" class="form-label">Color</label>
+        <select class="form-select" id="color_id" name="color_id">
+            <option value="">– Please select –</option>
+            {% for c in colors %}
+                <option value="{{ c.id }}">
+                    {{ c.name }}
+                    {% if c.hex_code %} ({{ c.hex_code }}){% endif %}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
     <button type="submit" class="btn btn-primary">Create order</button>
     <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
 </form>
