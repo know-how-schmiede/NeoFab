@@ -1,4 +1,8 @@
 # Timeline NeoFab
+## Version 0.3.2
+app.py und Dashboard.html aufgeräumt
+## Version 0.3.1
+File löschen, Badge-Icon für STL / 3mf, File-Anzahl in Dashboard
 ## Version 0.3.0
 File-Upload in Uploud-Verzeichnis, mehrere 3D Modelle können hochgeladen werden
 ## Version 0.2.1

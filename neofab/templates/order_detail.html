@@ -201,25 +201,58 @@
     {% if order.files %}
       <ul class="list-group mb-3">
         {% for f in order.files %}
-          <li class="list-group-item d-flex justify-content-between align-items-center">
+
+         <li class="list-group-item d-flex justify-content-between align-items-center">
+          <div>
             <div>
-              <div><strong>{{ f.original_name }}</strong></div>
-              <small class="text-muted">
-                {% if f.file_type %}{{ f.file_type|upper }}{% else %}File{% endif %}
-                {% if f.filesize %}
-                  · {{ (f.filesize / 1024)|round(1) }} KB
+              <strong>{{ f.original_name }}</strong>
+              {# Badge für Dateityp, kommt gleich noch genauer #}
+              {% if f.file_type %}
+                
+                {% if f.file_type %}
+                  <span class="badge 
+                        {% if f.file_type.lower() == 'stl' %}bg-info
+                        {% elif f.file_type.lower() == '3mf' %}bg-success
+                        {% else %}bg-secondary
+                        {% endif %}
+                        ms-2">
+                    {{ f.file_type|upper }}
+                  </span>
                 {% endif %}
-                {% if f.uploaded_at %}
-                  · uploaded {{ f.uploaded_at.strftime("%Y-%m-%d %H:%M") }}
-                {% endif %}
-              </small>
+
+
+              {% endif %}
             </div>
+            <small class="text-muted">
+              {% if f.filesize %}
+                {{ (f.filesize / 1024)|round(1) }} KB
+              {% endif %}
+              {% if f.uploaded_at %}
+                · uploaded {{ f.uploaded_at.strftime("%Y-%m-%d %H:%M") }}
+              {% endif %}
+            </small>
+          </div>
+
+          <div class="d-flex gap-2">
             <a class="btn btn-sm btn-outline-primary"
-               href="{{ url_for('download_order_file', order_id=order.id, file_id=f.id) }}">
+              href="{{ url_for('download_order_file', order_id=order.id, file_id=f.id) }}">
               <i class="bi bi-download me-1"></i>
               Download
             </a>
-          </li>
+
+            <form method="post"
+                  onsubmit="return confirm('Delete this file?');">
+              <input type="hidden" name="action" value="delete_file">
+              <input type="hidden" name="file_id" value="{{ f.id }}">
+              <button type="submit" class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-trash me-1"></i>
+                Delete
+              </button>
+            </form>
+          </div>
+        </li>
+   
+
         {% endfor %}
       </ul>
     {% else %}

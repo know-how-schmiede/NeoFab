@@ -16,8 +16,14 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 Kann das Script nicht ausgeführt werden, da Script Ausführen deaktiviert:
+Lösung 1 - beim Beenden der Shell ist ales wieder verschwunden
 ```
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+.\.venv\Scripts\Activate
+```
+Lösung 2 - dauerhaft für deinen Benutzer
+```
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 .\.venv\Scripts\Activate
 ```
 

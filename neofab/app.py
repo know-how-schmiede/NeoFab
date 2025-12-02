@@ -1,9 +1,22 @@
+# ============================================================
+# NeoFab – einfache 3D-Druck-Auftragsverwaltung
+# ============================================================
+# - User-Registrierung & Login
+# - Aufträge mit Material / Farbe
+# - Chat-ähnliche Kommunikation pro Auftrag
+# - Upload mehrerer 3D-Dateien (STL / 3MF) pro Auftrag
+# - Download & Löschen von Dateien
+# - Dashboard mit Files-Zähler pro Auftrag
+# ============================================================
+
 from version import APP_VERSION
 from datetime import datetime
-from sqlalchemy import func
-import os
 from pathlib import Path
+import os
 import logging
+
+from sqlalchemy import func
+
 from markupsafe import Markup, escape
 
 from flask import (
@@ -15,6 +28,7 @@ from flask import (
     flash,
     session,
     send_from_directory,
+    abort,
 )
 
 from flask_sqlalchemy import SQLAlchemy
@@ -27,34 +41,35 @@ from flask_login import (
     logout_user,
     current_user,
 )
+
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 from functools import wraps
-from flask import abort
 
-import os
+
+# ============================================================
+# Grundkonfiguration & Logging
+# ============================================================
 
 app = Flask(__name__)
 
-# Basis-Verzeichnis (Root deines Projekts)
+# Basis-Verzeichnis (Root des Projekts)
 BASE_DIR = Path(__file__).resolve().parent
 
-# Ordner für Uploads, z.B. "uploads/models"
+# Upload-Ordner für 3D-Modelle, z.B. "uploads/models"
 UPLOAD_FOLDER = BASE_DIR / "uploads" / "models"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
 app.config["UPLOAD_FOLDER"] = str(UPLOAD_FOLDER)
 
-# Optional: Maximal erlaubte Upload-Größe (z.B. 50 MB)
+# Maximal erlaubte Upload-Größe (z.B. 50 MB)
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
 
-
-# --- Simple logging config ---
+# Einfache Logging-Konfiguration
 logging.basicConfig(level=logging.DEBUG)
 app.logger.setLevel(logging.DEBUG)
-# ------------------------------
 
+# Auftrags-Status-Codes (interne Werte + Labels)
 ORDER_STATUSES = [
     ("new", "New"),
     ("in_progress", "In progress"),
@@ -63,24 +78,27 @@ ORDER_STATUSES = [
     ("cancelled", "Cancelled"),
 ]
 
-# Mapping for display
+# Mapping der Status-Codes zu lesbaren Labels
 STATUS_LABELS = {value: label for value, label in ORDER_STATUSES}
 
-# Backwards compatibility for old German codes in DB
+# Abwärtskompatibilität für alte deutsche Statuswerte
 STATUS_LABELS.setdefault("neu", "New")
 STATUS_LABELS.setdefault("in_bearbeitung", "In progress")
 STATUS_LABELS.setdefault("abgeschlossen", "Completed")
 
-# === Konfiguration ===
+# Secret Key & Datenbank-Config
 app.config["SECRET_KEY"] = os.environ.get("NEOFAB_SECRET_KEY", "dev-secret-change-me")
-# app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///neofab.db"
-# Basis-Verzeichnis (Root deines Projekts)
-BASE_DIR = Path(__file__).resolve().parent
+
+# SQLite-DB im Projektverzeichnis (absoluter Pfad)
 db_path = BASE_DIR / "neofab.db"
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+
+# ============================================================
+# Globale Template-Variablen
+# ============================================================
 
 @app.context_processor
 def inject_globals():
@@ -93,40 +111,78 @@ def inject_globals():
     }
 
 
+# ============================================================
+# DB-Initialisierung & Hilfsfunktionen
+# ============================================================
+
 db = SQLAlchemy(app)
 
 
 @app.template_filter("nl2br")
 def nl2br_filter(s: str):
     """
-    Wandelt Zeilenumbrüche in <br> um und escaped den Text zuvor.
+    Filter für Jinja: wandelt Zeilenumbrüche in <br> um und escaped den Text zuvor.
+    Eignet sich für Chat-/Text-Ausgabe.
     """
     if not s:
         return ""
-    # Erst escapen, dann Zeilenumbrüche in <br> umwandeln
     return Markup("<br>".join(escape(s).splitlines()))
 
+
+# ============================================================
+# Login- / Rollen-Setup
+# ============================================================
 
 login_manager = LoginManager(app)
 login_manager.login_view = "login"  # wohin bei @login_required ohne Login?
 
 
-# === User-Modell ===
+def roles_required(*roles):
+    """
+    Decorator: erlaubt Zugriff nur, wenn current_user.role in roles ist.
+
+    Nutzung:
+        @roles_required("admin")
+        @roles_required("admin", "manager")
+    """
+
+    def decorator(view_func):
+        @wraps(view_func)
+        @login_required
+        def wrapped(*args, **kwargs):
+            if current_user.role not in roles:
+                abort(403)  # Forbidden
+            return view_func(*args, **kwargs)
+
+        return wrapped
+
+    return decorator
+
+
+# ============================================================
+# Datenbank-Modelle
+# ============================================================
+
+# --- User-Modell -------------------------------------------------------------
+
 class User(UserMixin, db.Model):
+    """
+    Benutzerkonto mit Login-Daten, Rolle und einigen Profilfeldern.
+    """
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(255), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(50), nullable=False, default="user")
 
     # Zusatzfelder
-    salutation = db.Column(db.String(50))  # Anrede
+    salutation = db.Column(db.String(50))   # Anrede
     first_name = db.Column(db.String(100))  # Vorname
-    last_name = db.Column(db.String(100))  # Nachname
-    address = db.Column(db.String(255))  # Adresse
-    position = db.Column(db.String(100))  # Position
-    cost_center = db.Column(db.String(100))  # Kostenstelle
+    last_name = db.Column(db.String(100))   # Nachname
+    address = db.Column(db.String(255))     # Adresse
+    position = db.Column(db.String(100))    # Position / Funktion
+    cost_center = db.Column(db.String(100)) # Kostenstelle
     study_program = db.Column(db.String(150))  # Studiengang
-    note = db.Column(db.Text)  # Bemerkung
+    note = db.Column(db.Text)              # Freitext / Bemerkung
 
     # Timestamps
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
@@ -142,8 +198,13 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
 
-# === Order-Modell ===
+# --- Order-Modell ------------------------------------------------------------
+
 class Order(db.Model):
+    """
+    Auftragskopf: Titel, Beschreibung, Status, Owner,
+    optional Material/Farbe, Nachrichten & Dateien.
+    """
     __tablename__ = "orders"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -151,7 +212,7 @@ class Order(db.Model):
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=True)
 
-    # Status: internal codes: "new", "in_progress", "on_hold", "completed", "cancelled"
+    # Status: "new", "in_progress", "on_hold", "completed", "cancelled"
     status = db.Column(db.String(50), nullable=False, default="new")
 
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
@@ -162,10 +223,11 @@ class Order(db.Model):
         onupdate=datetime.utcnow,
     )
 
+    # Besitzer / Anforderer
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     user = db.relationship("User", back_populates="orders")
 
-    # NEU: Material- und Farb-Auswahl (optional)
+    # Material- und Farb-Auswahl (optional)
     material_id = db.Column(db.Integer, db.ForeignKey("materials.id"), nullable=True)
     color_id = db.Column(db.Integer, db.ForeignKey("colors.id"), nullable=True)
 
@@ -179,7 +241,7 @@ class Order(db.Model):
         cascade="all, delete-orphan",
         order_by="OrderMessage.created_at",
     )
-    
+
     # Hochgeladene 3D-Modelle (STL / 3MF) zu diesem Auftrag
     files = db.relationship(
         "OrderFile",
@@ -189,9 +251,8 @@ class Order(db.Model):
     )
 
 
+# --- OrderMessage (Chat-/Kommunikationseintrag) ------------------------------
 
-
-# === Order-Message ===
 class OrderMessage(db.Model):
     __tablename__ = "order_messages"
 
@@ -206,7 +267,8 @@ class OrderMessage(db.Model):
     user = db.relationship("User")
 
 
-# === Order-Readstatus ===
+# --- OrderReadStatus (wann hat welcher User den Auftrag zuletzt gelesen) -----
+
 class OrderReadStatus(db.Model):
     __tablename__ = "order_read_status"
 
@@ -223,8 +285,12 @@ class OrderReadStatus(db.Model):
     )
 
 
-# === Order-File (hochgeladene 3D-Modelle) ===
+# --- OrderFile (hochgeladene 3D-Modelle) ------------------------------------
+
 class OrderFile(db.Model):
+    """
+    Einzelner Datei-Eintrag zu einem Auftrag (z.B. STL oder 3MF).
+    """
     __tablename__ = "order_files"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -238,69 +304,52 @@ class OrderFile(db.Model):
 
     # Metadaten
     file_type = db.Column(db.String(20))   # z.B. 'stl' oder '3mf'
-    filesize = db.Column(db.Integer)      # in Bytes
+    filesize = db.Column(db.Integer)       # in Bytes
     uploaded_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     # Beziehung zurück zum Order
     order = db.relationship("Order", back_populates="files")
 
 
+# --- Stammdaten: Material ----------------------------------------------------
 
-# === Modell Material ===
 class Material(db.Model):
     __tablename__ = "materials"
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
-
-    # optional: Kurzbeschreibung / Notizen
-    description = db.Column(db.String(255))
+    description = db.Column(db.String(255))  # Kurzbeschreibung / Notizen
 
     def __repr__(self):
         return f"<Material {self.name}>"
 
 
-# === Modell Color ===
+# --- Stammdaten: Color -------------------------------------------------------
+
 class Color(db.Model):
     __tablename__ = "colors"
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
-
-    # optional: hex-Farbcode für spätere UI-Spielereien
     hex_code = db.Column(db.String(7))  # z.B. '#FF0000'
 
     def __repr__(self):
         return f"<Color {self.name}>"
 
 
+# ============================================================
+# Login-Backend
+# ============================================================
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
 
-def roles_required(*roles):
-    """
-    Decorator: erlaubt Zugriff nur, wenn current_user.role in roles ist.
-    Nutzung:
-    @roles_required("admin")
-    @roles_required("admin", "manager")
-    """
+# ============================================================
+# CLI-Kommandos (Datenbank & Stammdaten)
+# ============================================================
 
-    def decorator(view_func):
-        @wraps(view_func)
-        @login_required
-        def wrapped(*args, **kwargs):
-            if current_user.role not in roles:
-                abort(403)  # Forbidden
-            return view_func(*args, **kwargs)
-
-        return wrapped
-
-    return decorator
-
-
-# === CLI-Helfer zum Initialisieren der DB ===
 @app.cli.command("init-db")
 def init_db():
     """Initialisiert die Datenbank (einmalig ausführen)."""
@@ -325,7 +374,6 @@ def create_admin():
     print(f"Admin user '{email}' created.")
 
 
-# === NEU: Stammdaten (Material / Farbe) initial befüllen ===
 @app.cli.command("init-stammdaten")
 def init_stammdaten():
     """
@@ -362,16 +410,19 @@ def show_version():
     print(f"NeoFab version: {APP_VERSION}")
 
 
-# === Routen ===
-
+# ============================================================
+# Routen: Landing / Auth
+# ============================================================
 
 @app.route("/")
 def landing():
+    """Einfache Landingpage vor dem Login."""
     return render_template("landing.html")
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    """Login-Formular & Login-Logik."""
     if current_user.is_authenticated:
         return redirect(url_for("dashboard"))
 
@@ -388,7 +439,6 @@ def login():
             flash("Login successful.", "success")
             next_page = request.args.get("next")
             return redirect(next_page or url_for("dashboard"))
-
         else:
             flash("Invalid email or password.", "danger")
 
@@ -397,6 +447,7 @@ def login():
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
+    """Registrierungs-Formular & Account-Anlage für neue Nutzer."""
     if current_user.is_authenticated:
         return redirect(url_for("dashboard"))
 
@@ -434,9 +485,17 @@ def register():
     return render_template("register.html")
 
 
+# ============================================================
+# Routen: Neue Orders + Datei-Upload
+# ============================================================
+
 @app.route("/orders/new", methods=["GET", "POST"])
 @login_required
 def new_order():
+    """
+    Formular zum Anlegen eines neuen Auftrags.
+    Optional: direkter Upload einer 3D-Datei (STL/3MF) beim Erstellen.
+    """
     # Stammdaten laden (für GET und POST)
     materials = Material.query.order_by(Material.name.asc()).all()
     colors = Color.query.order_by(Color.name.asc()).all()
@@ -447,17 +506,17 @@ def new_order():
 
         # --- Status-Handling ---
         if current_user.role == "admin":
-            # Admin may choose initial status
+            # Admin darf initialen Status wählen
             status = request.form.get("status", "new")
             valid_status_values = [s[0] for s in ORDER_STATUSES]
             if status not in valid_status_values:
                 status = "new"
         else:
-            # Normal users always start with "new"
+            # Normale Nutzer starten immer mit "new"
             status = "new"
         # ------------------------
 
-        # Material / Farbe aus Formular lesen (optional)
+        # Material / Farbe (optional)
         material_id = request.form.get("material_id") or None
         color_id = request.form.get("color_id") or None
 
@@ -493,7 +552,7 @@ def new_order():
         db.session.add(order)
         db.session.commit()
 
-        # === NEU: Datei-Upload (STL / 3MF) ===
+        # === Datei-Upload (optional) =======================================
         file = request.files.get("model_file")
         if file and file.filename:
             original_name = file.filename
@@ -503,16 +562,15 @@ def new_order():
             _, ext = os.path.splitext(safe_name)
             ext = ext.lower().lstrip(".")  # "stl" oder "3mf"
 
-            # Optional: nur bestimmte Endungen zulassen
             allowed_ext = {"stl", "3mf"}
             if ext not in allowed_ext:
                 flash("Only STL and 3MF files are allowed.", "warning")
             else:
-                # Erst OrderFile-Eintrag mit Platzhalter speichern
+                # OrderFile-Eintrag mit Platzhalter speichern
                 order_file = OrderFile(
                     order_id=order.id,
                     original_name=original_name,
-                    stored_name="",  # wird nach dem Speichern gesetzt
+                    stored_name="",
                     file_type=ext,
                 )
                 db.session.add(order_file)
@@ -543,7 +601,7 @@ def new_order():
                     f"[new_order] Uploaded file for order {order.id}: "
                     f"OrderFile.id={order_file.id}, stored_name={stored_name!r}"
                 )
-        # === Ende Datei-Upload ===
+        # ===================================================================
 
         app.logger.debug(
             f"[new_order] Created order id={order.id}, title={order.title!r}, "
@@ -563,12 +621,23 @@ def new_order():
     )
 
 
+# ============================================================
+# Routen: Order-Details (inkl. Chat & Dateien)
+# ============================================================
+
 @app.route("/orders/<int:order_id>", methods=["GET", "POST"])
 @login_required
 def order_detail(order_id):
+    """
+    Detailansicht eines Auftrags:
+    - Stammdaten bearbeiten
+    - Status ändern (nur Admin)
+    - Nachrichten schreiben
+    - Dateien hochladen / löschen
+    """
     order = Order.query.get_or_404(order_id)
 
-    # Access control
+    # Access control: normale User sehen nur eigene Aufträge
     if current_user.role != "admin" and order.user_id != current_user.id:
         abort(403)
 
@@ -577,7 +646,7 @@ def order_detail(order_id):
 
         action = request.form.get("action")
 
-        # --- Update order fields ---
+        # --- 1) Auftragsdaten aktualisieren --------------------------------
         if action == "update_order":
             title = request.form.get("title", "").strip()
             description = request.form.get("description", "").strip()
@@ -615,7 +684,7 @@ def order_detail(order_id):
                 else:
                     order.color_id = None
 
-                # Only admin may change status
+                # Statuswechsel nur für Admin
                 if current_user.role == "admin":
                     valid_status_values = [s[0] for s in ORDER_STATUSES]
                     app.logger.debug(f"[order_detail] Valid status values: {valid_status_values}")
@@ -633,7 +702,7 @@ def order_detail(order_id):
                 flash("Order has been updated.", "success")
                 return redirect(url_for("order_detail", order_id=order.id))
 
-        # --- Add message ---
+        # --- 2) Neue Nachricht hinzufügen ----------------------------------
         elif action == "add_message":
             content = request.form.get("content", "").strip()
             app.logger.debug(f"[order_detail] ADD_MESSAGE for order {order.id}: {content!r}")
@@ -652,13 +721,13 @@ def order_detail(order_id):
                 flash("Message has been added.", "success")
                 return redirect(url_for("order_detail", order_id=order.id))
 
-        # --- Cancel / deactivate order (user or admin) ---
+        # --- 3) Auftrag stornieren -----------------------------------------
         elif action == "cancel_order":
             app.logger.debug(
                 f"[order_detail] CANCEL_ORDER requested by user={current_user.email}, "
                 f"order_id={order.id}, current_status={order.status!r}"
             )
-            # User may only cancel his own orders, admin may cancel all
+            # User darf nur eigene Aufträge stornieren, Admin alle
             if current_user.role == "admin" or order.user_id == current_user.id:
                 if order.status not in ("completed", "cancelled"):
                     order.status = "cancelled"
@@ -679,8 +748,8 @@ def order_detail(order_id):
                 )
 
             return redirect(url_for("order_detail", order_id=order.id))
-        
-        # --- Upload additional 3D file ---
+
+        # --- 4) Zusätzliche Datei hochladen --------------------------------
         elif action == "upload_file":
             file = request.files.get("model_file")
             if not file or not file.filename:
@@ -735,8 +804,50 @@ def order_detail(order_id):
             flash("File has been uploaded.", "success")
             return redirect(url_for("order_detail", order_id=order.id))
 
+        # --- 5) Datei löschen ----------------------------------------------
+        elif action == "delete_file":
+            try:
+                file_id = int(request.form.get("file_id", "0"))
+            except ValueError:
+                file_id = 0
 
-    # --- Mark as read for current user (GET and after POST redirects) ---
+            if not file_id:
+                flash("Invalid file ID.", "danger")
+                return redirect(url_for("order_detail", order_id=order.id))
+
+            order_file = OrderFile.query.filter_by(
+                id=file_id,
+                order_id=order.id
+            ).first()
+
+            if not order_file:
+                flash("File not found.", "warning")
+                return redirect(url_for("order_detail", order_id=order.id))
+
+            # Physische Datei löschen
+            order_folder = Path(app.config["UPLOAD_FOLDER"]) / f"order_{order.id}"
+            full_path = order_folder / order_file.stored_name
+
+            if full_path.exists():
+                try:
+                    full_path.unlink()
+                except OSError:
+                    app.logger.warning(
+                        f"[order_detail] Could not delete file on disk: {full_path}"
+                    )
+
+            # DB-Eintrag löschen
+            db.session.delete(order_file)
+            db.session.commit()
+
+            app.logger.debug(
+                f"[order_detail] Deleted file {file_id} for order {order.id}"
+            )
+
+            flash("File has been deleted.", "info")
+            return redirect(url_for("order_detail", order_id=order.id))
+
+    # --- Lese-Status aktualisieren (GET + nach POST-Redirect) --------------
     now = datetime.utcnow()
     read_status = OrderReadStatus.query.filter_by(
         order_id=order.id,
@@ -787,9 +898,17 @@ def order_detail(order_id):
         colors=colors,
     )
 
+
+# ============================================================
+# Datei-Download
+# ============================================================
+
 @app.route("/orders/<int:order_id>/files/<int:file_id>/download")
 @login_required
 def download_order_file(order_id, file_id):
+    """
+    Einfache Download-Route für eine Datei zu einem Auftrag.
+    """
     # Auftrag laden
     order = Order.query.get_or_404(order_id)
 
@@ -797,8 +916,11 @@ def download_order_file(order_id, file_id):
     if current_user.role != "admin" and order.user_id != current_user.id:
         abort(403)
 
-    # Datei zu diesem Auftrag suchen
-    order_file = OrderFile.query.filter_by(id=file_id, order_id=order.id).first_or_404()
+    # Datei suchen
+    order_file = OrderFile.query.filter_by(
+        id=file_id,
+        order_id=order.id
+    ).first_or_404()
 
     # Pfad zusammensetzen
     order_folder = Path(app.config["UPLOAD_FOLDER"]) / f"order_{order.id}"
@@ -817,15 +939,25 @@ def download_order_file(order_id, file_id):
     )
 
 
+# ============================================================
+# Dashboard
+# ============================================================
 
 @app.route("/dashboard")
 @login_required
 def dashboard():
+    """
+    Übersicht aller Aufträge (Admin: alle, User: nur eigene).
+    Zeigt:
+    - Status, Material, Farbe, Owner
+    - "new message"-Badge
+    - Anzahl Dateien ("Files") pro Auftrag
+    """
     app.logger.debug(
         f"[dashboard] user={current_user.email}, role={current_user.role}"
     )
 
-    # 1) Load orders, depending on role
+    # 1) Orders laden (je nach Rolle)
     if current_user.role == "admin":
         orders = (
             Order.query
@@ -848,6 +980,7 @@ def dashboard():
             orders=[],
             last_new_message={},
             status_labels=STATUS_LABELS,
+            file_counts={},   # wichtig, damit Template file_counts kennt
         )
 
     order_ids = [o.id for o in orders]
@@ -856,7 +989,23 @@ def dashboard():
             f"[dashboard] Order id={o.id}, title={o.title!r}, status={o.status!r}"
         )
 
-    # 2) Latest message per order
+    # 2) Anzahl Dateien pro Order ermitteln
+    file_counts = {}
+    if order_ids:
+        file_count_rows = (
+            db.session.query(
+                OrderFile.order_id,
+                func.count(OrderFile.id)
+            )
+            .filter(OrderFile.order_id.in_(order_ids))
+            .group_by(OrderFile.order_id)
+            .all()
+        )
+        file_counts = {order_id: count for order_id, count in file_count_rows}
+
+    app.logger.debug(f"[dashboard] file_counts: {file_counts}")
+
+    # 3) Latest message per order (Zeitstempel der letzten Nachricht)
     latest_messages = (
         db.session.query(
             OrderMessage.order_id,
@@ -869,7 +1018,7 @@ def dashboard():
     latest_by_order = {order_id: latest_created for order_id, latest_created in latest_messages}
     app.logger.debug(f"[dashboard] latest_by_order: {latest_by_order}")
 
-    # 3) Read-Zeitpunkte aus der Session holen
+    # 4) Read-Zeitpunkte aus der Session holen (pro Order)
     read_by_order = {}
     for oid in order_ids:
         session_key = f"order_last_read_{oid}"
@@ -882,11 +1031,11 @@ def dashboard():
 
     app.logger.debug(f"[dashboard] read_by_order (session): {read_by_order}")
 
-    # 4) Compute "last new message" per order
+    # 5) "last_new_message" pro Order berechnen (für "new message"-Badge)
     last_new_message = {}
     for o in orders:
-        latest = latest_by_order.get(o.id)  # datetime oder None
-        last_read = read_by_order.get(o.id)  # datetime oder None
+        latest = latest_by_order.get(o.id)      # datetime oder None
+        last_read = read_by_order.get(o.id)     # datetime oder None
 
         if latest is None:
             last_new_message[o.id] = None
@@ -905,18 +1054,25 @@ def dashboard():
         orders=orders,
         last_new_message=last_new_message,
         status_labels=STATUS_LABELS,
+        file_counts=file_counts,
     )
 
+
+# ============================================================
+# Admin-Bereich: User, Material, Farben
+# ============================================================
 
 @app.route("/admin")
 @roles_required("admin")
 def admin_panel():
+    """Einfache Admin-Startseite."""
     return render_template("admin.html")
 
 
 @app.route("/admin/users")
 @roles_required("admin")
 def admin_user_list():
+    """Übersicht aller User (nur für Admin)."""
     users = User.query.order_by(User.id.asc()).all()
     return render_template("admin_users.html", users=users)
 
@@ -924,6 +1080,7 @@ def admin_user_list():
 @app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
 @roles_required("admin")
 def admin_user_edit(user_id):
+    """User-Daten bearbeiten (Admin)."""
     user = User.query.get_or_404(user_id)
 
     if request.method == "POST":
@@ -969,7 +1126,8 @@ def admin_user_edit(user_id):
     return render_template("admin_user_edit.html", user=user)
 
 
-# === NEU: Admin-Stammdaten – Material ===
+# --- Admin: Material-Stammdaten ---------------------------------------------
+
 @app.route("/admin/materials")
 @roles_required("admin")
 def admin_material_list():
@@ -1035,7 +1193,8 @@ def admin_material_delete(material_id):
     return redirect(url_for("admin_material_list"))
 
 
-# === NEU: Admin-Stammdaten – Farben ===
+# --- Admin: Color-Stammdaten -----------------------------------------------
+
 @app.route("/admin/colors")
 @roles_required("admin")
 def admin_color_list():
@@ -1101,6 +1260,10 @@ def admin_color_delete(color_id):
     return redirect(url_for("admin_color_list"))
 
 
+# ============================================================
+# Logout
+# ============================================================
+
 @app.route("/logout")
 @login_required
 def logout():
@@ -1108,6 +1271,10 @@ def logout():
     flash("You have been logged out.", "info")
     return redirect(url_for("landing"))
 
+
+# ============================================================
+# Dev-Start
+# ============================================================
 
 if __name__ == "__main__":
     app.run(debug=True)
