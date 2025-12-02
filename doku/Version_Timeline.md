@@ -1,5 +1,7 @@
 # Timeline NeoFab
-## Version 02.1
+## Version 0.3.0
+File-Upload in Uploud-Verzeichnis, mehrere 3D Modelle können hochgeladen werden
+## Version 0.2.1
 ChatNachrichten in Order / NachrichtenFomular entfernt
 ## Version 0.2.0
 TemplateSystem integriert

@@ -2,10 +2,21 @@ from version import APP_VERSION
 from datetime import datetime
 from sqlalchemy import func
 import os
+from pathlib import Path
 import logging
 from markupsafe import Markup, escape
 
-from flask import Flask, render_template, redirect, url_for, request, flash, session
+from flask import (
+    Flask,
+    render_template,
+    redirect,
+    url_for,
+    request,
+    flash,
+    session,
+    send_from_directory,
+)
+
 from flask_sqlalchemy import SQLAlchemy
 
 from flask_login import (
@@ -17,12 +28,28 @@ from flask_login import (
     current_user,
 )
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
+
 from functools import wraps
 from flask import abort
 
 import os
 
 app = Flask(__name__)
+
+# Basis-Verzeichnis (Root deines Projekts)
+BASE_DIR = Path(__file__).resolve().parent
+
+# Ordner für Uploads, z.B. "uploads/models"
+UPLOAD_FOLDER = BASE_DIR / "uploads" / "models"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+app.config["UPLOAD_FOLDER"] = str(UPLOAD_FOLDER)
+
+# Optional: Maximal erlaubte Upload-Größe (z.B. 50 MB)
+app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
+
+
 # --- Simple logging config ---
 logging.basicConfig(level=logging.DEBUG)
 app.logger.setLevel(logging.DEBUG)
@@ -46,7 +73,12 @@ STATUS_LABELS.setdefault("abgeschlossen", "Completed")
 
 # === Konfiguration ===
 app.config["SECRET_KEY"] = os.environ.get("NEOFAB_SECRET_KEY", "dev-secret-change-me")
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///neofab.db"
+# app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///neofab.db"
+# Basis-Verzeichnis (Root deines Projekts)
+BASE_DIR = Path(__file__).resolve().parent
+db_path = BASE_DIR / "neofab.db"
+app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
+
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 
@@ -147,6 +179,16 @@ class Order(db.Model):
         cascade="all, delete-orphan",
         order_by="OrderMessage.created_at",
     )
+    
+    # Hochgeladene 3D-Modelle (STL / 3MF) zu diesem Auftrag
+    files = db.relationship(
+        "OrderFile",
+        back_populates="order",
+        cascade="all, delete-orphan",
+        lazy=True,
+    )
+
+
 
 
 # === Order-Message ===
@@ -179,6 +221,29 @@ class OrderReadStatus(db.Model):
     __table_args__ = (
         db.UniqueConstraint("order_id", "user_id", name="uq_order_user"),
     )
+
+
+# === Order-File (hochgeladene 3D-Modelle) ===
+class OrderFile(db.Model):
+    __tablename__ = "order_files"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Zugehöriger Auftrag
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
+
+    # Dateinamen
+    original_name = db.Column(db.String(255), nullable=False)  # vom User hochgeladen
+    stored_name = db.Column(db.String(255), nullable=False)    # technischer Name auf Platte (mit ID-Präfix)
+
+    # Metadaten
+    file_type = db.Column(db.String(20))   # z.B. 'stl' oder '3mf'
+    filesize = db.Column(db.Integer)      # in Bytes
+    uploaded_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    # Beziehung zurück zum Order
+    order = db.relationship("Order", back_populates="files")
+
 
 
 # === Modell Material ===
@@ -428,6 +493,58 @@ def new_order():
         db.session.add(order)
         db.session.commit()
 
+        # === NEU: Datei-Upload (STL / 3MF) ===
+        file = request.files.get("model_file")
+        if file and file.filename:
+            original_name = file.filename
+            safe_name = secure_filename(original_name)
+
+            # Dateityp/Endung bestimmen (ohne Punkt)
+            _, ext = os.path.splitext(safe_name)
+            ext = ext.lower().lstrip(".")  # "stl" oder "3mf"
+
+            # Optional: nur bestimmte Endungen zulassen
+            allowed_ext = {"stl", "3mf"}
+            if ext not in allowed_ext:
+                flash("Only STL and 3MF files are allowed.", "warning")
+            else:
+                # Erst OrderFile-Eintrag mit Platzhalter speichern
+                order_file = OrderFile(
+                    order_id=order.id,
+                    original_name=original_name,
+                    stored_name="",  # wird nach dem Speichern gesetzt
+                    file_type=ext,
+                )
+                db.session.add(order_file)
+                db.session.flush()  # gibt uns eine ID, ohne zu committen
+
+                # Eindeutigen Dateinamen bauen: <id>_<safe_name>
+                stored_name = f"{order_file.id}_{safe_name}"
+
+                # Unterordner pro Order
+                order_folder = Path(app.config["UPLOAD_FOLDER"]) / f"order_{order.id}"
+                order_folder.mkdir(parents=True, exist_ok=True)
+
+                full_path = order_folder / stored_name
+                file.save(str(full_path))
+
+                # Metadaten aktualisieren
+                order_file.stored_name = stored_name
+                try:
+                    order_file.filesize = full_path.stat().st_size
+                except OSError:
+                    order_file.filesize = None
+
+                order_file.uploaded_at = datetime.utcnow()
+
+                db.session.commit()
+
+                app.logger.debug(
+                    f"[new_order] Uploaded file for order {order.id}: "
+                    f"OrderFile.id={order_file.id}, stored_name={stored_name!r}"
+                )
+        # === Ende Datei-Upload ===
+
         app.logger.debug(
             f"[new_order] Created order id={order.id}, title={order.title!r}, "
             f"status={order.status!r}, user={current_user.email}, "
@@ -562,6 +679,62 @@ def order_detail(order_id):
                 )
 
             return redirect(url_for("order_detail", order_id=order.id))
+        
+        # --- Upload additional 3D file ---
+        elif action == "upload_file":
+            file = request.files.get("model_file")
+            if not file or not file.filename:
+                flash("Please select a file to upload.", "warning")
+                return redirect(url_for("order_detail", order_id=order.id))
+
+            original_name = file.filename
+            safe_name = secure_filename(original_name)
+
+            _, ext = os.path.splitext(safe_name)
+            ext = ext.lower().lstrip(".")  # "stl" oder "3mf"
+
+            allowed_ext = {"stl", "3mf"}
+            if ext not in allowed_ext:
+                flash("Only STL and 3MF files are allowed.", "warning")
+                return redirect(url_for("order_detail", order_id=order.id))
+
+            # OrderFile-Eintrag mit Platzhalter
+            order_file = OrderFile(
+                order_id=order.id,
+                original_name=original_name,
+                stored_name="",
+                file_type=ext,
+            )
+            db.session.add(order_file)
+            db.session.flush()  # gibt eine ID ohne Commit
+
+            # eindeutiger Dateiname
+            stored_name = f"{order_file.id}_{safe_name}"
+
+            order_folder = Path(app.config["UPLOAD_FOLDER"]) / f"order_{order.id}"
+            order_folder.mkdir(parents=True, exist_ok=True)
+
+            full_path = order_folder / stored_name
+            file.save(str(full_path))
+
+            try:
+                order_file.filesize = full_path.stat().st_size
+            except OSError:
+                order_file.filesize = None
+
+            order_file.stored_name = stored_name
+            order_file.uploaded_at = datetime.utcnow()
+
+            db.session.commit()
+
+            app.logger.debug(
+                f"[order_detail] Uploaded extra file for order {order.id}: "
+                f"OrderFile.id={order_file.id}, stored_name={stored_name!r}"
+            )
+
+            flash("File has been uploaded.", "success")
+            return redirect(url_for("order_detail", order_id=order.id))
+
 
     # --- Mark as read for current user (GET and after POST redirects) ---
     now = datetime.utcnow()
@@ -613,6 +786,36 @@ def order_detail(order_id):
         materials=materials,
         colors=colors,
     )
+
+@app.route("/orders/<int:order_id>/files/<int:file_id>/download")
+@login_required
+def download_order_file(order_id, file_id):
+    # Auftrag laden
+    order = Order.query.get_or_404(order_id)
+
+    # Access control wie in order_detail
+    if current_user.role != "admin" and order.user_id != current_user.id:
+        abort(403)
+
+    # Datei zu diesem Auftrag suchen
+    order_file = OrderFile.query.filter_by(id=file_id, order_id=order.id).first_or_404()
+
+    # Pfad zusammensetzen
+    order_folder = Path(app.config["UPLOAD_FOLDER"]) / f"order_{order.id}"
+    full_path = order_folder / order_file.stored_name
+
+    if not full_path.exists():
+        flash("File not found on server.", "danger")
+        return redirect(url_for("order_detail", order_id=order.id))
+
+    # Download ausliefern
+    return send_from_directory(
+        directory=str(order_folder),
+        path=order_file.stored_name,
+        as_attachment=True,
+        download_name=order_file.original_name,  # Name, den der User sieht
+    )
+
 
 
 @app.route("/dashboard")

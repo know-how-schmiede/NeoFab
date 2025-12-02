@@ -15,6 +15,11 @@ python -m venv .venv
 ```
 .\.venv\Scripts\Activate.ps1
 ```
+Kann das Script nicht ausgeführt werden, da Script Ausführen deaktiviert:
+```
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+.\.venv\Scripts\Activate
+```
 
 ### 4. Abhängigkeiten installieren
 ```

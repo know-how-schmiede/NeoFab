@@ -13,7 +13,7 @@
   </div>
 
   <div class="card-body">
-    <form method="post" novalidate>
+    <form method="post" enctype="multipart/form-data">
 
       <div class="row g-3">
 
@@ -114,6 +114,20 @@
         {% endif %}
 
       </div>
+
+      <div class="mb-3">
+        <label for="model_file" class="form-label">
+            3D-Modell hochladen (STL oder 3MF)
+        </label>
+        <input class="form-control"
+               type="file"
+               id="model_file"
+               name="model_file"
+               accept=".stl,.3mf">
+        <div class="form-text">
+            Erlaubte Formate: .stl, .3mf
+        </div>
+    </div>
 
       <!-- Buttons -->
       <div class="d-flex gap-2 mt-3">

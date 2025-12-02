@@ -187,6 +187,76 @@
   </div>
 </div>
 
+<!-- 3D-MODELLE (Dateien) -->
+<div class="card mb-3">
+  <div class="card-header">
+    <h3 class="h6 mb-0 d-flex align-items-center">
+      <i class="bi bi-boxes me-2"></i>
+      3D Models
+    </h3>
+  </div>
+  <div class="card-body">
+
+    {# Liste aller Dateien zu diesem Auftrag #}
+    {% if order.files %}
+      <ul class="list-group mb-3">
+        {% for f in order.files %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+              <div><strong>{{ f.original_name }}</strong></div>
+              <small class="text-muted">
+                {% if f.file_type %}{{ f.file_type|upper }}{% else %}File{% endif %}
+                {% if f.filesize %}
+                  · {{ (f.filesize / 1024)|round(1) }} KB
+                {% endif %}
+                {% if f.uploaded_at %}
+                  · uploaded {{ f.uploaded_at.strftime("%Y-%m-%d %H:%M") }}
+                {% endif %}
+              </small>
+            </div>
+            <a class="btn btn-sm btn-outline-primary"
+               href="{{ url_for('download_order_file', order_id=order.id, file_id=f.id) }}">
+              <i class="bi bi-download me-1"></i>
+              Download
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-muted">
+        No 3D models uploaded yet.
+      </p>
+    {% endif %}
+
+    {# Upload weiterer Dateien – eigene Form, kein verschachteltes form #}
+    <form method="post" enctype="multipart/form-data" class="mt-2">
+      <input type="hidden" name="action" value="upload_file">
+
+      <div class="mb-2">
+        <label for="model_file" class="form-label">
+          <i class="bi bi-upload me-1"></i>
+          Add 3D model (STL / 3MF)
+        </label>
+        <input class="form-control"
+               type="file"
+               id="model_file"
+               name="model_file"
+               accept=".stl,.3mf">
+        <div class="form-text">
+          Allowed formats: .stl, .3mf
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-secondary btn-sm">
+        <i class="bi bi-plus-circle me-1"></i>
+        Upload file
+      </button>
+    </form>
+
+  </div>
+</div>
+
+
 <!-- NACHRICHTEN / KOMMUNIKATION -->
 <div class="card mb-3">
   <div class="card-header">
