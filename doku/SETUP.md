@@ -46,13 +46,20 @@ flask run
 ## Debian 13 (LXC-Container, VM oder Server)
 ### 1. Grundpakete installieren
 ```
+apt install sudo
 sudo apt update
 sudo apt install -y python3 python3-venv python3-pip git
+
+adduser neofab
+su - neofab
+mkdir -p ~/projects/neofab
+
+cd projects/neofab
 ```
 
 ### 2. Repository klonen
 ```
-git clone https://github.com/<dein-github-user>/neofab.git
+git clone https://github.com/Know-How-Schmiede/neofab.git
 cd neofab
 ```
 
@@ -68,7 +75,7 @@ source .venv/bin/activate
 
 ### 5. Abhängigkeiten installieren
 ```
-pip install -r requirements.txt
+pip install -r neofab/requirements.txt
 ```
 
 ### 6. Environment-Variablen setzen (temporär)
@@ -164,7 +171,8 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 flask --app app init-db
-flask --app app run
+### flask --app app run ### -> Flask hört nur auf localhost !!!
+flask --app app run --host=0.0.0.0 --port=8080
 ```
 
 ## CLI-Kommandos
