@@ -1,4 +1,6 @@
 # Timeline NeoFab
+## Version 0.3.3
+FavIcon Integration
 ## Version 0.3.2
 app.py und Dashboard.html aufgeräumt
 ## Version 0.3.1
