@@ -24,35 +24,33 @@
                 <div class="form-text">e.g. Black, White, Red, Blue …</div>
             </div>
 
-            <!-- HEX CODE -->
+            <!-- HEX CODE + COLOR PICKER -->
             <div class="mb-3">
                 <label for="hex_code" class="form-label">Hex Code (optional)</label>
 
                 <div class="input-group">
+                    <span class="input-group-text p-0">
+                        <input type="color"
+                               class="form-control form-control-color border-0"
+                               id="color_picker"
+                               aria-label="Color picker"
+                               value="{{ color.hex_code if color else '#ffffff' }}"
+                               oninput="syncFromPicker()"
+                               style="width: 42px; height: 38px; padding: 4px;">
+                    </span>
+
                     <input type="text"
                            class="form-control"
                            id="hex_code"
                            name="hex_code"
                            placeholder="#RRGGBB"
                            value="{{ color.hex_code if color else '' }}"
-                           oninput="updateColorPreview()">
-
-                    <!-- Vorschau-Feld -->
-                    <span class="input-group-text p-0">
-                        <div id="colorPreview"
-                             style="
-                                   width: 32px;
-                                   height: 32px;
-                                   border-radius: 4px;
-                                   border: 1px solid #ccc;
-                                   background-color: {{ color.hex_code if color else '#ffffff' }};
-                             ">
-                        </div>
-                    </span>
+                           oninput="syncFromHex()">
                 </div>
 
                 <div class="form-text">
                     Example: <code>#000000</code> for black, <code>#FF0000</code> for red.
+                    You can pick a color or type the hex code directly.
                 </div>
             </div>
 
@@ -65,20 +63,26 @@
 
 <!-- LIVE-FARBVORSCHAU SCRIPT -->
 <script>
-function updateColorPreview() {
-    const input = document.getElementById("hex_code");
-    const preview = document.getElementById("colorPreview");
-    let value = input.value.trim();
+function isHexColor(value) {
+    return /^#([0-9A-Fa-f]{6})$/.test(value);
+}
 
-    // Hex-Wert validieren (# + 6 Hex-Zeichen)
-    const isHex = /^#([0-9A-Fa-f]{6})$/.test(value);
+function syncFromHex() {
+    const hexInput = document.getElementById("hex_code");
+    const picker = document.getElementById("color_picker");
+    const value = hexInput.value.trim();
 
-    if (isHex) {
-        preview.style.backgroundColor = value;
-    } else {
-        preview.style.backgroundColor = "transparent";
-        preview.style.border = "1px solid #ccc";
+    if (isHexColor(value)) {
+        picker.value = value;
     }
+}
+
+function syncFromPicker() {
+    const hexInput = document.getElementById("hex_code");
+    const picker = document.getElementById("color_picker");
+
+    const value = picker.value;
+    hexInput.value = value;
 }
 </script>
 
