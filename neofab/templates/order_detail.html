@@ -305,34 +305,8 @@
         <h5 class="mb-0">Messages</h5>
     </div>
 
-    <div class="card-body neo-chat-thread">
-        {% if messages %}
-            {% for msg in messages %}
-                {% set is_admin = (msg.user.role == 'admin') %}
-
-                <div class="neo-chat-message d-flex mb-3
-                            {% if is_admin %}justify-content-end{% else %}justify-content-start{% endif %}">
-                    <div class="neo-chat-bubble
-                                {% if is_admin %}neo-chat-bubble-admin{% else %}neo-chat-bubble-user{% endif %}">
-                        <div class="neo-chat-meta small mb-1">
-                            <strong>
-                                {% if is_admin %}
-                                    Admin
-                                {% else %}
-                                    {{ msg.user.email }}
-                                {% endif %}
-                            </strong>
-                            · {{ msg.created_at.strftime("%Y-%m-%d %H:%M") }}
-                        </div>
-                        <div class="neo-chat-text">
-                            {{ msg.content | nl2br }}
-                        </div>
-                    </div>
-                </div>
-            {% endfor %}
-        {% else %}
-            <p class="text-muted mb-0">No messages yet. Be the first to write something.</p>
-        {% endif %}
+    <div id="messagesContainer" class="card-body neo-chat-thread">
+        {% include "order_messages_fragment.html" %}
     </div>
 
     <!-- Chat-Eingabefeld im Footer -->
@@ -354,7 +328,8 @@
             </div>
         </form>
     </div>
-</div>
+  </div>
+
   
 
 
@@ -416,5 +391,26 @@ function updateColorPreview() {
     preview.style.border = "1px solid #ccc";
   }
 }
+
+(function() {
+  const container = document.getElementById("messagesContainer");
+  const fetchUrl = "{{ url_for('order_messages_fragment', order_id=order.id) }}";
+
+  if (!container || !fetchUrl) return;
+
+  async function refreshMessages() {
+    try {
+      const resp = await fetch(fetchUrl, { headers: { "X-Requested-With": "Fetch" } });
+      if (!resp.ok) return;
+      const html = await resp.text();
+      container.innerHTML = html;
+    } catch (err) {
+      // still retry on next interval
+    }
+  }
+
+  refreshMessages();
+  setInterval(refreshMessages, 5000);
+})();
 </script>
 {% endblock %}

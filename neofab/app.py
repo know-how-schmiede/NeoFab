@@ -974,6 +974,22 @@ def order_detail(order_id):
     )
 
 
+@app.route("/orders/<int:order_id>/messages-fragment")
+@login_required
+def order_messages_fragment(order_id):
+    """
+    Liefert nur den Nachrichten-Thread als HTML-Fragment fǬr Auto-Refresh.
+    """
+    order = Order.query.get_or_404(order_id)
+
+    # Access control wie in order_detail
+    if current_user.role != "admin" and order.user_id != current_user.id:
+        abort(403)
+
+    messages = order.messages
+    return render_template("order_messages_fragment.html", messages=messages)
+
+
 # ============================================================
 # Datei-Download
 # ============================================================
@@ -1546,6 +1562,88 @@ def admin_cost_center_delete(cc_id):
     db.session.delete(cost_center)
     db.session.commit()
     flash("Cost center deleted.", "info")
+    return redirect(url_for("admin_cost_center_list"))
+
+
+@app.route("/admin/cost-centers/export")
+@roles_required("admin")
+def admin_cost_center_export():
+    """
+    Exportiert alle Kostenstellen als JSON mit Versionsinfo.
+    """
+    cost_centers = CostCenter.query.order_by(CostCenter.name.asc()).all()
+    payload = {
+        "version": APP_VERSION,
+        "cost_centers": [
+            {
+                "name": cc.name,
+                "note": cc.note or "",
+                "email": cc.email or "",
+                "is_active": bool(cc.is_active),
+            }
+            for cc in cost_centers
+        ],
+    }
+    output = json.dumps(payload, ensure_ascii=False, indent=2)
+
+    return app.response_class(
+        output,
+        mimetype="application/json",
+        headers={"Content-Disposition": "attachment; filename=NeoFab_cost_centers.json"},
+    )
+
+
+@app.route("/admin/cost-centers/import", methods=["POST"])
+@roles_required("admin")
+def admin_cost_center_import():
+    """
+    Importiert Kostenstellen aus einer JSON-Datei:
+    {
+      "version": "...",
+      "cost_centers": [{ "name": "...", "note": "...", "email": "...", "is_active": true }, ...]
+    }
+    Bestehende Einträge werden vorher entfernt.
+    """
+    file = request.files.get("file")
+    if not file or not file.filename:
+        flash("Please choose a JSON file to import.", "warning")
+        return redirect(url_for("admin_cost_center_list"))
+
+    try:
+        content = file.read().decode("utf-8-sig")
+        data = json.loads(content)
+    except Exception:
+        flash("Could not read file. Please upload a valid JSON export.", "danger")
+        return redirect(url_for("admin_cost_center_list"))
+
+    rows = data.get("cost_centers", []) if isinstance(data, dict) else []
+
+    # Bestehende Kostenstellen vor Import leeren
+    CostCenter.query.delete()
+
+    created = skipped = 0
+    for entry in rows:
+        name = (entry.get("name") or "").strip() if isinstance(entry, dict) else ""
+        note = (entry.get("note") or "").strip() if isinstance(entry, dict) else None
+        email = (entry.get("email") or "").strip() if isinstance(entry, dict) else None
+        is_active = bool(entry.get("is_active")) if isinstance(entry, dict) else True
+
+        if not name:
+            skipped += 1
+            continue
+
+        db.session.add(
+            CostCenter(
+                name=name,
+                note=note or None,
+                email=email or None,
+                is_active=is_active,
+            )
+        )
+        created += 1
+
+    db.session.commit()
+    flash(f"Import finished: {created} created, {skipped} skipped.", "success")
     return redirect(url_for("admin_cost_center_list"))
 
 

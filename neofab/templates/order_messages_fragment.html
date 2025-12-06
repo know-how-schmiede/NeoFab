@@ -1,0 +1,27 @@
+{% if messages %}
+    {% for msg in messages %}
+        {% set is_admin = (msg.user.role == 'admin') %}
+
+        <div class="neo-chat-message d-flex mb-3
+                    {% if is_admin %}justify-content-end{% else %}justify-content-start{% endif %}">
+            <div class="neo-chat-bubble
+                        {% if is_admin %}neo-chat-bubble-admin{% else %}neo-chat-bubble-user{% endif %}">
+                <div class="neo-chat-meta small mb-1">
+                    <strong>
+                        {% if is_admin %}
+                            Admin
+                        {% else %}
+                            {{ msg.user.email }}
+                        {% endif %}
+                    </strong>
+                    — {{ msg.created_at.strftime("%Y-%m-%d %H:%M") }}
+                </div>
+                <div class="neo-chat-text">
+                    {{ msg.content | nl2br }}
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+{% else %}
+    <p class="text-muted mb-0">No messages yet. Be the first to write something.</p>
+{% endif %}

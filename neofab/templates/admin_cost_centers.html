@@ -63,6 +63,19 @@
     <p>No cost centers have been defined yet.</p>
 {% endif %}
 
+<div class="mt-4 d-flex gap-2 flex-wrap align-items-center">
+    <a href="{{ url_for('admin_cost_center_export') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-download me-1"></i>Export JSON
+    </a>
+    <form action="{{ url_for('admin_cost_center_import') }}" method="post" enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
+        <label class="form-label mb-0 small">Import JSON</label>
+        <input type="file" name="file" accept=".json,application/json" class="form-control form-control-sm" required>
+        <button type="submit" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-upload me-1"></i>Import
+        </button>
+    </form>
+</div>
+
 <!-- Delete Confirmation Modal -->
 <div class="modal fade" id="deleteCcModal" tabindex="-1" aria-labelledby="deleteCcModalLabel" aria-hidden="true">
   <div class="modal-dialog">
