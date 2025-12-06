@@ -46,6 +46,24 @@
           ></textarea>
         </div>
 
+        <!-- Cost Center -->
+        <div class="col-md-6">
+          <label for="cost_center_id" class="form-label">
+            <i class="bi bi-bank me-1"></i>
+            Cost Center
+          </label>
+          <select
+            id="cost_center_id"
+            name="cost_center_id"
+            class="form-select"
+          >
+            <option value="">– Please select –</option>
+            {% for cc in cost_centers %}
+              <option value="{{ cc.id }}">{{ cc.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
         <!-- Material -->
         <div class="col-md-6">
           <label for="material_id" class="form-label">

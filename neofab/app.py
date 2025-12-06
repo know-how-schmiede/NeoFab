@@ -231,9 +231,11 @@ class Order(db.Model):
     # Material- und Farb-Auswahl (optional)
     material_id = db.Column(db.Integer, db.ForeignKey("materials.id"), nullable=True)
     color_id = db.Column(db.Integer, db.ForeignKey("colors.id"), nullable=True)
+    cost_center_id = db.Column(db.Integer, db.ForeignKey("cost_centers.id"), nullable=True)
 
     material = db.relationship("Material")
     color = db.relationship("Color")
+    cost_center = db.relationship("CostCenter")
 
     # Nachrichten zum Auftrag
     messages = db.relationship(
@@ -574,6 +576,7 @@ def new_order():
     # Stammdaten laden (für GET und POST)
     materials = Material.query.order_by(Material.name.asc()).all()
     colors = Color.query.order_by(Color.name.asc()).all()
+    cost_centers = CostCenter.query.order_by(CostCenter.name.asc()).all()
 
     if request.method == "POST":
         title = request.form.get("title", "").strip()
@@ -591,9 +594,10 @@ def new_order():
             status = "new"
         # ------------------------
 
-        # Material / Farbe (optional)
+        # Material / Farbe / Kostenstelle (optional)
         material_id = request.form.get("material_id") or None
         color_id = request.form.get("color_id") or None
+        cost_center_id = request.form.get("cost_center_id") or None
 
         if not title:
             flash("Please provide a title for the order.", "danger")
@@ -602,6 +606,7 @@ def new_order():
                 order_statuses=ORDER_STATUSES,
                 materials=materials,
                 colors=colors,
+                cost_centers=cost_centers,
             )
 
         order = Order(
@@ -621,6 +626,11 @@ def new_order():
         if color_id:
             try:
                 order.color_id = int(color_id)
+            except ValueError:
+                pass
+        if cost_center_id:
+            try:
+                order.cost_center_id = int(cost_center_id)
             except ValueError:
                 pass
 
@@ -693,6 +703,7 @@ def new_order():
         order_statuses=ORDER_STATUSES,
         materials=materials,
         colors=colors,
+        cost_centers=cost_centers,
     )
 
 
@@ -739,9 +750,10 @@ def order_detail(order_id):
                 order.title = title
                 order.description = description or None
 
-                # Material / Farbe aktualisieren (für alle Rollen erlaubt)
+                # Material / Farbe / Kostenstelle aktualisieren (für alle Rollen erlaubt)
                 material_id = request.form.get("material_id") or None
                 color_id = request.form.get("color_id") or None
+                cost_center_id = request.form.get("cost_center_id") or None
 
                 if material_id:
                     try:
@@ -758,6 +770,14 @@ def order_detail(order_id):
                         order.color_id = None
                 else:
                     order.color_id = None
+
+                if cost_center_id:
+                    try:
+                        order.cost_center_id = int(cost_center_id)
+                    except ValueError:
+                        order.cost_center_id = None
+                else:
+                    order.cost_center_id = None
 
                 # Statuswechsel nur für Admin
                 if current_user.role == "admin":
@@ -959,6 +979,7 @@ def order_detail(order_id):
     # Stammdaten für Auswahlfelder laden
     materials = Material.query.order_by(Material.name.asc()).all()
     colors = Color.query.order_by(Color.name.asc()).all()
+    cost_centers = CostCenter.query.order_by(CostCenter.name.asc()).all()
 
     app.logger.debug(
         f"[order_detail] Render detail for order {order.id}: status={order.status!r}, "
@@ -971,6 +992,7 @@ def order_detail(order_id):
         order_statuses=ORDER_STATUSES,
         materials=materials,
         colors=colors,
+        cost_centers=cost_centers,
     )
 
 
