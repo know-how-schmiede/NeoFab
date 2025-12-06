@@ -63,6 +63,11 @@ UPLOAD_FOLDER = BASE_DIR / "uploads" / "models"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = str(UPLOAD_FOLDER)
 
+# Upload-Ordner für Projektbilder
+IMAGE_UPLOAD_FOLDER = BASE_DIR / "uploads" / "images"
+os.makedirs(IMAGE_UPLOAD_FOLDER, exist_ok=True)
+app.config["IMAGE_UPLOAD_FOLDER"] = str(IMAGE_UPLOAD_FOLDER)
+
 # Maximal erlaubte Upload-Größe (z.B. 50 MB)
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
 
@@ -267,7 +272,7 @@ class Order(db.Model):
     background_info = db.Column(db.Text)
     project_url = db.Column(db.String(300))
 
-    image = db.relationship("OrderImage", uselist=False, back_populates="order", cascade="all, delete-orphan")
+    images = db.relationship("OrderImage", back_populates="order", cascade="all, delete-orphan", lazy=True)
     tags_entry = db.relationship("OrderTag", uselist=False, back_populates="order", cascade="all, delete-orphan")
 
 
@@ -338,10 +343,13 @@ class OrderImage(db.Model):
     __tablename__ = "order_images"
 
     id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False, unique=True)
-    image_main = db.Column(db.String(300))
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
+    original_name = db.Column(db.String(255), nullable=False)
+    stored_name = db.Column(db.String(255), nullable=False)
+    filesize = db.Column(db.Integer)
+    uploaded_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
-    order = db.relationship("Order", back_populates="image")
+    order = db.relationship("Order", back_populates="images")
 
 
 # --- OrderTag -----------------------------------------------------------------
@@ -655,7 +663,6 @@ def new_order():
         learning_points = request.form.get("learning_points", "").strip() or None
         background_info = request.form.get("background_info", "").strip() or None
         project_url = request.form.get("project_url", "").strip() or None
-        image_main = request.form.get("image_main", "").strip() or None
         tags_value = request.form.get("tags", "").strip() or None
 
         if not title:
@@ -707,12 +714,9 @@ def new_order():
         db.session.add(order)
         db.session.commit()
 
-        # Bild / Tags speichern
-        if image_main:
-            db.session.add(OrderImage(order_id=order.id, image_main=image_main))
+        # Tags speichern
         if tags_value:
             db.session.add(OrderTag(order_id=order.id, tags=tags_value))
-        if image_main or tags_value:
             db.session.commit()
 
         # === Datei-Upload (optional) =======================================
@@ -828,7 +832,6 @@ def order_detail(order_id):
             learning_points = request.form.get("learning_points", "").strip() or None
             background_info = request.form.get("background_info", "").strip() or None
             project_url = request.form.get("project_url", "").strip() or None
-            image_main = request.form.get("image_main", "").strip() or None
             tags_value = request.form.get("tags", "").strip() or None
 
             app.logger.debug(
@@ -885,17 +888,7 @@ def order_detail(order_id):
                 order.background_info = background_info
                 order.project_url = project_url
 
-                # Bild/Tags upsert
-                if image_main:
-                    if order.image:
-                        order.image.image_main = image_main
-                    else:
-                        order.image = OrderImage(image_main=image_main)
-                else:
-                    if order.image:
-                        db.session.delete(order.image)
-                        order.image = None
-
+                # Tags upsert
                 if tags_value:
                     if order.tags_entry:
                         order.tags_entry.tags = tags_value
@@ -1026,7 +1019,54 @@ def order_detail(order_id):
             flash("File has been uploaded.", "success")
             return redirect(url_for("order_detail", order_id=order.id))
 
-        # --- 5) Datei löschen ----------------------------------------------
+        # --- 5) Projektbild hochladen --------------------------------------
+        elif action == "upload_image":
+            file = request.files.get("image_file")
+            if not file or not file.filename:
+                flash("Please select an image to upload.", "warning")
+                return redirect(url_for("order_detail", order_id=order.id))
+
+            original_name = file.filename
+            safe_name = secure_filename(original_name)
+
+            _, ext = os.path.splitext(safe_name)
+            ext = ext.lower().lstrip(".")
+
+            allowed_ext = {"png", "jpg", "jpeg", "gif", "webp"}
+            if ext not in allowed_ext:
+                flash("Only image files (png, jpg, jpeg, gif, webp) are allowed.", "warning")
+                return redirect(url_for("order_detail", order_id=order.id))
+
+            image_entry = OrderImage(
+                order_id=order.id,
+                original_name=original_name,
+                stored_name="",
+            )
+            db.session.add(image_entry)
+            db.session.flush()
+
+            stored_name = f"{image_entry.id}_{safe_name}"
+
+            image_folder = Path(app.config["IMAGE_UPLOAD_FOLDER"]) / f"order_{order.id}"
+            image_folder.mkdir(parents=True, exist_ok=True)
+
+            full_path = image_folder / stored_name
+            file.save(str(full_path))
+
+            try:
+                image_entry.filesize = full_path.stat().st_size
+            except OSError:
+                image_entry.filesize = None
+
+            image_entry.stored_name = stored_name
+            image_entry.uploaded_at = datetime.utcnow()
+
+            db.session.commit()
+
+            flash("Image has been uploaded.", "success")
+            return redirect(url_for("order_detail", order_id=order.id))
+
+        # --- 6) Datei löschen ----------------------------------------------
         elif action == "delete_file":
             try:
                 file_id = int(request.form.get("file_id", "0"))
@@ -1067,6 +1107,41 @@ def order_detail(order_id):
             )
 
             flash("File has been deleted.", "info")
+            return redirect(url_for("order_detail", order_id=order.id))
+
+        # --- 7) Projektbild löschen ----------------------------------------
+        elif action == "delete_image":
+            try:
+                image_id = int(request.form.get("image_id", "0"))
+            except ValueError:
+                image_id = 0
+
+            if not image_id:
+                flash("Invalid image ID.", "danger")
+                return redirect(url_for("order_detail", order_id=order.id))
+
+            image_entry = OrderImage.query.filter_by(
+                id=image_id,
+                order_id=order.id
+            ).first()
+
+            if not image_entry:
+                flash("Image not found.", "warning")
+                return redirect(url_for("order_detail", order_id=order.id))
+
+            image_folder = Path(app.config["IMAGE_UPLOAD_FOLDER"]) / f"order_{order.id}"
+            full_path = image_folder / image_entry.stored_name
+
+            if full_path.exists():
+                try:
+                    full_path.unlink()
+                except OSError:
+                    app.logger.warning(f"[order_detail] Could not delete image on disk: {full_path}")
+
+            db.session.delete(image_entry)
+            db.session.commit()
+
+            flash("Image has been deleted.", "info")
             return redirect(url_for("order_detail", order_id=order.id))
 
     # --- Lese-Status aktualisieren (GET + nach POST-Redirect) --------------
@@ -1120,7 +1195,6 @@ def order_detail(order_id):
         materials=materials,
         colors=colors,
         cost_centers=cost_centers,
-        image_main=order.image.image_main if order.image else "",
         tags_value=order.tags_entry.tags if order.tags_entry else "",
     )
 
@@ -1140,6 +1214,29 @@ def order_messages_fragment(order_id):
     messages = order.messages
     return render_template("order_messages_fragment.html", messages=messages)
 
+
+@app.route("/orders/<int:order_id>/images/<int:image_id>/download")
+@login_required
+def download_order_image(order_id, image_id):
+    order = Order.query.get_or_404(order_id)
+    if current_user.role != "admin" and order.user_id != current_user.id:
+        abort(403)
+
+    image_entry = OrderImage.query.filter_by(id=image_id, order_id=order.id).first_or_404()
+
+    image_folder = Path(app.config["IMAGE_UPLOAD_FOLDER"]) / f"order_{order.id}"
+    full_path = image_folder / image_entry.stored_name
+
+    if not full_path.exists():
+        flash("Image not found on server.", "danger")
+        return redirect(url_for("order_detail", order_id=order.id))
+
+    return send_from_directory(
+        directory=str(image_folder),
+        path=image_entry.stored_name,
+        as_attachment=True,
+        download_name=image_entry.original_name,
+    )
 
 # ============================================================
 # Datei-Download

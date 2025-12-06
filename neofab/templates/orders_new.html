@@ -64,77 +64,6 @@
           </select>
         </div>
 
-        <!-- Öffentlichkeitsfreigaben -->
-        <div class="col-md-6">
-          <label class="form-label d-block">
-            <i class="bi bi-megaphone me-1"></i>
-            Public Sharing
-          </label>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="public_allow_poster" name="public_allow_poster">
-            <label class="form-check-label" for="public_allow_poster">Allow poster display</label>
-          </div>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="public_allow_web" name="public_allow_web">
-            <label class="form-check-label" for="public_allow_web">Allow website publication</label>
-          </div>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="public_allow_social" name="public_allow_social">
-            <label class="form-check-label" for="public_allow_social">Allow social media</label>
-          </div>
-        </div>
-
-        <!-- Anzeige-Name -->
-        <div class="col-md-6">
-          <label for="public_display_name" class="form-label">Display Name (public)</label>
-          <input type="text" class="form-control" id="public_display_name" name="public_display_name" maxlength="200">
-        </div>
-
-        <!-- Projekt-Kurzbeschreibung -->
-        <div class="col-md-6">
-          <label for="summary_short" class="form-label">Short Summary (one-liner)</label>
-          <input type="text" class="form-control" id="summary_short" name="summary_short" maxlength="300">
-        </div>
-
-        <!-- Projektstory -->
-        <div class="col-12">
-          <label for="summary_long" class="form-label">Project Story</label>
-          <textarea class="form-control" id="summary_long" name="summary_long" rows="3"></textarea>
-        </div>
-
-        <div class="col-md-6">
-          <label for="project_purpose" class="form-label">Project Purpose</label>
-          <textarea class="form-control" id="project_purpose" name="project_purpose" rows="2"></textarea>
-        </div>
-        <div class="col-md-6">
-          <label for="project_use_case" class="form-label">Use Case</label>
-          <textarea class="form-control" id="project_use_case" name="project_use_case" rows="2"></textarea>
-        </div>
-
-        <div class="col-md-6">
-          <label for="learning_points" class="form-label">Learning Points</label>
-          <textarea class="form-control" id="learning_points" name="learning_points" rows="2"></textarea>
-        </div>
-        <div class="col-md-6">
-          <label for="background_info" class="form-label">Background Info</label>
-          <textarea class="form-control" id="background_info" name="background_info" rows="2"></textarea>
-        </div>
-
-        <div class="col-md-6">
-          <label for="project_url" class="form-label">Project URL (GitHub, docs, etc.)</label>
-          <input type="url" class="form-control" id="project_url" name="project_url" maxlength="300">
-        </div>
-
-        <div class="col-md-6">
-          <label for="image_main" class="form-label">Main Image (URL)</label>
-          <input type="text" class="form-control" id="image_main" name="image_main" maxlength="300">
-        </div>
-
-        <div class="col-md-6">
-          <label for="tags" class="form-label">Tags (comma separated)</label>
-          <input type="text" class="form-control" id="tags" name="tags" maxlength="300" placeholder="mechanics, prototype, drone">
-        </div>
-
         <!-- Material -->
         <div class="col-md-6">
           <label for="material_id" class="form-label">
@@ -203,20 +132,6 @@
         {% endif %}
 
       </div>
-
-      <div class="mb-3">
-        <label for="model_file" class="form-label">
-            3D-Modell hochladen (STL oder 3MF)
-        </label>
-        <input class="form-control"
-               type="file"
-               id="model_file"
-               name="model_file"
-               accept=".stl,.3mf">
-        <div class="form-text">
-            Erlaubte Formate: .stl, .3mf
-        </div>
-    </div>
 
       <!-- Buttons -->
       <div class="d-flex gap-2 mt-3">

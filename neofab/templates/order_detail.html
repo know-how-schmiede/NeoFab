@@ -17,7 +17,27 @@
     <form method="post" novalidate>
       <input type="hidden" name="action" value="update_order">
 
-      <div class="row g-3">
+      <ul class="nav nav-tabs mb-3" id="orderTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general-tab-pane" type="button" role="tab" aria-controls="general-tab-pane" aria-selected="true">
+            General
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="project-tab" data-bs-toggle="tab" data-bs-target="#project-tab-pane" type="button" role="tab" aria-controls="project-tab-pane" aria-selected="false">
+            Project Documentation
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="files-tab" data-bs-toggle="tab" data-bs-target="#files-tab-pane" type="button" role="tab" aria-controls="files-tab-pane" aria-selected="false">
+            3D Models / Images
+          </button>
+        </li>
+      </ul>
+
+      <div class="tab-content">
+        <div class="tab-pane fade show active" id="general-tab-pane" role="tabpanel" aria-labelledby="general-tab">
+          <div class="row g-3">
 
         <!-- Titel -->
         <div class="col-12">
@@ -68,77 +88,6 @@
               </option>
             {% endfor %}
           </select>
-        </div>
-
-        <!-- Öffentlichkeitsfreigaben -->
-        <div class="col-md-6">
-          <label class="form-label d-block">
-            <i class="bi bi-megaphone me-1"></i>
-            Public Sharing
-          </label>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="public_allow_poster" name="public_allow_poster" {% if order.public_allow_poster %}checked{% endif %}>
-            <label class="form-check-label" for="public_allow_poster">Allow poster display</label>
-          </div>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="public_allow_web" name="public_allow_web" {% if order.public_allow_web %}checked{% endif %}>
-            <label class="form-check-label" for="public_allow_web">Allow website publication</label>
-          </div>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="public_allow_social" name="public_allow_social" {% if order.public_allow_social %}checked{% endif %}>
-            <label class="form-check-label" for="public_allow_social">Allow social media</label>
-          </div>
-        </div>
-
-        <!-- Anzeige-Name -->
-        <div class="col-md-6">
-          <label for="public_display_name" class="form-label">Display Name (public)</label>
-          <input type="text" class="form-control" id="public_display_name" name="public_display_name" maxlength="200" value="{{ order.public_display_name or '' }}">
-        </div>
-
-        <!-- Projekt-Kurzbeschreibung -->
-        <div class="col-md-6">
-          <label for="summary_short" class="form-label">Short Summary (one-liner)</label>
-          <input type="text" class="form-control" id="summary_short" name="summary_short" maxlength="300" value="{{ order.summary_short or '' }}">
-        </div>
-
-        <!-- Projektstory -->
-        <div class="col-12">
-          <label for="summary_long" class="form-label">Project Story</label>
-          <textarea class="form-control" id="summary_long" name="summary_long" rows="3">{{ order.summary_long or '' }}</textarea>
-        </div>
-
-        <div class="col-md-6">
-          <label for="project_purpose" class="form-label">Project Purpose</label>
-          <textarea class="form-control" id="project_purpose" name="project_purpose" rows="2">{{ order.project_purpose or '' }}</textarea>
-        </div>
-        <div class="col-md-6">
-          <label for="project_use_case" class="form-label">Use Case</label>
-          <textarea class="form-control" id="project_use_case" name="project_use_case" rows="2">{{ order.project_use_case or '' }}</textarea>
-        </div>
-
-        <div class="col-md-6">
-          <label for="learning_points" class="form-label">Learning Points</label>
-          <textarea class="form-control" id="learning_points" name="learning_points" rows="2">{{ order.learning_points or '' }}</textarea>
-        </div>
-        <div class="col-md-6">
-          <label for="background_info" class="form-label">Background Info</label>
-          <textarea class="form-control" id="background_info" name="background_info" rows="2">{{ order.background_info or '' }}</textarea>
-        </div>
-
-        <div class="col-md-6">
-          <label for="project_url" class="form-label">Project URL (GitHub, docs, etc.)</label>
-          <input type="url" class="form-control" id="project_url" name="project_url" maxlength="300" value="{{ order.project_url or '' }}">
-        </div>
-
-        <div class="col-md-6">
-          <label for="image_main" class="form-label">Main Image (URL)</label>
-          <input type="text" class="form-control" id="image_main" name="image_main" maxlength="300" value="{{ image_main }}">
-        </div>
-
-        <div class="col-md-6">
-          <label for="tags" class="form-label">Tags (comma separated)</label>
-          <input type="text" class="form-control" id="tags" name="tags" maxlength="300" value="{{ tags_value }}" placeholder="mechanics, prototype, drone">
         </div>
 
         <!-- Material -->
@@ -263,6 +212,86 @@
 
       </div>
 
+        </div>
+
+        <div class="tab-pane fade" id="project-tab-pane" role="tabpanel" aria-labelledby="project-tab">
+          <div class="row g-3">
+
+            <!-- Öffentlichkeitsfreigaben -->
+            <div class="col-md-6">
+              <label class="form-label d-block">
+                <i class="bi bi-megaphone me-1"></i>
+                Public Sharing
+              </label>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="public_allow_poster" name="public_allow_poster" {% if order.public_allow_poster %}checked{% endif %}>
+                <label class="form-check-label" for="public_allow_poster">Allow poster display</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="public_allow_web" name="public_allow_web" {% if order.public_allow_web %}checked{% endif %}>
+                <label class="form-check-label" for="public_allow_web">Allow website publication</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="public_allow_social" name="public_allow_social" {% if order.public_allow_social %}checked{% endif %}>
+                <label class="form-check-label" for="public_allow_social">Allow social media</label>
+              </div>
+            </div>
+
+            <!-- Anzeige-Name -->
+            <div class="col-md-6">
+              <label for="public_display_name" class="form-label">Display Name (public)</label>
+              <input type="text" class="form-control" id="public_display_name" name="public_display_name" maxlength="200" value="{{ order.public_display_name or '' }}">
+            </div>
+
+            <!-- Projekt-Kurzbeschreibung -->
+            <div class="col-md-6">
+              <label for="summary_short" class="form-label">Short Summary (one-liner)</label>
+              <input type="text" class="form-control" id="summary_short" name="summary_short" maxlength="300" value="{{ order.summary_short or '' }}">
+            </div>
+
+            <!-- Projektstory -->
+            <div class="col-12">
+              <label for="summary_long" class="form-label">Project Story</label>
+              <textarea class="form-control" id="summary_long" name="summary_long" rows="3">{{ order.summary_long or '' }}</textarea>
+            </div>
+
+            <div class="col-md-6">
+              <label for="project_purpose" class="form-label">Project Purpose</label>
+              <textarea class="form-control" id="project_purpose" name="project_purpose" rows="2">{{ order.project_purpose or '' }}</textarea>
+            </div>
+            <div class="col-md-6">
+              <label for="project_use_case" class="form-label">Use Case</label>
+              <textarea class="form-control" id="project_use_case" name="project_use_case" rows="2">{{ order.project_use_case or '' }}</textarea>
+            </div>
+
+            <div class="col-md-6">
+              <label for="learning_points" class="form-label">Learning Points</label>
+              <textarea class="form-control" id="learning_points" name="learning_points" rows="2">{{ order.learning_points or '' }}</textarea>
+            </div>
+            <div class="col-md-6">
+              <label for="background_info" class="form-label">Background Info</label>
+              <textarea class="form-control" id="background_info" name="background_info" rows="2">{{ order.background_info or '' }}</textarea>
+            </div>
+
+            <div class="col-md-6">
+              <label for="project_url" class="form-label">Project URL (GitHub, docs, etc.)</label>
+              <input type="url" class="form-control" id="project_url" name="project_url" maxlength="300" value="{{ order.project_url or '' }}">
+            </div>
+
+            <div class="col-md-6">
+              <label for="image_main" class="form-label">Main Image (URL)</label>
+              <input type="text" class="form-control" id="image_main" name="image_main" maxlength="300" value="{{ image_main }}">
+            </div>
+
+            <div class="col-md-6">
+              <label for="tags" class="form-label">Tags (comma separated)</label>
+              <input type="text" class="form-control" id="tags" name="tags" maxlength="300" value="{{ tags_value }}" placeholder="mechanics, prototype, drone">
+            </div>
+
+          </div>
+        </div>
+      </div>
+
       <!-- Buttons -->
       <div class="d-flex gap-2 mt-3">
         <button type="submit" class="btn btn-primary">
@@ -279,108 +308,169 @@
   </div>
 </div>
 
-<!-- 3D-MODELLE (Dateien) -->
-<div class="card mb-3">
-  <div class="card-header">
-    <h3 class="h6 mb-0 d-flex align-items-center">
-      <i class="bi bi-boxes me-2"></i>
-      3D Models
-    </h3>
-  </div>
-  <div class="card-body">
+<!-- Files Tab Pane (außerhalb des Update-Forms) -->
+<div class="tab-content mt-3">
+  <div class="tab-pane fade" id="files-tab-pane" role="tabpanel" aria-labelledby="files-tab">
 
-    {# Liste aller Dateien zu diesem Auftrag #}
-    {% if order.files %}
-      <ul class="list-group mb-3">
-        {% for f in order.files %}
+    <div class="alert alert-info mb-3">
+      Uploads of 3D models or images are saved immediately; no extra "Save changes" click is needed.
+    </div>
 
-         <li class="list-group-item d-flex justify-content-between align-items-center">
-          <div>
-            <div>
-              <strong>{{ f.original_name }}</strong>
-              {# Badge für Dateityp, kommt gleich noch genauer #}
-              {% if f.file_type %}
-                
-                {% if f.file_type %}
-                  <span class="badge 
-                        {% if f.file_type.lower() == 'stl' %}bg-info
-                        {% elif f.file_type.lower() == '3mf' %}bg-success
-                        {% else %}bg-secondary
-                        {% endif %}
-                        ms-2">
-                    {{ f.file_type|upper }}
-                  </span>
-                {% endif %}
-
-
-              {% endif %}
-            </div>
-            <small class="text-muted">
-              {% if f.filesize %}
-                {{ (f.filesize / 1024)|round(1) }} KB
-              {% endif %}
-              {% if f.uploaded_at %}
-                · uploaded {{ f.uploaded_at.strftime("%Y-%m-%d %H:%M") }}
-              {% endif %}
-            </small>
-          </div>
-
-          <div class="d-flex gap-2">
-            <a class="btn btn-sm btn-outline-primary"
-              href="{{ url_for('download_order_file', order_id=order.id, file_id=f.id) }}">
-              <i class="bi bi-download me-1"></i>
-              Download
-            </a>
-
-            <form method="post"
-                  onsubmit="return confirm('Delete this file?');">
-              <input type="hidden" name="action" value="delete_file">
-              <input type="hidden" name="file_id" value="{{ f.id }}">
-              <button type="submit" class="btn btn-sm btn-outline-danger">
-                <i class="bi bi-trash me-1"></i>
-                Delete
-              </button>
-            </form>
-          </div>
-        </li>
-   
-
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="text-muted">
-        No 3D models uploaded yet.
-      </p>
-    {% endif %}
-
-    {# Upload weiterer Dateien – eigene Form, kein verschachteltes form #}
-    <form method="post" enctype="multipart/form-data" class="mt-2">
-      <input type="hidden" name="action" value="upload_file">
-
-      <div class="mb-2">
-        <label for="model_file" class="form-label">
-          <i class="bi bi-upload me-1"></i>
-          Add 3D model (STL / 3MF)
-        </label>
-        <input class="form-control"
-               type="file"
-               id="model_file"
-               name="model_file"
-               accept=".stl,.3mf">
-        <div class="form-text">
-          Allowed formats: .stl, .3mf
-        </div>
+    <!-- Modelle -->
+    <div class="card mb-3">
+      <div class="card-header">
+        <h3 class="h6 mb-0 d-flex align-items-center">
+          <i class="bi bi-boxes me-2"></i>
+          3D Models
+        </h3>
       </div>
+      <div class="card-body">
 
-      <button type="submit" class="btn btn-secondary btn-sm">
-        <i class="bi bi-plus-circle me-1"></i>
-        Upload file
-      </button>
-    </form>
+        {# Liste aller Dateien zu diesem Auftrag #}
+        {% if order.files %}
+          <ul class="list-group mb-3">
+            {% for f in order.files %}
+             <li class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                <div>
+                  <strong>{{ f.original_name }}</strong>
+                  {% if f.file_type %}
+                    <span class="badge 
+                          {% if f.file_type.lower() == 'stl' %}bg-info
+                          {% elif f.file_type.lower() == '3mf' %}bg-success
+                          {% else %}bg-secondary
+                          {% endif %}
+                          ms-2">
+                      {{ f.file_type|upper }}
+                    </span>
+                  {% endif %}
+                </div>
+                <small class="text-muted">
+                  {% if f.filesize %}
+                    {{ (f.filesize / 1024)|round(1) }} KB
+                  {% endif %}
+                  {% if f.uploaded_at %}
+                    · uploaded {{ f.uploaded_at.strftime("%Y-%m-%d %H:%M") }}
+                  {% endif %}
+                </small>
+              </div>
+
+              <div class="d-flex gap-2">
+                <a class="btn btn-sm btn-outline-primary"
+                  href="{{ url_for('download_order_file', order_id=order.id, file_id=f.id) }}">
+                  <i class="bi bi-download me-1"></i>
+                  Download
+                </a>
+
+                <form method="post"
+                      onsubmit="return confirm('Delete this file?');">
+                  <input type="hidden" name="action" value="delete_file">
+                  <input type="hidden" name="file_id" value="{{ f.id }}">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-trash me-1"></i>
+                    Delete
+                  </button>
+                </form>
+              </div>
+            </li>
+          {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-muted">
+            No 3D models uploaded yet.
+          </p>
+        {% endif %}
+
+        {# Upload weiterer Dateien – eigenes Formular #}
+        <form method="post" enctype="multipart/form-data" class="mt-2">
+          <input type="hidden" name="action" value="upload_file">
+
+          <div class="mb-2">
+            <label for="model_file" class="form-label">
+              <i class="bi bi-upload me-1"></i>
+              Add 3D model (STL / 3MF)
+            </label>
+            <input class="form-control"
+                   type="file"
+                   id="model_file"
+                   name="model_file"
+                   accept=".stl,.3mf">
+            <div class="form-text">
+              Allowed formats: .stl, .3mf
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-secondary btn-sm">
+            <i class="bi bi-plus-circle me-1"></i>
+            Upload file
+          </button>
+        </form>
+
+      </div>
+    </div>
+
+    <!-- Projektbilder -->
+    <div class="card mb-3">
+      <div class="card-header">
+        <h3 class="h6 mb-0 d-flex align-items-center">
+          <i class="bi bi-image me-2"></i>
+          Project Images
+        </h3>
+      </div>
+      <div class="card-body">
+        {% if order.images %}
+          <ul class="list-group mb-3">
+            {% for img in order.images %}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                  <strong>{{ img.original_name }}</strong>
+                  <small class="text-muted d-block">
+                    {% if img.filesize %}{{ (img.filesize / 1024)|round(1) }} KB · {% endif %}
+                    {% if img.uploaded_at %}uploaded {{ img.uploaded_at.strftime("%Y-%m-%d %H:%M") }}{% endif %}
+                  </small>
+                </div>
+                <div class="d-flex gap-2">
+                  <a class="btn btn-sm btn-outline-primary" href="{{ url_for('download_order_image', order_id=order.id, image_id=img.id) }}">
+                    <i class="bi bi-download me-1"></i>Download
+                  </a>
+                  <form method="post" onsubmit="return confirm('Delete this image?');">
+                    <input type="hidden" name="action" value="delete_image">
+                    <input type="hidden" name="image_id" value="{{ img.id }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                      <i class="bi bi-trash me-1"></i>Delete
+                    </button>
+                  </form>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-muted">No images uploaded yet.</p>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" class="mt-2">
+          <input type="hidden" name="action" value="upload_image">
+          <div class="mb-2">
+            <label for="image_file" class="form-label">
+              <i class="bi bi-upload me-1"></i>
+              Add image (png, jpg, jpeg, gif, webp)
+            </label>
+            <input class="form-control"
+                   type="file"
+                   id="image_file"
+                   name="image_file"
+                   accept=".png,.jpg,.jpeg,.gif,.webp">
+          </div>
+          <button type="submit" class="btn btn-secondary btn-sm">
+            <i class="bi bi-plus-circle me-1"></i>
+            Upload image
+          </button>
+        </form>
+      </div>
+    </div>
 
   </div>
 </div>
-
 
 <!-- NACHRICHTEN / KOMMUNIKATION -->
 <div class="card mb-3">
