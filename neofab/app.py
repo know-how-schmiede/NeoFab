@@ -253,6 +253,23 @@ class Order(db.Model):
         lazy=True,
     )
 
+    # Öffentlichkeits-Felder
+    public_allow_poster = db.Column(db.Boolean, nullable=False, default=False)
+    public_allow_web = db.Column(db.Boolean, nullable=False, default=False)
+    public_allow_social = db.Column(db.Boolean, nullable=False, default=False)
+    public_display_name = db.Column(db.String(200))
+
+    summary_short = db.Column(db.String(300))
+    summary_long = db.Column(db.Text)
+    project_purpose = db.Column(db.Text)
+    project_use_case = db.Column(db.Text)
+    learning_points = db.Column(db.Text)
+    background_info = db.Column(db.Text)
+    project_url = db.Column(db.String(300))
+
+    image = db.relationship("OrderImage", uselist=False, back_populates="order", cascade="all, delete-orphan")
+    tags_entry = db.relationship("OrderTag", uselist=False, back_populates="order", cascade="all, delete-orphan")
+
 
 # --- OrderMessage (Chat-/Kommunikationseintrag) ------------------------------
 
@@ -312,6 +329,32 @@ class OrderFile(db.Model):
 
     # Beziehung zurück zum Order
     order = db.relationship("Order", back_populates="files")
+
+
+# --- OrderImage ---------------------------------------------------------------
+
+
+class OrderImage(db.Model):
+    __tablename__ = "order_images"
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False, unique=True)
+    image_main = db.Column(db.String(300))
+
+    order = db.relationship("Order", back_populates="image")
+
+
+# --- OrderTag -----------------------------------------------------------------
+
+
+class OrderTag(db.Model):
+    __tablename__ = "order_tags"
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False, unique=True)
+    tags = db.Column(db.String(300))
+
+    order = db.relationship("Order", back_populates="tags_entry")
 
 
 # --- Stammdaten: Material ----------------------------------------------------
@@ -599,6 +642,22 @@ def new_order():
         color_id = request.form.get("color_id") or None
         cost_center_id = request.form.get("cost_center_id") or None
 
+        # Öffentlichkeits-Felder
+        public_allow_poster = bool(request.form.get("public_allow_poster"))
+        public_allow_web = bool(request.form.get("public_allow_web"))
+        public_allow_social = bool(request.form.get("public_allow_social"))
+        public_display_name = request.form.get("public_display_name", "").strip() or None
+
+        summary_short = request.form.get("summary_short", "").strip() or None
+        summary_long = request.form.get("summary_long", "").strip() or None
+        project_purpose = request.form.get("project_purpose", "").strip() or None
+        project_use_case = request.form.get("project_use_case", "").strip() or None
+        learning_points = request.form.get("learning_points", "").strip() or None
+        background_info = request.form.get("background_info", "").strip() or None
+        project_url = request.form.get("project_url", "").strip() or None
+        image_main = request.form.get("image_main", "").strip() or None
+        tags_value = request.form.get("tags", "").strip() or None
+
         if not title:
             flash("Please provide a title for the order.", "danger")
             return render_template(
@@ -614,6 +673,17 @@ def new_order():
             description=description or None,
             status=status,
             user_id=current_user.id,
+            public_allow_poster=public_allow_poster,
+            public_allow_web=public_allow_web,
+            public_allow_social=public_allow_social,
+            public_display_name=public_display_name,
+            summary_short=summary_short,
+            summary_long=summary_long,
+            project_purpose=project_purpose,
+            project_use_case=project_use_case,
+            learning_points=learning_points,
+            background_info=background_info,
+            project_url=project_url,
         )
 
         # Nur sinnvolle IDs setzen
@@ -636,6 +706,14 @@ def new_order():
 
         db.session.add(order)
         db.session.commit()
+
+        # Bild / Tags speichern
+        if image_main:
+            db.session.add(OrderImage(order_id=order.id, image_main=image_main))
+        if tags_value:
+            db.session.add(OrderTag(order_id=order.id, tags=tags_value))
+        if image_main or tags_value:
+            db.session.commit()
 
         # === Datei-Upload (optional) =======================================
         file = request.files.get("model_file")
@@ -738,6 +816,21 @@ def order_detail(order_id):
             description = request.form.get("description", "").strip()
             status = request.form.get("status", order.status)
 
+            public_allow_poster = bool(request.form.get("public_allow_poster"))
+            public_allow_web = bool(request.form.get("public_allow_web"))
+            public_allow_social = bool(request.form.get("public_allow_social"))
+            public_display_name = request.form.get("public_display_name", "").strip() or None
+
+            summary_short = request.form.get("summary_short", "").strip() or None
+            summary_long = request.form.get("summary_long", "").strip() or None
+            project_purpose = request.form.get("project_purpose", "").strip() or None
+            project_use_case = request.form.get("project_use_case", "").strip() or None
+            learning_points = request.form.get("learning_points", "").strip() or None
+            background_info = request.form.get("background_info", "").strip() or None
+            project_url = request.form.get("project_url", "").strip() or None
+            image_main = request.form.get("image_main", "").strip() or None
+            tags_value = request.form.get("tags", "").strip() or None
+
             app.logger.debug(
                 f"[order_detail] UPDATE_ORDER before: id={order.id}, "
                 f"title={order.title!r}, status={order.status!r}"
@@ -778,6 +871,40 @@ def order_detail(order_id):
                         order.cost_center_id = None
                 else:
                     order.cost_center_id = None
+
+                # Öffentlichkeits-Felder übernehmen
+                order.public_allow_poster = public_allow_poster
+                order.public_allow_web = public_allow_web
+                order.public_allow_social = public_allow_social
+                order.public_display_name = public_display_name
+                order.summary_short = summary_short
+                order.summary_long = summary_long
+                order.project_purpose = project_purpose
+                order.project_use_case = project_use_case
+                order.learning_points = learning_points
+                order.background_info = background_info
+                order.project_url = project_url
+
+                # Bild/Tags upsert
+                if image_main:
+                    if order.image:
+                        order.image.image_main = image_main
+                    else:
+                        order.image = OrderImage(image_main=image_main)
+                else:
+                    if order.image:
+                        db.session.delete(order.image)
+                        order.image = None
+
+                if tags_value:
+                    if order.tags_entry:
+                        order.tags_entry.tags = tags_value
+                    else:
+                        order.tags_entry = OrderTag(tags=tags_value)
+                else:
+                    if order.tags_entry:
+                        db.session.delete(order.tags_entry)
+                        order.tags_entry = None
 
                 # Statuswechsel nur für Admin
                 if current_user.role == "admin":
@@ -993,6 +1120,8 @@ def order_detail(order_id):
         materials=materials,
         colors=colors,
         cost_centers=cost_centers,
+        image_main=order.image.image_main if order.image else "",
+        tags_value=order.tags_entry.tags if order.tags_entry else "",
     )
 
 
