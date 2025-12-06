@@ -486,6 +486,64 @@ def register():
 
 
 # ============================================================
+# Routen: Profil
+# ============================================================
+
+
+@app.route("/profile", methods=["GET", "POST"])
+@login_required
+def profile():
+    """
+    Profilseite fuer eingeloggte User, um eigene Stammdaten zu pflegen.
+    """
+    user = User.query.get_or_404(current_user.id)
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+
+        salutation = request.form.get("salutation") or None
+        first_name = request.form.get("first_name") or None
+        last_name = request.form.get("last_name") or None
+        address = request.form.get("address") or None
+        position = request.form.get("position") or None
+        cost_center = request.form.get("cost_center") or None
+        study_program = request.form.get("study_program") or None
+        note = request.form.get("note") or None
+
+        new_password = request.form.get("password", "")
+        new_password2 = request.form.get("password2", "")
+
+        # Basisvalidierungen
+        if not email:
+            flash("Email is required.", "danger")
+        else:
+            existing = User.query.filter_by(email=email).first()
+            if existing and existing.id != user.id:
+                flash("Another account with this email already exists.", "danger")
+            elif new_password and new_password != new_password2:
+                flash("Passwords do not match.", "danger")
+            else:
+                user.email = email
+                user.salutation = salutation
+                user.first_name = first_name
+                user.last_name = last_name
+                user.address = address
+                user.position = position
+                user.cost_center = cost_center
+                user.study_program = study_program
+                user.note = note
+
+                if new_password:
+                    user.set_password(new_password)
+
+                db.session.commit()
+                flash("Profile updated.", "success")
+                return redirect(url_for("profile"))
+
+    return render_template("profile.html", user=user)
+
+
+# ============================================================
 # Routen: Neue Orders + Datei-Upload
 # ============================================================
 

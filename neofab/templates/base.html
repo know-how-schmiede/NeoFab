@@ -88,6 +88,9 @@
             <span class="navbar-text small">
               <i class="bi bi-person-circle me-1"></i>{{ current_user.email }}
             </span>
+            <a class="nav-link" href="{{ url_for('profile') }}">
+              <i class="bi bi-person-badge me-1"></i>My Profile
+            </a>
             <a class="nav-link" href="{{ url_for('logout') }}">
               <i class="bi bi-box-arrow-right me-1"></i>Logout
             </a>

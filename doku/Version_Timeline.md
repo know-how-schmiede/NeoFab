@@ -1,4 +1,6 @@
 # Timeline NeoFab
+## Version 0.3.4
+My Profile für User
 ## Version 0.3.3
 FavIcon Integration
 ## Version 0.3.2
