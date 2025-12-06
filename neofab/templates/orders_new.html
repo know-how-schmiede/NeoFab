@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}New Order – NeoFab{% endblock %}
+{% block title %}{{ t("new_order") }} – NeoFab{% endblock %}
 
 {% block content %}
 
@@ -8,7 +8,7 @@
   <div class="card-header">
     <h2 class="h5 mb-0">
       <i class="bi bi-plus-circle me-1"></i>
-      New Order
+      {{ t("new_order_page_header") }}
     </h2>
   </div>
 
@@ -21,7 +21,7 @@
         <div class="col-12">
           <label for="title" class="form-label">
             <i class="bi bi-card-text me-1"></i>
-            Title*
+            {{ t("new_order_title_label") }}*
           </label>
           <input
             type="text"
@@ -36,7 +36,7 @@
         <div class="col-12">
           <label for="description" class="form-label">
             <i class="bi bi-journal-text me-1"></i>
-            Description
+            {{ t("new_order_description_label") }}
           </label>
           <textarea
             class="form-control"
@@ -50,14 +50,14 @@
         <div class="col-md-6">
           <label for="cost_center_id" class="form-label">
             <i class="bi bi-bank me-1"></i>
-            Cost Center
+            {{ t("new_order_cost_center_label") }}
           </label>
           <select
             id="cost_center_id"
             name="cost_center_id"
             class="form-select"
           >
-            <option value="">– Please select –</option>
+            <option value="">{{ t("select_placeholder") }}</option>
             {% for cc in cost_centers %}
               <option value="{{ cc.id }}">{{ cc.name }}</option>
             {% endfor %}
@@ -68,14 +68,14 @@
         <div class="col-md-6">
           <label for="material_id" class="form-label">
             <i class="bi bi-box-seam me-1"></i>
-            Material
+            {{ t("new_order_material_label") }}
           </label>
           <select
             id="material_id"
             name="material_id"
             class="form-select"
           >
-            <option value="">– Please select –</option>
+            <option value="">{{ t("select_placeholder") }}</option>
             {% for m in materials %}
               <option value="{{ m.id }}">{{ m.name }}</option>
             {% endfor %}
@@ -86,7 +86,7 @@
         <div class="col-md-6">
           <label for="color_id" class="form-label">
             <i class="bi bi-palette me-1"></i>
-            Color
+            {{ t("new_order_color_label") }}
           </label>
           <div class="input-group">
             <select
@@ -95,7 +95,7 @@
               class="form-select"
               onchange="updateColorPreview()"
             >
-              <option value="">– Please select –</option>
+              <option value="">{{ t("select_placeholder") }}</option>
               {% for c in colors %}
                 <option value="{{ c.id }}"
                         data-hex="{{ c.hex_code if c.hex_code else '' }}">
@@ -117,7 +117,7 @@
         <div class="col-md-6">
           <label for="status" class="form-label">
             <i class="bi bi-flag me-1"></i>
-            Status
+            {{ t("new_order_status_label") }}
           </label>
           <select
             id="status"
@@ -137,11 +137,11 @@
       <div class="d-flex gap-2 mt-3">
         <button type="submit" class="btn btn-primary">
           <i class="bi bi-save me-1"></i>
-          Create Order
+          {{ t("btn_create_order") }}
         </button>
         <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
           <i class="bi bi-arrow-left me-1"></i>
-          Back to dashboard
+          {{ t("btn_back_dashboard") }}
         </a>
       </div>
 

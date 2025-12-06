@@ -1,30 +1,30 @@
 {% extends "base.html" %}
 
 {% block title %}
-    Admin – {% if material %}Edit Material{% else %}New Material{% endif %}
+    {{ material and t("admin_material_form_title_edit") or t("admin_material_form_title_new") }} - NeoFab
 {% endblock %}
 
 {% block content %}
 <h1 class="mb-4">
-    {% if material %}Edit Material{% else %}New Material{% endif %}
+    {{ material and t("admin_material_form_title_edit") or t("admin_material_form_title_new") }}
 </h1>
 
 <div class="card">
     <div class="card-body">
         <form method="post">
             <div class="mb-3">
-                <label for="name" class="form-label">Material Name</label>
+                <label for="name" class="form-label">{{ t("admin_material_label_name") }}</label>
                 <input type="text"
                        class="form-control"
                        id="name"
                        name="name"
                        required
                        value="{{ material.name if material else '' }}">
-                <div class="form-text">e.g. PLA, ABS, PETG, TPU …</div>
+                <div class="form-text">{{ t("admin_material_hint_examples") }}</div>
             </div>
 
             <div class="mb-3">
-                <label for="description" class="form-label">Description / Note (optional)</label>
+                <label for="description" class="form-label">{{ t("admin_material_label_description") }}</label>
                 <input type="text"
                        class="form-control"
                        id="description"
@@ -32,9 +32,9 @@
                        value="{{ material.description if material else '' }}">
             </div>
 
-            <button type="submit" class="btn btn-primary">Save</button>
+            <button type="submit" class="btn btn-primary">{{ t("btn_save") }}</button>
             <a href="{{ url_for('admin_material_list') }}" class="btn btn-secondary">
-                Cancel
+                {{ t("btn_cancel") }}
             </a>
         </form>
     </div>

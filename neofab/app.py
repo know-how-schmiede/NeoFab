@@ -68,6 +68,40 @@ IMAGE_UPLOAD_FOLDER = BASE_DIR / "uploads" / "images"
 os.makedirs(IMAGE_UPLOAD_FOLDER, exist_ok=True)
 app.config["IMAGE_UPLOAD_FOLDER"] = str(IMAGE_UPLOAD_FOLDER)
 
+# Übersetzungen aus externer Struktur laden (Ordner i18n im Projekt-Root)
+I18N_DIR = BASE_DIR.parent / "i18n"
+DEFAULT_LANG = "en"
+_translations_cache = {}
+
+
+def load_language_file(lang: str) -> dict:
+    """
+    Lädt eine Sprachdatei (JSON) aus i18n/<lang>.json.
+    Gibt ein leeres Dict zurück, falls nicht vorhanden/lesbar.
+    """
+    lang = (lang or DEFAULT_LANG).lower()
+    file_path = I18N_DIR / f"{lang}.json"
+    if not file_path.exists():
+        return {}
+    try:
+        with file_path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+            if isinstance(data, dict):
+                return data
+    except Exception:
+        pass
+    return {}
+
+
+def get_translations(lang: str) -> dict:
+    """
+    Cached Zugriff auf Übersetzungen.
+    """
+    lang = (lang or DEFAULT_LANG).lower()
+    if lang not in _translations_cache:
+        _translations_cache[lang] = load_language_file(lang)
+    return _translations_cache[lang]
+
 # Maximal erlaubte Upload-Größe (z.B. 50 MB)
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
 
@@ -111,9 +145,23 @@ def inject_globals():
     """
     Stellt globale Werte in allen Templates zur Verfügung.
     """
+    def current_language():
+        if current_user.is_authenticated and getattr(current_user, "language", None):
+            lang = (current_user.language or "en").lower()
+            return "de" if lang.startswith("de") else "en"
+        return "en"
+
+    def t(key):
+        lang = current_language()
+        lang_trans = get_translations(lang)
+        default_trans = get_translations(DEFAULT_LANG)
+        return lang_trans.get(key, default_trans.get(key, key))
+
     return {
         "app_version": APP_VERSION,
         "status_labels": STATUS_LABELS,
+        "current_language": current_language,
+        "t": t,
     }
 
 
@@ -179,6 +227,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(50), nullable=False, default="user")
+    language = db.Column(db.String(5), nullable=False, default="en")
 
     # Zusatzfelder
     salutation = db.Column(db.String(50))   # Anrede
@@ -497,6 +546,7 @@ def login():
         return redirect(url_for("dashboard"))
 
     if request.method == "POST":
+        trans = inject_globals().get("t")
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
 
@@ -506,11 +556,11 @@ def login():
             user.last_login_at = datetime.utcnow()
             db.session.commit()
 
-            flash("Login successful.", "success")
+            flash(trans("flash_login_success"), "success")
             next_page = request.args.get("next")
             return redirect(next_page or url_for("dashboard"))
         else:
-            flash("Invalid email or password.", "danger")
+            flash(trans("flash_invalid_credentials"), "danger")
 
     return render_template("login.html")
 
@@ -522,17 +572,18 @@ def register():
         return redirect(url_for("dashboard"))
 
     if request.method == "POST":
+        trans = inject_globals().get("t")
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         password2 = request.form.get("password2", "")
 
         # einfache Validierung
         if not email or not password:
-            flash("Please fill in all required fields.", "danger")
+            flash(trans("flash_required_fields"), "danger")
         elif password != password2:
-            flash("Passwords do not match.", "danger")
+            flash(trans("flash_passwords_mismatch"), "danger")
         elif User.query.filter_by(email=email).first():
-            flash("This email is already registered.", "warning")
+            flash(trans("flash_email_registered"), "warning")
         else:
             user = User(
                 email=email,
@@ -549,7 +600,7 @@ def register():
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
-            flash("Registration successful. You can now log in.", "success")
+            flash(trans("flash_registration_success"), "success")
             return redirect(url_for("login"))
 
     return render_template("register.html")
@@ -569,6 +620,7 @@ def profile():
     user = User.query.get_or_404(current_user.id)
 
     if request.method == "POST":
+        trans = inject_globals().get("t")
         email = request.form.get("email", "").strip().lower()
 
         salutation = request.form.get("salutation") or None
@@ -582,16 +634,19 @@ def profile():
 
         new_password = request.form.get("password", "")
         new_password2 = request.form.get("password2", "")
+        language = request.form.get("language", "").strip().lower() or "en"
+        if language not in ("en", "de"):
+            language = "en"
 
         # Basisvalidierungen
         if not email:
-            flash("Email is required.", "danger")
+            flash(trans("flash_email_required"), "danger")
         else:
             existing = User.query.filter_by(email=email).first()
             if existing and existing.id != user.id:
-                flash("Another account with this email already exists.", "danger")
+                flash(trans("flash_user_email_exists"), "danger")
             elif new_password and new_password != new_password2:
-                flash("Passwords do not match.", "danger")
+                flash(trans("flash_passwords_mismatch"), "danger")
             else:
                 user.email = email
                 user.salutation = salutation
@@ -602,12 +657,13 @@ def profile():
                 user.cost_center = cost_center
                 user.study_program = study_program
                 user.note = note
+                user.language = language
 
                 if new_password:
                     user.set_password(new_password)
 
                 db.session.commit()
-                flash("Profile updated.", "success")
+                flash(trans("flash_profile_updated"), "success")
                 return redirect(url_for("profile"))
 
     return render_template("profile.html", user=user)
@@ -664,9 +720,14 @@ def new_order():
         background_info = request.form.get("background_info", "").strip() or None
         project_url = request.form.get("project_url", "").strip() or None
         tags_value = request.form.get("tags", "").strip() or None
+        language = request.form.get("language", "").strip().lower() or "en"
+        if language not in ("en", "de"):
+            language = "en"
+
+        trans = inject_globals().get("t")
 
         if not title:
-            flash("Please provide a title for the order.", "danger")
+            flash(trans("flash_title_required"), "danger")
             return render_template(
                 "orders_new.html",
                 order_statuses=ORDER_STATUSES,
@@ -731,7 +792,7 @@ def new_order():
 
             allowed_ext = {"stl", "3mf"}
             if ext not in allowed_ext:
-                flash("Only STL and 3MF files are allowed.", "warning")
+                flash(trans("flash_invalid_file"), "warning")
             else:
                 # OrderFile-Eintrag mit Platzhalter speichern
                 order_file = OrderFile(
@@ -776,7 +837,7 @@ def new_order():
             f"material_id={order.material_id}, color_id={order.color_id}"
         )
 
-        flash("Order has been created.", "success")
+        flash(trans("flash_order_created"), "success")
         return redirect(url_for("dashboard"))
 
     # GET
@@ -811,6 +872,7 @@ def order_detail(order_id):
 
     if request.method == "POST":
         app.logger.debug(f"[order_detail] POST data for order {order.id}: {dict(request.form)}")
+        trans = inject_globals().get("t")
 
         action = request.form.get("action")
 
@@ -841,7 +903,7 @@ def order_detail(order_id):
             app.logger.debug(f"[order_detail] Form status value: {status!r}")
 
             if not title:
-                flash("Title must not be empty.", "danger")
+                flash(trans("flash_title_required"), "danger")
             else:
                 order.title = title
                 order.description = description or None
@@ -914,7 +976,7 @@ def order_detail(order_id):
                     f"[order_detail] UPDATE_ORDER after commit: id={order.id}, "
                     f"title={order.title!r}, status={order.status!r}"
                 )
-                flash("Order has been updated.", "success")
+                flash(trans("flash_order_updated"), "success")
                 return redirect(url_for("order_detail", order_id=order.id))
 
         # --- 2) Neue Nachricht hinzufügen ----------------------------------
@@ -923,7 +985,7 @@ def order_detail(order_id):
             app.logger.debug(f"[order_detail] ADD_MESSAGE for order {order.id}: {content!r}")
 
             if not content:
-                flash("Please enter a message.", "danger")
+                flash(trans("flash_enter_message"), "danger")
             else:
                 msg = OrderMessage(
                     order_id=order.id,
@@ -933,7 +995,7 @@ def order_detail(order_id):
                 db.session.add(msg)
                 db.session.commit()
                 app.logger.debug(f"[order_detail] Message {msg.id} added to order {order.id}")
-                flash("Message has been added.", "success")
+                flash(trans("flash_message_added"), "success")
                 return redirect(url_for("order_detail", order_id=order.id))
 
         # --- 3) Auftrag stornieren -----------------------------------------
@@ -950,12 +1012,12 @@ def order_detail(order_id):
                     app.logger.debug(
                         f"[order_detail] Order {order.id} cancelled. New status={order.status!r}"
                     )
-                    flash("Order has been cancelled.", "info")
+                    flash(trans("flash_order_cancelled"), "info")
                 else:
                     app.logger.debug(
                         f"[order_detail] Order {order.id} cannot be cancelled (status={order.status!r})"
                     )
-                    flash("This order cannot be cancelled anymore.", "warning")
+                    flash(trans("flash_order_cannot_cancel"), "warning")
             else:
                 app.logger.debug(
                     f"[order_detail] CANCEL_ORDER forbidden for user={current_user.email}, "
@@ -968,7 +1030,7 @@ def order_detail(order_id):
         elif action == "upload_file":
             file = request.files.get("model_file")
             if not file or not file.filename:
-                flash("Please select a file to upload.", "warning")
+                flash(trans("flash_select_file"), "warning")
                 return redirect(url_for("order_detail", order_id=order.id))
 
             original_name = file.filename
@@ -979,7 +1041,7 @@ def order_detail(order_id):
 
             allowed_ext = {"stl", "3mf"}
             if ext not in allowed_ext:
-                flash("Only STL and 3MF files are allowed.", "warning")
+                flash(trans("flash_invalid_file"), "warning")
                 return redirect(url_for("order_detail", order_id=order.id))
 
             # OrderFile-Eintrag mit Platzhalter
@@ -1016,14 +1078,14 @@ def order_detail(order_id):
                 f"OrderFile.id={order_file.id}, stored_name={stored_name!r}"
             )
 
-            flash("File has been uploaded.", "success")
+            flash(trans("flash_file_uploaded"), "success")
             return redirect(url_for("order_detail", order_id=order.id))
 
         # --- 5) Projektbild hochladen --------------------------------------
         elif action == "upload_image":
             file = request.files.get("image_file")
             if not file or not file.filename:
-                flash("Please select an image to upload.", "warning")
+                flash(trans("flash_select_image"), "warning")
                 return redirect(url_for("order_detail", order_id=order.id))
 
             original_name = file.filename
@@ -1034,7 +1096,7 @@ def order_detail(order_id):
 
             allowed_ext = {"png", "jpg", "jpeg", "gif", "webp"}
             if ext not in allowed_ext:
-                flash("Only image files (png, jpg, jpeg, gif, webp) are allowed.", "warning")
+                flash(trans("flash_invalid_image"), "warning")
                 return redirect(url_for("order_detail", order_id=order.id))
 
             image_entry = OrderImage(
@@ -1063,7 +1125,7 @@ def order_detail(order_id):
 
             db.session.commit()
 
-            flash("Image has been uploaded.", "success")
+            flash(trans("flash_image_uploaded"), "success")
             return redirect(url_for("order_detail", order_id=order.id))
 
         # --- 6) Datei löschen ----------------------------------------------
@@ -1074,7 +1136,7 @@ def order_detail(order_id):
                 file_id = 0
 
             if not file_id:
-                flash("Invalid file ID.", "danger")
+                flash(trans("flash_invalid_file_id"), "danger")
                 return redirect(url_for("order_detail", order_id=order.id))
 
             order_file = OrderFile.query.filter_by(
@@ -1083,7 +1145,7 @@ def order_detail(order_id):
             ).first()
 
             if not order_file:
-                flash("File not found.", "warning")
+                flash(trans("flash_file_not_found"), "warning")
                 return redirect(url_for("order_detail", order_id=order.id))
 
             # Physische Datei löschen
@@ -1106,7 +1168,7 @@ def order_detail(order_id):
                 f"[order_detail] Deleted file {file_id} for order {order.id}"
             )
 
-            flash("File has been deleted.", "info")
+            flash(trans("flash_file_deleted"), "info")
             return redirect(url_for("order_detail", order_id=order.id))
 
         # --- 7) Projektbild löschen ----------------------------------------
@@ -1117,7 +1179,7 @@ def order_detail(order_id):
                 image_id = 0
 
             if not image_id:
-                flash("Invalid image ID.", "danger")
+                flash(trans("flash_invalid_image_id"), "danger")
                 return redirect(url_for("order_detail", order_id=order.id))
 
             image_entry = OrderImage.query.filter_by(
@@ -1126,7 +1188,7 @@ def order_detail(order_id):
             ).first()
 
             if not image_entry:
-                flash("Image not found.", "warning")
+                flash(trans("flash_image_not_found"), "warning")
                 return redirect(url_for("order_detail", order_id=order.id))
 
             image_folder = Path(app.config["IMAGE_UPLOAD_FOLDER"]) / f"order_{order.id}"
@@ -1141,7 +1203,7 @@ def order_detail(order_id):
             db.session.delete(image_entry)
             db.session.commit()
 
-            flash("Image has been deleted.", "info")
+            flash(trans("flash_image_deleted"), "info")
             return redirect(url_for("order_detail", order_id=order.id))
 
     # --- Lese-Status aktualisieren (GET + nach POST-Redirect) --------------
@@ -1218,6 +1280,7 @@ def order_messages_fragment(order_id):
 @app.route("/orders/<int:order_id>/images/<int:image_id>/download")
 @login_required
 def download_order_image(order_id, image_id):
+    trans = inject_globals().get("t")
     order = Order.query.get_or_404(order_id)
     if current_user.role != "admin" and order.user_id != current_user.id:
         abort(403)
@@ -1228,7 +1291,7 @@ def download_order_image(order_id, image_id):
     full_path = image_folder / image_entry.stored_name
 
     if not full_path.exists():
-        flash("Image not found on server.", "danger")
+        flash(trans("flash_image_missing_server"), "danger")
         return redirect(url_for("order_detail", order_id=order.id))
 
     return send_from_directory(
@@ -1248,6 +1311,7 @@ def download_order_file(order_id, file_id):
     """
     Einfache Download-Route für eine Datei zu einem Auftrag.
     """
+    trans = inject_globals().get("t")
     # Auftrag laden
     order = Order.query.get_or_404(order_id)
 
@@ -1266,7 +1330,7 @@ def download_order_file(order_id, file_id):
     full_path = order_folder / order_file.stored_name
 
     if not full_path.exists():
-        flash("File not found on server.", "danger")
+        flash(trans("flash_file_missing_server"), "danger")
         return redirect(url_for("order_detail", order_id=order.id))
 
     # Download ausliefern
@@ -1423,6 +1487,7 @@ def admin_user_edit(user_id):
     user = User.query.get_or_404(user_id)
 
     if request.method == "POST":
+        trans = inject_globals().get("t")
         email = request.form.get("email", "").strip().lower()
         role = request.form.get("role", "user").strip()
         new_password = request.form.get("password", "")
@@ -1437,11 +1502,11 @@ def admin_user_edit(user_id):
         note = request.form.get("note") or None
 
         if not email:
-            flash("Email is required.", "danger")
+            flash(trans("flash_email_required"), "danger")
         else:
             existing = User.query.filter_by(email=email).first()
             if existing and existing.id != user.id:
-                flash("Another user with this email already exists.", "danger")
+                flash(trans("flash_user_email_exists"), "danger")
             else:
                 user.email = email
                 user.role = role
@@ -1459,7 +1524,7 @@ def admin_user_edit(user_id):
                     user.set_password(new_password)
 
                 db.session.commit()
-                flash("User updated.", "success")
+                flash(trans("flash_user_updated"), "success")
                 return redirect(url_for("admin_user_list"))
 
     return render_template("admin_user_edit.html", user=user)
@@ -1508,16 +1573,17 @@ def admin_material_import():
     }
     Bestehende Materialien werden vorher entfernt.
     """
+    trans = inject_globals().get("t")
     file = request.files.get("file")
     if not file or not file.filename:
-        flash("Please choose a JSON file to import.", "warning")
+        flash(trans("flash_json_choose_file"), "warning")
         return redirect(url_for("admin_material_list"))
 
     try:
         content = file.read().decode("utf-8-sig")
         data = json.loads(content)
     except Exception:
-        flash("Could not read file. Please upload a valid JSON export.", "danger")
+        flash(trans("flash_invalid_json"), "danger")
         return redirect(url_for("admin_material_list"))
 
     rows = data.get("materials", []) if isinstance(data, dict) else []
@@ -1538,28 +1604,29 @@ def admin_material_import():
         created += 1
 
     db.session.commit()
-    flash(f"Import finished: {created} created, {skipped} skipped.", "success")
+    flash(trans("flash_import_result_simple").format(created=created, skipped=skipped), "success")
     return redirect(url_for("admin_material_list"))
 
 
 @app.route("/admin/materials/new", methods=["GET", "POST"])
 @roles_required("admin")
 def admin_material_new():
+    trans = inject_globals().get("t")
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         description = request.form.get("description", "").strip() or None
 
         if not name:
-            flash("Material name is required.", "danger")
+            flash(trans("flash_material_required"), "danger")
         else:
             existing = Material.query.filter_by(name=name).first()
             if existing:
-                flash("A material with this name already exists.", "danger")
+                flash(trans("flash_material_exists"), "danger")
             else:
                 m = Material(name=name, description=description)
                 db.session.add(m)
                 db.session.commit()
-                flash("Material created.", "success")
+                flash(trans("flash_material_created"), "success")
                 return redirect(url_for("admin_material_list"))
 
     return render_template("admin_material_edit.html", material=None)
@@ -1568,6 +1635,7 @@ def admin_material_new():
 @app.route("/admin/materials/<int:material_id>/edit", methods=["GET", "POST"])
 @roles_required("admin")
 def admin_material_edit(material_id):
+    trans = inject_globals().get("t")
     material = Material.query.get_or_404(material_id)
 
     if request.method == "POST":
@@ -1575,16 +1643,16 @@ def admin_material_edit(material_id):
         description = request.form.get("description", "").strip() or None
 
         if not name:
-            flash("Material name is required.", "danger")
+            flash(trans("flash_material_required"), "danger")
         else:
             existing = Material.query.filter_by(name=name).first()
             if existing and existing.id != material.id:
-                flash("Another material with this name already exists.", "danger")
+                flash(trans("flash_material_exists"), "danger")
             else:
                 material.name = name
                 material.description = description
                 db.session.commit()
-                flash("Material updated.", "success")
+                flash(trans("flash_material_updated"), "success")
                 return redirect(url_for("admin_material_list"))
 
     return render_template("admin_material_edit.html", material=material)
@@ -1593,10 +1661,11 @@ def admin_material_edit(material_id):
 @app.route("/admin/materials/<int:material_id>/delete", methods=["POST"])
 @roles_required("admin")
 def admin_material_delete(material_id):
+    trans = inject_globals().get("t")
     material = Material.query.get_or_404(material_id)
     db.session.delete(material)
     db.session.commit()
-    flash("Material deleted.", "info")
+    flash(trans("flash_material_deleted"), "info")
     return redirect(url_for("admin_material_list"))
 
 
@@ -1643,16 +1712,17 @@ def admin_color_import():
     }
     Existierende Namen werden aktualisiert, neue angelegt.
     """
+    trans = inject_globals().get("t")
     file = request.files.get("file")
     if not file or not file.filename:
-        flash("Please choose a JSON file to import.", "warning")
+        flash(trans("flash_json_choose_file"), "warning")
         return redirect(url_for("admin_color_list"))
 
     try:
         content = file.read().decode("utf-8-sig")
         data = json.loads(content)
     except Exception:
-        flash("Could not read file. Please upload a valid JSON export.", "danger")
+        flash(trans("flash_invalid_json"), "danger")
         return redirect(url_for("admin_color_list"))
 
     rows = data.get("colors", []) if isinstance(data, dict) else []
@@ -1677,28 +1747,34 @@ def admin_color_import():
             created += 1
 
     db.session.commit()
-    flash(f"Import finished: {created} created, {updated} updated, {skipped} skipped.", "success")
+    flash(
+        trans("flash_import_result_extended").format(
+            created=created, updated=updated, skipped=skipped
+        ),
+        "success",
+    )
     return redirect(url_for("admin_color_list"))
 
 
 @app.route("/admin/colors/new", methods=["GET", "POST"])
 @roles_required("admin")
 def admin_color_new():
+    trans = inject_globals().get("t")
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         hex_code = request.form.get("hex_code", "").strip() or None
 
         if not name:
-            flash("Color name is required.", "danger")
+            flash(trans("flash_color_required"), "danger")
         else:
             existing = Color.query.filter_by(name=name).first()
             if existing:
-                flash("A color with this name already exists.", "danger")
+                flash(trans("flash_color_exists"), "danger")
             else:
                 c = Color(name=name, hex_code=hex_code)
                 db.session.add(c)
                 db.session.commit()
-                flash("Color created.", "success")
+                flash(trans("flash_color_created"), "success")
                 return redirect(url_for("admin_color_list"))
 
     return render_template("admin_color_edit.html", color=None)
@@ -1707,6 +1783,7 @@ def admin_color_new():
 @app.route("/admin/colors/<int:color_id>/edit", methods=["GET", "POST"])
 @roles_required("admin")
 def admin_color_edit(color_id):
+    trans = inject_globals().get("t")
     color = Color.query.get_or_404(color_id)
 
     if request.method == "POST":
@@ -1714,16 +1791,16 @@ def admin_color_edit(color_id):
         hex_code = request.form.get("hex_code", "").strip() or None
 
         if not name:
-            flash("Color name is required.", "danger")
+            flash(trans("flash_color_required"), "danger")
         else:
             existing = Color.query.filter_by(name=name).first()
             if existing and existing.id != color.id:
-                flash("Another color with this name already exists.", "danger")
+                flash(trans("flash_color_exists"), "danger")
             else:
                 color.name = name
                 color.hex_code = hex_code
                 db.session.commit()
-                flash("Color updated.", "success")
+                flash(trans("flash_color_updated"), "success")
                 return redirect(url_for("admin_color_list"))
 
     return render_template("admin_color_edit.html", color=color)
@@ -1732,10 +1809,11 @@ def admin_color_edit(color_id):
 @app.route("/admin/colors/<int:color_id>/delete", methods=["POST"])
 @roles_required("admin")
 def admin_color_delete(color_id):
+    trans = inject_globals().get("t")
     color = Color.query.get_or_404(color_id)
     db.session.delete(color)
     db.session.commit()
-    flash("Color deleted.", "info")
+    flash(trans("flash_color_deleted"), "info")
     return redirect(url_for("admin_color_list"))
 
 
@@ -1752,6 +1830,7 @@ def admin_cost_center_list():
 @app.route("/admin/cost-centers/new", methods=["GET", "POST"])
 @roles_required("admin")
 def admin_cost_center_new():
+    trans = inject_globals().get("t")
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         email = request.form.get("email", "").strip() or None
@@ -1759,16 +1838,16 @@ def admin_cost_center_new():
         is_active = bool(request.form.get("is_active"))
 
         if not name:
-            flash("Name is required.", "danger")
+            flash(trans("flash_cost_center_required"), "danger")
         else:
             existing = CostCenter.query.filter(func.lower(CostCenter.name) == name.lower()).first()
             if existing:
-                flash("A cost center with this name already exists.", "danger")
+                flash(trans("flash_cost_center_exists"), "danger")
             else:
                 cc = CostCenter(name=name, email=email, note=note, is_active=is_active)
                 db.session.add(cc)
                 db.session.commit()
-                flash("Cost center created.", "success")
+                flash(trans("flash_cost_center_created"), "success")
                 return redirect(url_for("admin_cost_center_list"))
 
     return render_template("admin_cost_center_edit.html", cost_center=None)
@@ -1777,6 +1856,7 @@ def admin_cost_center_new():
 @app.route("/admin/cost-centers/<int:cc_id>/edit", methods=["GET", "POST"])
 @roles_required("admin")
 def admin_cost_center_edit(cc_id):
+    trans = inject_globals().get("t")
     cost_center = CostCenter.query.get_or_404(cc_id)
 
     if request.method == "POST":
@@ -1786,18 +1866,18 @@ def admin_cost_center_edit(cc_id):
         is_active = bool(request.form.get("is_active"))
 
         if not name:
-            flash("Name is required.", "danger")
+            flash(trans("flash_cost_center_required"), "danger")
         else:
             existing = CostCenter.query.filter(func.lower(CostCenter.name) == name.lower()).first()
             if existing and existing.id != cost_center.id:
-                flash("Another cost center with this name already exists.", "danger")
+                flash(trans("flash_cost_center_exists"), "danger")
             else:
                 cost_center.name = name
                 cost_center.email = email
                 cost_center.note = note
                 cost_center.is_active = is_active
                 db.session.commit()
-                flash("Cost center updated.", "success")
+                flash(trans("flash_cost_center_updated"), "success")
                 return redirect(url_for("admin_cost_center_list"))
 
     return render_template("admin_cost_center_edit.html", cost_center=cost_center)
@@ -1806,10 +1886,11 @@ def admin_cost_center_edit(cc_id):
 @app.route("/admin/cost-centers/<int:cc_id>/delete", methods=["POST"])
 @roles_required("admin")
 def admin_cost_center_delete(cc_id):
+    trans = inject_globals().get("t")
     cost_center = CostCenter.query.get_or_404(cc_id)
     db.session.delete(cost_center)
     db.session.commit()
-    flash("Cost center deleted.", "info")
+    flash(trans("flash_cost_center_deleted"), "info")
     return redirect(url_for("admin_cost_center_list"))
 
 
@@ -1852,16 +1933,17 @@ def admin_cost_center_import():
     }
     Bestehende Einträge werden vorher entfernt.
     """
+    trans = inject_globals().get("t")
     file = request.files.get("file")
     if not file or not file.filename:
-        flash("Please choose a JSON file to import.", "warning")
+        flash(trans("flash_json_choose_file"), "warning")
         return redirect(url_for("admin_cost_center_list"))
 
     try:
         content = file.read().decode("utf-8-sig")
         data = json.loads(content)
     except Exception:
-        flash("Could not read file. Please upload a valid JSON export.", "danger")
+        flash(trans("flash_invalid_json"), "danger")
         return redirect(url_for("admin_cost_center_list"))
 
     rows = data.get("cost_centers", []) if isinstance(data, dict) else []
@@ -1891,7 +1973,12 @@ def admin_cost_center_import():
         created += 1
 
     db.session.commit()
-    flash(f"Import finished: {created} created, {skipped} skipped.", "success")
+    flash(
+        trans("flash_import_result_simple").format(
+            created=created, skipped=skipped
+        ),
+        "success",
+    )
     return redirect(url_for("admin_cost_center_list"))
 
 
@@ -1903,7 +1990,8 @@ def admin_cost_center_import():
 @login_required
 def logout():
     logout_user()
-    flash("You have been logged out.", "info")
+    trans = inject_globals().get("t")
+    flash(trans("flash_logged_out"), "info")
     return redirect(url_for("landing"))
 
 

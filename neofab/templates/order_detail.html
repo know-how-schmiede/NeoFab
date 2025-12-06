@@ -20,17 +20,17 @@
       <ul class="nav nav-tabs mb-3" id="orderTabs" role="tablist">
         <li class="nav-item" role="presentation">
           <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general-tab-pane" type="button" role="tab" aria-controls="general-tab-pane" aria-selected="true">
-            General
+            {{ t("tab_general") }}
           </button>
         </li>
         <li class="nav-item" role="presentation">
           <button class="nav-link" id="project-tab" data-bs-toggle="tab" data-bs-target="#project-tab-pane" type="button" role="tab" aria-controls="project-tab-pane" aria-selected="false">
-            Project Documentation
+            {{ t("tab_project") }}
           </button>
         </li>
         <li class="nav-item" role="presentation">
           <button class="nav-link" id="files-tab" data-bs-toggle="tab" data-bs-target="#files-tab-pane" type="button" role="tab" aria-controls="files-tab-pane" aria-selected="false">
-            3D Models / Images
+            {{ t("tab_files") }}
           </button>
         </li>
       </ul>
@@ -43,7 +43,7 @@
         <div class="col-12">
           <label for="title" class="form-label">
             <i class="bi bi-card-text me-1"></i>
-            Title*
+            {{ t("order_title_label") }}*
           </label>
           <input
             type="text"
@@ -59,7 +59,7 @@
         <div class="col-12">
           <label for="description" class="form-label">
             <i class="bi bi-journal-text me-1"></i>
-            Description
+            {{ t("order_description_label") }}
           </label>
           <textarea
             class="form-control"
@@ -73,14 +73,14 @@
         <div class="col-md-6">
           <label for="cost_center_id" class="form-label">
             <i class="bi bi-bank me-1"></i>
-            Cost Center
+            {{ t("order_cost_center_label") }}
           </label>
           <select
             id="cost_center_id"
             name="cost_center_id"
             class="form-select"
           >
-            <option value="">-- Please select --</option>
+            <option value="">{{ t("select_placeholder") }}</option>
             {% for cc in cost_centers %}
               <option value="{{ cc.id }}"
                       {% if order.cost_center_id == cc.id %}selected{% endif %}>
@@ -94,14 +94,14 @@
         <div class="col-md-6">
           <label for="material_id" class="form-label">
             <i class="bi bi-box-seam me-1"></i>
-            Material
+            {{ t("order_material_label") }}
           </label>
           <select
             id="material_id"
             name="material_id"
             class="form-select"
           >
-            <option value="">– Please select –</option>
+            <option value="">{{ t("select_placeholder") }}</option>
             {% for m in materials %}
               <option value="{{ m.id }}"
                       {% if order.material_id == m.id %}selected{% endif %}>
@@ -115,7 +115,7 @@
         <div class="col-md-6">
           <label for="color_id" class="form-label">
             <i class="bi bi-palette me-1"></i>
-            Color
+            {{ t("order_color_label") }}
           </label>
           <div class="input-group">
             <select
@@ -124,7 +124,7 @@
               class="form-select"
               onchange="updateColorPreview()"
             >
-              <option value="">– Please select –</option>
+              <option value="">{{ t("select_placeholder") }}</option>
               {% for c in colors %}
                 <option value="{{ c.id }}"
                         data-hex="{{ c.hex_code if c.hex_code else '' }}"
@@ -156,7 +156,7 @@
         <div class="col-md-4">
           <label class="form-label">
             <i class="bi bi-flag me-1"></i>
-            Status
+            {{ t("order_status_label") }}
           </label>
 
           {% if current_user.role == 'admin' %}
@@ -192,7 +192,7 @@
         <div class="col-md-4">
           <label class="form-label">
             <i class="bi bi-person-circle me-1"></i>
-            Owner
+            {{ t("order_owner_label") }}
           </label>
           <div class="form-control-plaintext">
             {{ order.user.email }}
@@ -202,11 +202,11 @@
         <div class="col-md-4">
           <label class="form-label">
             <i class="bi bi-clock-history me-1"></i>
-            Timestamps
+            {{ t("order_timestamps_label") }}
           </label>
           <div class="small text-muted">
-            <div>Created: {{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '-' }}</div>
-            <div>Updated: {{ order.updated_at.strftime('%Y-%m-%d %H:%M') if order.updated_at else '-' }}</div>
+            <div>{{ t("order_created_label") }}: {{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '-' }}</div>
+            <div>{{ t("order_updated_label") }}: {{ order.updated_at.strftime('%Y-%m-%d %H:%M') if order.updated_at else '-' }}</div>
           </div>
         </div>
 
@@ -221,70 +221,65 @@
             <div class="col-md-6">
               <label class="form-label d-block">
                 <i class="bi bi-megaphone me-1"></i>
-                Public Sharing
+                {{ t("order_public_sharing") }}
               </label>
               <div class="form-check">
                 <input class="form-check-input" type="checkbox" id="public_allow_poster" name="public_allow_poster" {% if order.public_allow_poster %}checked{% endif %}>
-                <label class="form-check-label" for="public_allow_poster">Allow poster display</label>
+                <label class="form-check-label" for="public_allow_poster">{{ t("order_allow_poster") }}</label>
               </div>
               <div class="form-check">
                 <input class="form-check-input" type="checkbox" id="public_allow_web" name="public_allow_web" {% if order.public_allow_web %}checked{% endif %}>
-                <label class="form-check-label" for="public_allow_web">Allow website publication</label>
+                <label class="form-check-label" for="public_allow_web">{{ t("order_allow_web") }}</label>
               </div>
               <div class="form-check">
                 <input class="form-check-input" type="checkbox" id="public_allow_social" name="public_allow_social" {% if order.public_allow_social %}checked{% endif %}>
-                <label class="form-check-label" for="public_allow_social">Allow social media</label>
+                <label class="form-check-label" for="public_allow_social">{{ t("order_allow_social") }}</label>
               </div>
             </div>
 
             <!-- Anzeige-Name -->
             <div class="col-md-6">
-              <label for="public_display_name" class="form-label">Display Name (public)</label>
+              <label for="public_display_name" class="form-label">{{ t("order_display_name") }}</label>
               <input type="text" class="form-control" id="public_display_name" name="public_display_name" maxlength="200" value="{{ order.public_display_name or '' }}">
             </div>
 
             <!-- Projekt-Kurzbeschreibung -->
             <div class="col-md-6">
-              <label for="summary_short" class="form-label">Short Summary (one-liner)</label>
+              <label for="summary_short" class="form-label">{{ t("order_summary_short") }}</label>
               <input type="text" class="form-control" id="summary_short" name="summary_short" maxlength="300" value="{{ order.summary_short or '' }}">
             </div>
 
             <!-- Projektstory -->
             <div class="col-12">
-              <label for="summary_long" class="form-label">Project Story</label>
+              <label for="summary_long" class="form-label">{{ t("order_summary_long") }}</label>
               <textarea class="form-control" id="summary_long" name="summary_long" rows="3">{{ order.summary_long or '' }}</textarea>
             </div>
 
             <div class="col-md-6">
-              <label for="project_purpose" class="form-label">Project Purpose</label>
+              <label for="project_purpose" class="form-label">{{ t("order_project_purpose") }}</label>
               <textarea class="form-control" id="project_purpose" name="project_purpose" rows="2">{{ order.project_purpose or '' }}</textarea>
             </div>
             <div class="col-md-6">
-              <label for="project_use_case" class="form-label">Use Case</label>
+              <label for="project_use_case" class="form-label">{{ t("order_project_use_case") }}</label>
               <textarea class="form-control" id="project_use_case" name="project_use_case" rows="2">{{ order.project_use_case or '' }}</textarea>
             </div>
 
             <div class="col-md-6">
-              <label for="learning_points" class="form-label">Learning Points</label>
+              <label for="learning_points" class="form-label">{{ t("order_learning_points") }}</label>
               <textarea class="form-control" id="learning_points" name="learning_points" rows="2">{{ order.learning_points or '' }}</textarea>
             </div>
             <div class="col-md-6">
-              <label for="background_info" class="form-label">Background Info</label>
+              <label for="background_info" class="form-label">{{ t("order_background_info") }}</label>
               <textarea class="form-control" id="background_info" name="background_info" rows="2">{{ order.background_info or '' }}</textarea>
             </div>
 
             <div class="col-md-6">
-              <label for="project_url" class="form-label">Project URL (GitHub, docs, etc.)</label>
+              <label for="project_url" class="form-label">{{ t("order_project_url") }}</label>
               <input type="url" class="form-control" id="project_url" name="project_url" maxlength="300" value="{{ order.project_url or '' }}">
             </div>
 
             <div class="col-md-6">
-              <label for="image_main" class="form-label">Main Image (URL)</label>
-              <input type="text" class="form-control" id="image_main" name="image_main" maxlength="300" value="{{ image_main }}">
-            </div>
-
-            <div class="col-md-6">
-              <label for="tags" class="form-label">Tags (comma separated)</label>
+              <label for="tags" class="form-label">{{ t("order_tags") }}</label>
               <input type="text" class="form-control" id="tags" name="tags" maxlength="300" value="{{ tags_value }}" placeholder="mechanics, prototype, drone">
             </div>
 
@@ -296,11 +291,11 @@
       <div class="d-flex gap-2 mt-3">
         <button type="submit" class="btn btn-primary">
           <i class="bi bi-save me-1"></i>
-          Save changes
+          {{ t("btn_save_changes") }}
         </button>
         <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
           <i class="bi bi-arrow-left me-1"></i>
-          Back to dashboard
+          {{ t("btn_back_dashboard") }}
         </a>
       </div>
 
@@ -313,7 +308,7 @@
   <div class="tab-pane fade" id="files-tab-pane" role="tabpanel" aria-labelledby="files-tab">
 
     <div class="alert alert-info mb-3">
-      Uploads of 3D models or images are saved immediately; no extra "Save changes" click is needed.
+      {{ t("files_note_immediate") }}
     </div>
 
     <!-- Modelle -->
@@ -321,7 +316,7 @@
       <div class="card-header">
         <h3 class="h6 mb-0 d-flex align-items-center">
           <i class="bi bi-boxes me-2"></i>
-          3D Models
+          {{ t("files_header") }}
         </h3>
       </div>
       <div class="card-body">
@@ -359,16 +354,16 @@
                 <a class="btn btn-sm btn-outline-primary"
                   href="{{ url_for('download_order_file', order_id=order.id, file_id=f.id) }}">
                   <i class="bi bi-download me-1"></i>
-                  Download
+                  {{ t("btn_download") }}
                 </a>
 
                 <form method="post"
-                      onsubmit="return confirm('Delete this file?');">
+                      onsubmit="return confirm('{{ t('confirm_delete_file') }}');">
                   <input type="hidden" name="action" value="delete_file">
                   <input type="hidden" name="file_id" value="{{ f.id }}">
                   <button type="submit" class="btn btn-sm btn-outline-danger">
                     <i class="bi bi-trash me-1"></i>
-                    Delete
+                    {{ t("btn_delete") }}
                   </button>
                 </form>
               </div>
@@ -377,7 +372,7 @@
           </ul>
         {% else %}
           <p class="text-muted">
-            No 3D models uploaded yet.
+            {{ t("files_none") }}
           </p>
         {% endif %}
 
@@ -388,7 +383,7 @@
           <div class="mb-2">
             <label for="model_file" class="form-label">
               <i class="bi bi-upload me-1"></i>
-              Add 3D model (STL / 3MF)
+              {{ t("files_upload_label") }}
             </label>
             <input class="form-control"
                    type="file"
@@ -396,13 +391,13 @@
                    name="model_file"
                    accept=".stl,.3mf">
             <div class="form-text">
-              Allowed formats: .stl, .3mf
+              {{ t("files_upload_hint") }}
             </div>
           </div>
 
           <button type="submit" class="btn btn-secondary btn-sm">
             <i class="bi bi-plus-circle me-1"></i>
-            Upload file
+            {{ t("btn_upload_file") }}
           </button>
         </form>
 
@@ -414,7 +409,7 @@
       <div class="card-header">
         <h3 class="h6 mb-0 d-flex align-items-center">
           <i class="bi bi-image me-2"></i>
-          Project Images
+          {{ t("images_header") }}
         </h3>
       </div>
       <div class="card-body">
@@ -431,13 +426,13 @@
                 </div>
                 <div class="d-flex gap-2">
                   <a class="btn btn-sm btn-outline-primary" href="{{ url_for('download_order_image', order_id=order.id, image_id=img.id) }}">
-                    <i class="bi bi-download me-1"></i>Download
+                    <i class="bi bi-download me-1"></i>{{ t("btn_download") }}
                   </a>
-                  <form method="post" onsubmit="return confirm('Delete this image?');">
+                  <form method="post" onsubmit="return confirm('{{ t('confirm_delete_image') }}');">
                     <input type="hidden" name="action" value="delete_image">
                     <input type="hidden" name="image_id" value="{{ img.id }}">
                     <button type="submit" class="btn btn-sm btn-outline-danger">
-                      <i class="bi bi-trash me-1"></i>Delete
+                      <i class="bi bi-trash me-1"></i>{{ t("btn_delete") }}
                     </button>
                   </form>
                 </div>
@@ -445,7 +440,7 @@
             {% endfor %}
           </ul>
         {% else %}
-          <p class="text-muted">No images uploaded yet.</p>
+          <p class="text-muted">{{ t("images_none") }}</p>
         {% endif %}
 
         <form method="post" enctype="multipart/form-data" class="mt-2">
@@ -453,7 +448,7 @@
           <div class="mb-2">
             <label for="image_file" class="form-label">
               <i class="bi bi-upload me-1"></i>
-              Add image (png, jpg, jpeg, gif, webp)
+              {{ t("images_upload_label") }}
             </label>
             <input class="form-control"
                    type="file"
@@ -463,7 +458,7 @@
           </div>
           <button type="submit" class="btn btn-secondary btn-sm">
             <i class="bi bi-plus-circle me-1"></i>
-            Upload image
+            {{ t("btn_upload_file") }}
           </button>
         </form>
       </div>
@@ -477,14 +472,14 @@
   <div class="card-header">
     <h3 class="h6 mb-0 d-flex align-items-center">
       <i class="bi bi-chat-dots me-2"></i>
-      Communication
+      {{ t("communication_header") }}
     </h3>
   </div>
   <div class="card-body">
 
   <div class="card mt-4">
     <div class="card-header">
-        <h5 class="mb-0">Messages</h5>
+        <h5 class="mb-0">{{ t("messages_header") }}</h5>
     </div>
 
     <div id="messagesContainer" class="card-body neo-chat-thread">
@@ -500,12 +495,12 @@
                     class="form-control"
                     name="content"
                     rows="1"
-                    placeholder="Write a message..."
+                    placeholder="{{ t('message_placeholder') }}"
                     required
                 ></textarea>
                 <button class="btn btn-primary" type="submit">
                     <i class="bi bi-send"></i>
-                    <span class="d-none d-sm-inline ms-1">Send</span>
+                    <span class="d-none d-sm-inline ms-1">{{ t("btn_send") }}</span>
                 </button>
             </div>
         </form>
@@ -525,26 +520,24 @@
   <div class="card-header bg-danger text-white">
     <h3 class="h6 mb-0 d-flex align-items-center">
       <i class="bi bi-x-octagon me-2"></i>
-      Cancel Order
+      {{ t("cancel_header") }}
     </h3>
   </div>
   <div class="card-body">
     {% if order.status in ['completed', 'cancelled'] %}
       <p class="mb-2">
-        This order is already <strong>{{ status_labels.get(order.status, order.status) }}</strong>
-        and can no longer be cancelled.
+        {{ t("cancel_not_possible").format(status=status_labels.get(order.status, order.status)) }}
       </p>
     {% else %}
       <p class="mb-2">
-        You can cancel this order. This will set the status to
-        <strong>cancelled</strong>. This cannot be undone.
+        {{ t("cancel_hint") }}
       </p>
       <form method="post"
-            onsubmit="return confirm('Cancel this order?');">
+            onsubmit="return confirm('{{ t('confirm_cancel_order') }}');">
         <input type="hidden" name="action" value="cancel_order">
         <button type="submit" class="btn btn-danger">
           <i class="bi bi-x-circle me-1"></i>
-          Cancel this order
+          {{ t("btn_cancel_order") }}
         </button>
       </form>
     {% endif %}

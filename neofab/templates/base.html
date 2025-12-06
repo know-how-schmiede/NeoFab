@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ current_language() }}">
 <head>
   <meta charset="utf-8">
   <title>{% block title %}NeoFab{% endblock %}</title>
@@ -59,14 +59,14 @@
               <a href="{{ url_for('dashboard') }}"
                  class="nav-link">
                 <i class="bi bi-speedometer2 me-1"></i>
-                Dashboard
+                {{ t("nav_dashboard") }}
               </a>
             </li>
             <li class="nav-item">
               <a href="{{ url_for('new_order') }}"
                  class="nav-link">
                 <i class="bi bi-plus-circle me-1"></i>
-                New Order
+                {{ t("nav_new_order") }}
               </a>
             </li>
             {% if current_user.role == 'admin' %}
@@ -74,7 +74,7 @@
                 <a href="{{ url_for('admin_panel') }}"
                    class="nav-link">
                   <i class="bi bi-gear me-1"></i>
-                  Admin
+                  {{ t("nav_admin") }}
                 </a>
               </li>
             {% endif %}
@@ -89,21 +89,21 @@
               <i class="bi bi-person-circle me-1"></i>{{ current_user.email }}
             </span>
             <a class="nav-link" href="{{ url_for('profile') }}">
-              <i class="bi bi-person-badge me-1"></i>My Profile
+              <i class="bi bi-person-badge me-1"></i>{{ t("nav_profile") }}
             </a>
             <a class="nav-link" href="{{ url_for('logout') }}">
-              <i class="bi bi-box-arrow-right me-1"></i>Logout
+              <i class="bi bi-box-arrow-right me-1"></i>{{ t("nav_logout") }}
             </a>
           {% else %}
             <a class="nav-link" href="{{ url_for('login') }}">
-              <i class="bi bi-box-arrow-in-right me-1"></i>Login
+              <i class="bi bi-box-arrow-in-right me-1"></i>{{ t("nav_login") }}
             </a>
           {% endif %}
 
           <!-- Theme-Auswahl wie bei PrintFleet -->
           <div class="d-flex align-items-center">
             <label for="themeSelect" class="me-2 mb-0 small text-light">
-              Theme
+              {{ t("nav_theme") }}
             </label>
             <select id="themeSelect" class="form-select form-select-sm">
               <option value="lux">Lux</option>

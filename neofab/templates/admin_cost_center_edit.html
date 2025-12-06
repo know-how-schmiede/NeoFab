@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
 {% block title %}
-    Admin — {% if cost_center %}Edit Cost Center{% else %}New Cost Center{% endif %}
+    {{ cost_center and t("admin_cost_center_form_title_edit") or t("admin_cost_center_form_title_new") }} - NeoFab
 {% endblock %}
 
 {% block content %}
 <h1 class="mb-4">
-    {% if cost_center %}Edit Cost Center{% else %}New Cost Center{% endif %}
+    {{ cost_center and t("admin_cost_center_form_title_edit") or t("admin_cost_center_form_title_new") }}
 </h1>
 
 <div class="card">
@@ -14,7 +14,7 @@
         <form method="post">
             <!-- NAME -->
             <div class="mb-3">
-                <label for="name" class="form-label">Name*</label>
+                <label for="name" class="form-label">{{ t("admin_cost_center_label_name") }}</label>
                 <input type="text"
                        class="form-control"
                        id="name"
@@ -25,7 +25,7 @@
 
             <!-- EMAIL -->
             <div class="mb-3">
-                <label for="email" class="form-label">Email</label>
+                <label for="email" class="form-label">{{ t("admin_cost_center_label_email") }}</label>
                 <input type="email"
                        class="form-control"
                        id="email"
@@ -36,7 +36,7 @@
 
             <!-- NOTE -->
             <div class="mb-3">
-                <label for="note" class="form-label">Note</label>
+                <label for="note" class="form-label">{{ t("admin_cost_center_label_note") }}</label>
                 <textarea class="form-control"
                           id="note"
                           name="note"
@@ -51,13 +51,13 @@
                        name="is_active"
                        {% if cost_center is none or cost_center.is_active %}checked{% endif %}>
                 <label class="form-check-label" for="is_active">
-                    Active
+                    {{ t("admin_cost_center_label_is_active") }}
                 </label>
             </div>
 
             <!-- BUTTONS -->
-            <button type="submit" class="btn btn-primary">Save</button>
-            <a href="{{ url_for('admin_cost_center_list') }}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">{{ t("btn_save") }}</button>
+            <a href="{{ url_for('admin_cost_center_list') }}" class="btn btn-secondary">{{ t("btn_cancel") }}</a>
         </form>
     </div>
     </div>

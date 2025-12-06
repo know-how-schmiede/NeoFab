@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Admin – NeoFab{% endblock %}
+{% block title %}{{ t("admin_panel_title") }} - NeoFab{% endblock %}
 
 {% block content %}
 
@@ -8,7 +8,7 @@
   <div class="card-header d-flex justify-content-between align-items-center">
     <h2 class="h5 mb-0">
       <i class="bi bi-gear me-1"></i>
-      Admin Panel
+      {{ t("admin_panel_title") }}
     </h2>
   </div>
   <div class="card-body">
@@ -20,13 +20,13 @@
           <div class="card-body d-flex flex-column">
             <h5 class="card-title">
               <i class="bi bi-people me-1"></i>
-              User Management
+              {{ t("admin_users_title") }}
             </h5>
             <p class="card-text flex-grow-1">
-              View and edit registered users and their roles.
+              {{ t("admin_users_desc") }}
             </p>
             <a href="{{ url_for('admin_user_list') }}" class="btn btn-primary mt-auto">
-              Open User List
+              {{ t("admin_users_open") }}
             </a>
           </div>
         </div>
@@ -38,13 +38,13 @@
           <div class="card-body d-flex flex-column">
             <h5 class="card-title">
               <i class="bi bi-box-seam me-1"></i>
-              Material Master Data
+              {{ t("admin_material_title") }}
             </h5>
             <p class="card-text flex-grow-1">
-              Manage 3D printing materials (e.g. PLA, ABS, PETG, TPU).
+              {{ t("admin_material_desc") }}
             </p>
             <a href="{{ url_for('admin_material_list') }}" class="btn btn-primary mt-auto">
-              Open Material List
+              {{ t("admin_material_open") }}
             </a>
           </div>
         </div>
@@ -56,13 +56,13 @@
           <div class="card-body d-flex flex-column">
             <h5 class="card-title">
               <i class="bi bi-palette me-1"></i>
-              Color Master Data
+              {{ t("admin_color_title") }}
             </h5>
             <p class="card-text flex-grow-1">
-              Manage filament colors (e.g. Black, White, Red, Blue).
+              {{ t("admin_color_desc") }}
             </p>
             <a href="{{ url_for('admin_color_list') }}" class="btn btn-primary mt-auto">
-              Open Color List
+              {{ t("admin_color_open") }}
             </a>
           </div>
         </div>
@@ -74,13 +74,13 @@
           <div class="card-body d-flex flex-column">
             <h5 class="card-title">
               <i class="bi bi-bank me-1"></i>
-              Cost Center Master Data
+              {{ t("admin_cost_center_title") }}
             </h5>
             <p class="card-text flex-grow-1">
-              Manage cost centers with contact email, notes, and active flag.
+              {{ t("admin_cost_center_desc") }}
             </p>
             <a href="{{ url_for('admin_cost_center_list') }}" class="btn btn-primary mt-auto">
-              Open Cost Centers
+              {{ t("admin_cost_center_open") }}
             </a>
           </div>
         </div>

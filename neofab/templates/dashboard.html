@@ -7,14 +7,14 @@
 <div class="card">
   <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
     <h2 class="h5 mb-0">
-      Orders
+      {{ t("orders") }}
     </h2>
 
     <div class="d-flex flex-wrap gap-2">
       <!-- Neuer Auftrag -->
       <a href="{{ url_for('new_order') }}" class="btn btn-primary btn-sm">
         <i class="bi bi-plus-circle me-1"></i>
-        New Order
+        {{ t("new_order") }}
       </a>
     </div>
   </div>
@@ -26,14 +26,14 @@
           <thead>
             <tr>
               <th>ID</th>
-              <th>Title</th>
-              <th>Status</th>
-              <th>Material</th>
-              <th>Color</th>
-              <th>Owner</th>
-              <th>Created</th>
-              <th class="text-center">Files</th>
-              <th class="text-end">Actions</th>
+              <th>{{ t("title") }}</th>
+              <th>{{ t("status") }}</th>
+              <th>{{ t("material") }}</th>
+              <th>{{ t("color") }}</th>
+              <th>{{ t("owner") }}</th>
+              <th>{{ t("created") }}</th>
+              <th class="text-center">{{ t("files") }}</th>
+              <th class="text-end">{{ t("actions") }}</th>
             </tr>
           </thead>
           <tbody>
@@ -46,7 +46,7 @@
                   {{ o.title }}
                 </a>
                 {% if last_new_message.get(o.id) %}
-                  <span class="badge bg-warning text-dark ms-1">new message</span>
+                  <span class="badge bg-warning text-dark ms-1">{{ t("new_message") }}</span>
                 {% endif %}
               </td>
 
@@ -96,7 +96,7 @@
                 <a href="{{ url_for('order_detail', order_id=o.id) }}"
                    class="btn btn-outline-secondary btn-sm">
                   <i class="bi bi-pencil-square me-1"></i>
-                  Details
+                  {{ t("details") }}
                 </a>
               </td>
             </tr>
@@ -105,7 +105,7 @@
         </table>
       </div>
     {% else %}
-      <p class="mb-0">No orders yet.</p>
+      <p class="mb-0">{{ t("no_orders") }}</p>
     {% endif %}
   </div>
 </div>

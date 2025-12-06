@@ -68,8 +68,8 @@
             Language
           </label>
           <select class="form-select" id="language" name="language">
-            <option value="en">English</option>
-            <option value="de">Deutsch</option>
+            <option value="en" {% if user.language == 'en' %}selected{% endif %}>English</option>
+            <option value="de" {% if user.language == 'de' %}selected{% endif %}>Deutsch</option>
           </select>
         </div>
 

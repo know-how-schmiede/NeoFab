@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
 {% block title %}
-    Admin – {% if color %}Edit Color{% else %}New Color{% endif %}
+    {{ color and t("admin_color_form_title_edit") or t("admin_color_form_title_new") }} - NeoFab
 {% endblock %}
 
 {% block content %}
 <h1 class="mb-4">
-    {% if color %}Edit Color{% else %}New Color{% endif %}
+    {{ color and t("admin_color_form_title_edit") or t("admin_color_form_title_new") }}
 </h1>
 
 <div class="card">
@@ -14,7 +14,7 @@
         <form method="post">
             <!-- NAME -->
             <div class="mb-3">
-                <label for="name" class="form-label">Color Name</label>
+                <label for="name" class="form-label">{{ t("admin_color_label_name") }}</label>
                 <input type="text"
                        class="form-control"
                        id="name"
@@ -26,7 +26,7 @@
 
             <!-- HEX CODE + COLOR PICKER -->
             <div class="mb-3">
-                <label for="hex_code" class="form-label">Hex Code (optional)</label>
+                <label for="hex_code" class="form-label">{{ t("admin_color_label_hex") }}</label>
 
                 <div class="input-group">
                     <span class="input-group-text p-0">
@@ -49,14 +49,13 @@
                 </div>
 
                 <div class="form-text">
-                    Example: <code>#000000</code> for black, <code>#FF0000</code> for red.
-                    You can pick a color or type the hex code directly.
+                    {{ t("admin_color_hint_examples") }}
                 </div>
             </div>
 
             <!-- BUTTONS -->
-            <button type="submit" class="btn btn-primary">Save</button>
-            <a href="{{ url_for('admin_color_list') }}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">{{ t("btn_save") }}</button>
+            <a href="{{ url_for('admin_color_list') }}" class="btn btn-secondary">{{ t("btn_cancel") }}</a>
         </form>
     </div>
 </div>

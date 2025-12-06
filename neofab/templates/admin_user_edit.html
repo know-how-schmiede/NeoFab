@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Admin – Edit User{% endblock %}
+{% block title %}{{ t("admin_user_edit_title") }} - NeoFab{% endblock %}
 
 {% block content %}
 
@@ -8,7 +8,7 @@
   <div class="card-header">
     <h2 class="h5 mb-0">
       <i class="bi bi-person-gear me-1"></i>
-      Edit User: {{ user.email }}
+      {{ t("admin_user_edit_title") }}: {{ user.email }}
     </h2>
   </div>
 
@@ -20,7 +20,7 @@
         <div class="col-md-6">
           <label for="email" class="form-label">
             <i class="bi bi-envelope me-1"></i>
-            Email*
+            {{ t("label_email") }}*
           </label>
           <input
             type="email"
@@ -36,7 +36,7 @@
         <div class="col-md-6">
           <label for="role" class="form-label">
             <i class="bi bi-shield-lock me-1"></i>
-            Role*
+            {{ t("label_role") }}*
           </label>
           <select
             id="role"
@@ -53,7 +53,7 @@
         <div class="col-md-6">
           <label for="password" class="form-label">
             <i class="bi bi-key me-1"></i>
-            New Password (leave empty to keep current)
+            {{ t("admin_user_label_new_password") }}
           </label>
           <input
             type="password"
@@ -66,7 +66,7 @@
         <!-- Salutation -->
         <div class="col-md-6">
           <label for="salutation" class="form-label">
-            Salutation
+            {{ t("label_salutation") }}
           </label>
           <input
             type="text"
@@ -80,7 +80,7 @@
         <!-- First Name -->
         <div class="col-md-6">
           <label for="first_name" class="form-label">
-            First Name
+            {{ t("label_first_name") }}
           </label>
           <input
             type="text"
@@ -94,7 +94,7 @@
         <!-- Last Name -->
         <div class="col-md-6">
           <label for="last_name" class="form-label">
-            Last Name
+            {{ t("label_last_name") }}
           </label>
           <input
             type="text"
@@ -108,7 +108,7 @@
         <!-- Address -->
         <div class="col-12">
           <label for="address" class="form-label">
-            Address
+            {{ t("label_address") }}
           </label>
           <input
             type="text"
@@ -122,7 +122,7 @@
         <!-- Position -->
         <div class="col-md-6">
           <label for="position" class="form-label">
-            Position
+            {{ t("label_position") }}
           </label>
           <input
             type="text"
@@ -136,7 +136,7 @@
         <!-- Cost Center -->
         <div class="col-md-6">
           <label for="cost_center" class="form-label">
-            Cost Center
+            {{ t("label_cost_center") }}
           </label>
           <input
             type="text"
@@ -150,7 +150,7 @@
         <!-- Study Program -->
         <div class="col-md-6">
           <label for="study_program" class="form-label">
-            Study Program
+            {{ t("label_study_program") }}
           </label>
           <input
             type="text"
@@ -164,7 +164,7 @@
         <!-- Note -->
         <div class="col-12">
           <label for="note" class="form-label">
-            Note
+            {{ t("label_note") }}
           </label>
           <textarea
             class="form-control"
@@ -179,11 +179,11 @@
       <div class="d-flex gap-2 mt-3">
         <button type="submit" class="btn btn-primary">
           <i class="bi bi-save me-1"></i>
-          Save Changes
+          {{ t("btn_save_changes") }}
         </button>
         <a href="{{ url_for('admin_user_list') }}" class="btn btn-secondary">
           <i class="bi bi-arrow-left me-1"></i>
-          Back to User List
+          {{ t("admin_users_open") }}
         </a>
       </div>
     </form>

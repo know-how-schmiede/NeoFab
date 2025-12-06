@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 
-{% block title %}Admin – Colors{% endblock %}
+{% block title %}{{ t("admin_colors_title") }} - NeoFab{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">Color Master Data</h1>
+<h1 class="mb-4">{{ t("admin_colors_title") }}</h1>
 
 <div class="mb-3 d-flex gap-2 flex-wrap align-items-center">
     <a href="{{ url_for('admin_color_new') }}" class="btn btn-success">
-        Add New Color
+        {{ t("admin_colors_add") }}
     </a>
     <a href="{{ url_for('admin_panel') }}" class="btn btn-secondary">
-        Back to Admin Panel
+        {{ t("btn_back_admin") }}
     </a>
 </div>
 
@@ -18,10 +18,10 @@
     <table class="table table-striped align-middle">
         <thead>
             <tr>
-                <th style="width: 25%;">Name</th>
-                <th style="width: 15%;">Preview</th>
-                <th>Hex Code</th>
-                <th class="text-end" style="width: 20%;">Actions</th>
+                <th style="width: 25%;">{{ t("table_name") }}</th>
+                <th style="width: 15%;">{{ t("table_preview") }}</th>
+                <th>{{ t("table_hex_code") }}</th>
+                <th class="text-end" style="width: 20%;">{{ t("table_actions") }}</th>
             </tr>
         </thead>
         <tbody>
@@ -39,7 +39,7 @@
                 <td class="text-end">
                     <a href="{{ url_for('admin_color_edit', color_id=c.id) }}"
                        class="btn btn-sm btn-primary">
-                        Edit
+                        {{ t("btn_edit") }}
                     </a>
                     <form action="{{ url_for('admin_color_delete', color_id=c.id) }}"
                           method="post"
@@ -49,7 +49,7 @@
                                 class="btn btn-sm btn-danger btn-delete-color"
                                 data-form-id="delete-form-{{ c.id }}"
                                 data-color-name="{{ c.name }}">
-                            Delete
+                            {{ t("btn_delete") }}
                         </button>
                     </form>
                 </td>
@@ -58,18 +58,18 @@
         </tbody>
     </table>
 {% else %}
-    <p>No colors have been defined yet.</p>
+    <p>{{ t("admin_colors_none") }}</p>
 {% endif %}
 
 <div class="mt-4 d-flex gap-2 flex-wrap align-items-center">
     <a href="{{ url_for('admin_color_export') }}" class="btn btn-outline-secondary">
-        <i class="bi bi-download me-1"></i>Export JSON
+        <i class="bi bi-download me-1"></i>{{ t("btn_export_json") }}
     </a>
     <form action="{{ url_for('admin_color_import') }}" method="post" enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
-        <label class="form-label mb-0 small">Import JSON</label>
+        <label class="form-label mb-0 small">{{ t("label_import_json") }}</label>
         <input type="file" name="file" accept=".json,application/json" class="form-control form-control-sm" required>
         <button type="submit" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-upload me-1"></i>Import
+            <i class="bi bi-upload me-1"></i>{{ t("btn_import") }}
         </button>
     </form>
 </div>
@@ -79,15 +79,15 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="deleteColorModalLabel">Delete Color</h5>
+        <h5 class="modal-title" id="deleteColorModalLabel">{{ t("btn_delete") }} {{ t("color") }}</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        Are you sure you want to delete "<span id="deleteColorName"></span>"?
+        {{ t("confirm_delete_named").format(name='<span id=\"deleteColorName\"></span>') | safe }}
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-danger" id="confirmDeleteColor">Delete</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t("btn_cancel") }}</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteColor">{{ t("btn_delete") }}</button>
       </div>
     </div>
   </div>
