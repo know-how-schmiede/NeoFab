@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}My Profile{% endblock %}
+{% block title %}{{ t("nav_profile") }}{% endblock %}
 
 {% block content %}
 
@@ -8,7 +8,7 @@
   <div class="card-header">
     <h2 class="h5 mb-0">
       <i class="bi bi-person-badge me-1"></i>
-      My Profile
+      {{ t("nav_profile") }}
     </h2>
   </div>
 
@@ -20,7 +20,7 @@
         <div class="col-md-6">
           <label for="email" class="form-label">
             <i class="bi bi-envelope me-1"></i>
-            Email*
+            {{ t("label_email") }}*
           </label>
           <input
             type="email"
@@ -36,14 +36,14 @@
         <div class="col-md-3">
           <label for="password" class="form-label">
             <i class="bi bi-key me-1"></i>
-            New Password
+            {{ t("admin_user_label_new_password") }}
           </label>
           <input
             type="password"
             class="form-control"
             id="password"
             name="password"
-            placeholder="leave empty to keep"
+            placeholder="{{ t('profile_password_placeholder') }}"
             autocomplete="new-password"
           >
         </div>
@@ -51,7 +51,7 @@
         <!-- Password Repeat -->
         <div class="col-md-3">
           <label for="password2" class="form-label">
-            Repeat Password
+            {{ t("profile_password_repeat") }}
           </label>
           <input
             type="password"
@@ -65,7 +65,7 @@
         <!-- Language -->
         <div class="col-md-6">
           <label for="language" class="form-label">
-            Language
+            {{ t("label_language") }}
           </label>
           <select class="form-select" id="language" name="language">
             <option value="en" {% if user.language == 'en' %}selected{% endif %}>English</option>
@@ -76,7 +76,7 @@
         <!-- Salutation -->
         <div class="col-md-4">
           <label for="salutation" class="form-label">
-            Salutation
+            {{ t("label_salutation") }}
           </label>
           <input
             type="text"
@@ -90,7 +90,7 @@
         <!-- First / Last Name -->
         <div class="col-md-4">
           <label for="first_name" class="form-label">
-            First Name
+            {{ t("label_first_name") }}
           </label>
           <input
             type="text"
@@ -102,7 +102,7 @@
         </div>
         <div class="col-md-4">
           <label for="last_name" class="form-label">
-            Last Name
+            {{ t("label_last_name") }}
           </label>
           <input
             type="text"
@@ -116,7 +116,7 @@
         <!-- Address -->
         <div class="col-12">
           <label for="address" class="form-label">
-            Address
+            {{ t("label_address") }}
           </label>
           <input
             type="text"
@@ -130,7 +130,7 @@
         <!-- Position / Cost Center -->
         <div class="col-md-6">
           <label for="position" class="form-label">
-            Position
+            {{ t("label_position") }}
           </label>
           <input
             type="text"
@@ -142,7 +142,7 @@
         </div>
         <div class="col-md-6">
           <label for="cost_center" class="form-label">
-            Cost Center
+            {{ t("label_cost_center") }}
           </label>
           <input
             type="text"
@@ -156,7 +156,7 @@
         <!-- Study Program -->
         <div class="col-md-6">
           <label for="study_program" class="form-label">
-            Study Program
+            {{ t("label_study_program") }}
           </label>
           <input
             type="text"
@@ -170,7 +170,7 @@
         <!-- Note -->
         <div class="col-12">
           <label for="note" class="form-label">
-            Note
+            {{ t("label_note") }}
           </label>
           <textarea
             class="form-control"
@@ -185,11 +185,11 @@
       <div class="d-flex gap-2 mt-3">
         <button type="submit" class="btn btn-primary">
           <i class="bi bi-save me-1"></i>
-          Save Profile
+          {{ t("btn_save_changes") }}
         </button>
         <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
           <i class="bi bi-arrow-left me-1"></i>
-          Back to Dashboard
+          {{ t("btn_back_dashboard") }}
         </a>
       </div>
     </form>
