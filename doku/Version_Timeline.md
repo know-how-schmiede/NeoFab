@@ -1,4 +1,6 @@
 # Timeline NeoFab
+## Version 0.3.7
+Export/Import Material
 ## Version 0.3.6
 Export/Import Colors / Sicherheitsabfrage beim Löschen Color / Löschen der Farben beim Import
 ## Version 0.3.5

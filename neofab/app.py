@@ -1194,6 +1194,74 @@ def admin_material_list():
     return render_template("admin_materials.html", materials=materials)
 
 
+@app.route("/admin/materials/export")
+@roles_required("admin")
+def admin_material_export():
+    """
+    Exportiert alle Materialien als JSON (name, description) mit Versionsinfo.
+    """
+    materials = Material.query.order_by(Material.name.asc()).all()
+    payload = {
+        "version": APP_VERSION,
+        "materials": [
+            {"name": m.name, "description": m.description or ""}
+            for m in materials
+        ],
+    }
+    output = json.dumps(payload, ensure_ascii=False, indent=2)
+
+    return app.response_class(
+        output,
+        mimetype="application/json",
+        headers={"Content-Disposition": "attachment; filename=NeoFab_materials.json"},
+    )
+
+
+@app.route("/admin/materials/import", methods=["POST"])
+@roles_required("admin")
+def admin_material_import():
+    """
+    Importiert Materialien aus einer JSON-Datei:
+    {
+      "version": "...",
+      "materials": [{ "name": "...", "description": "..." }, ...]
+    }
+    Bestehende Materialien werden vorher entfernt.
+    """
+    file = request.files.get("file")
+    if not file or not file.filename:
+        flash("Please choose a JSON file to import.", "warning")
+        return redirect(url_for("admin_material_list"))
+
+    try:
+        content = file.read().decode("utf-8-sig")
+        data = json.loads(content)
+    except Exception:
+        flash("Could not read file. Please upload a valid JSON export.", "danger")
+        return redirect(url_for("admin_material_list"))
+
+    rows = data.get("materials", []) if isinstance(data, dict) else []
+
+    # Bestehende Materialien vor Import leeren
+    Material.query.delete()
+
+    created = skipped = 0
+    for entry in rows:
+        name = (entry.get("name") or "").strip() if isinstance(entry, dict) else ""
+        description = (entry.get("description") or "").strip() if isinstance(entry, dict) else None
+
+        if not name:
+            skipped += 1
+            continue
+
+        db.session.add(Material(name=name, description=description or None))
+        created += 1
+
+    db.session.commit()
+    flash(f"Import finished: {created} created, {skipped} skipped.", "success")
+    return redirect(url_for("admin_material_list"))
+
+
 @app.route("/admin/materials/new", methods=["GET", "POST"])
 @roles_required("admin")
 def admin_material_new():
