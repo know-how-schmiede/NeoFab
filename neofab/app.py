@@ -1308,6 +1308,9 @@ def admin_color_import():
         return redirect(url_for("admin_color_list"))
 
     rows = data.get("colors", []) if isinstance(data, dict) else []
+
+    # Bestehende Farben vor Import leeren
+    Color.query.delete()
     created = updated = skipped = 0
     for entry in rows:
         name = (entry.get("name") or "").strip() if isinstance(entry, dict) else ""
