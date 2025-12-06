@@ -1,4 +1,8 @@
 # Timeline NeoFab
+## Version 0.4.3
+i18n Umbau
+## Version 0.4.2
+Sprachenauswahl, Vorbereitung für i18n
 ## Version 0.4.1
 Orders mit Tabs - Ordnung schaffen
 ## Version 0.4.0
