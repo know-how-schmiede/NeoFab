@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Admin — {% if cost_center %}Edit Cost Center{% else %}New Cost Center{% endif %}
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">
+    {% if cost_center %}Edit Cost Center{% else %}New Cost Center{% endif %}
+</h1>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            <!-- NAME -->
+            <div class="mb-3">
+                <label for="name" class="form-label">Name*</label>
+                <input type="text"
+                       class="form-control"
+                       id="name"
+                       name="name"
+                       required
+                       value="{{ cost_center.name if cost_center else '' }}">
+            </div>
+
+            <!-- EMAIL -->
+            <div class="mb-3">
+                <label for="email" class="form-label">Email</label>
+                <input type="email"
+                       class="form-control"
+                       id="email"
+                       name="email"
+                       value="{{ cost_center.email if cost_center else '' }}"
+                       placeholder="contact@example.com">
+            </div>
+
+            <!-- NOTE -->
+            <div class="mb-3">
+                <label for="note" class="form-label">Note</label>
+                <textarea class="form-control"
+                          id="note"
+                          name="note"
+                          rows="3">{{ cost_center.note if cost_center else '' }}</textarea>
+            </div>
+
+            <!-- ACTIVE -->
+            <div class="form-check mb-3">
+                <input class="form-check-input"
+                       type="checkbox"
+                       id="is_active"
+                       name="is_active"
+                       {% if cost_center is none or cost_center.is_active %}checked{% endif %}>
+                <label class="form-check-label" for="is_active">
+                    Active
+                </label>
+            </div>
+
+            <!-- BUTTONS -->
+            <button type="submit" class="btn btn-primary">Save</button>
+            <a href="{{ url_for('admin_cost_center_list') }}" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+    </div>
+</div>
+{% endblock %}

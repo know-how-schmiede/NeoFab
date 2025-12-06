@@ -338,6 +338,22 @@ class Color(db.Model):
         return f"<Color {self.name}>"
 
 
+# --- Stammdaten: Cost Center -------------------------------------------------
+
+
+class CostCenter(db.Model):
+    __tablename__ = "cost_centers"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    note = db.Column(db.Text)
+    email = db.Column(db.String(255))
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
+
+    def __repr__(self):
+        return f"<CostCenter {self.name}>"
+
+
 # ============================================================
 # Login-Backend
 # ============================================================
@@ -1457,6 +1473,80 @@ def admin_color_delete(color_id):
     db.session.commit()
     flash("Color deleted.", "info")
     return redirect(url_for("admin_color_list"))
+
+
+# --- Admin: Cost Center -------------------------------------------------------
+
+
+@app.route("/admin/cost-centers")
+@roles_required("admin")
+def admin_cost_center_list():
+    cost_centers = CostCenter.query.order_by(CostCenter.name.asc()).all()
+    return render_template("admin_cost_centers.html", cost_centers=cost_centers)
+
+
+@app.route("/admin/cost-centers/new", methods=["GET", "POST"])
+@roles_required("admin")
+def admin_cost_center_new():
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip() or None
+        note = request.form.get("note", "").strip() or None
+        is_active = bool(request.form.get("is_active"))
+
+        if not name:
+            flash("Name is required.", "danger")
+        else:
+            existing = CostCenter.query.filter(func.lower(CostCenter.name) == name.lower()).first()
+            if existing:
+                flash("A cost center with this name already exists.", "danger")
+            else:
+                cc = CostCenter(name=name, email=email, note=note, is_active=is_active)
+                db.session.add(cc)
+                db.session.commit()
+                flash("Cost center created.", "success")
+                return redirect(url_for("admin_cost_center_list"))
+
+    return render_template("admin_cost_center_edit.html", cost_center=None)
+
+
+@app.route("/admin/cost-centers/<int:cc_id>/edit", methods=["GET", "POST"])
+@roles_required("admin")
+def admin_cost_center_edit(cc_id):
+    cost_center = CostCenter.query.get_or_404(cc_id)
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip() or None
+        note = request.form.get("note", "").strip() or None
+        is_active = bool(request.form.get("is_active"))
+
+        if not name:
+            flash("Name is required.", "danger")
+        else:
+            existing = CostCenter.query.filter(func.lower(CostCenter.name) == name.lower()).first()
+            if existing and existing.id != cost_center.id:
+                flash("Another cost center with this name already exists.", "danger")
+            else:
+                cost_center.name = name
+                cost_center.email = email
+                cost_center.note = note
+                cost_center.is_active = is_active
+                db.session.commit()
+                flash("Cost center updated.", "success")
+                return redirect(url_for("admin_cost_center_list"))
+
+    return render_template("admin_cost_center_edit.html", cost_center=cost_center)
+
+
+@app.route("/admin/cost-centers/<int:cc_id>/delete", methods=["POST"])
+@roles_required("admin")
+def admin_cost_center_delete(cc_id):
+    cost_center = CostCenter.query.get_or_404(cc_id)
+    db.session.delete(cost_center)
+    db.session.commit()
+    flash("Cost center deleted.", "info")
+    return redirect(url_for("admin_cost_center_list"))
 
 
 # ============================================================
