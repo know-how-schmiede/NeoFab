@@ -1,4 +1,6 @@
 # Timeline NeoFab
+## Version 0.3.6
+Export/Import Colors / Sicherheitsabfrage beim Löschen Color
 ## Version 0.3.5
 Farbwähler für Admin / Farben
 ## Version 0.3.4

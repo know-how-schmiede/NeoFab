@@ -14,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 import os
 import logging
+import json
 
 from sqlalchemy import func
 
@@ -1258,6 +1259,75 @@ def admin_material_delete(material_id):
 def admin_color_list():
     colors = Color.query.order_by(Color.name.asc()).all()
     return render_template("admin_colors.html", colors=colors)
+
+
+@app.route("/admin/colors/export")
+@roles_required("admin")
+def admin_color_export():
+    """
+    Exportiert alle Farben als JSON (name, hex_code) mit Versionsinfo.
+    """
+    colors = Color.query.order_by(Color.name.asc()).all()
+    payload = {
+        "version": APP_VERSION,
+        "colors": [
+            {"name": c.name, "hex_code": c.hex_code or ""}
+            for c in colors
+        ],
+    }
+    output = json.dumps(payload, ensure_ascii=False, indent=2)
+
+    return app.response_class(
+        output,
+        mimetype="application/json",
+        headers={"Content-Disposition": "attachment; filename=NeoFab_colors.json"},
+    )
+
+
+@app.route("/admin/colors/import", methods=["POST"])
+@roles_required("admin")
+def admin_color_import():
+    """
+    Importiert Farben aus einer JSON-Datei:
+    {
+      "version": "...",
+      "colors": [{ "name": "...", "hex_code": "#RRGGBB" }, ...]
+    }
+    Existierende Namen werden aktualisiert, neue angelegt.
+    """
+    file = request.files.get("file")
+    if not file or not file.filename:
+        flash("Please choose a JSON file to import.", "warning")
+        return redirect(url_for("admin_color_list"))
+
+    try:
+        content = file.read().decode("utf-8-sig")
+        data = json.loads(content)
+    except Exception:
+        flash("Could not read file. Please upload a valid JSON export.", "danger")
+        return redirect(url_for("admin_color_list"))
+
+    rows = data.get("colors", []) if isinstance(data, dict) else []
+    created = updated = skipped = 0
+    for entry in rows:
+        name = (entry.get("name") or "").strip() if isinstance(entry, dict) else ""
+        hex_code = (entry.get("hex_code") or "").strip() if isinstance(entry, dict) else None
+
+        if not name:
+            skipped += 1
+            continue
+
+        color = Color.query.filter_by(name=name).first()
+        if color:
+            color.hex_code = hex_code or None
+            updated += 1
+        else:
+            db.session.add(Color(name=name, hex_code=hex_code or None))
+            created += 1
+
+    db.session.commit()
+    flash(f"Import finished: {created} created, {updated} updated, {skipped} skipped.", "success")
+    return redirect(url_for("admin_color_list"))
 
 
 @app.route("/admin/colors/new", methods=["GET", "POST"])
