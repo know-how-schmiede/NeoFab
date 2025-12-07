@@ -16,7 +16,7 @@ import os
 import logging
 import json
 
-from sqlalchemy import func
+from sqlalchemy import func, text
 
 from markupsafe import Markup, escape
 
@@ -47,6 +47,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 from functools import wraps
+from typing import List, Tuple
 
 
 # ============================================================
@@ -175,6 +176,39 @@ def inject_globals():
 # ============================================================
 
 db = SQLAlchemy(app)
+
+
+def ensure_order_file_columns():
+    """
+    Fügt fehlende Spalten für OrderFile hinzu (leichtgewichtige Migration).
+    """
+    try:
+        exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='order_files'")
+        ).scalar()
+        if not exists:
+            return
+
+        cols = {
+            row[1]
+            for row in db.session.execute(text("PRAGMA table_info(order_files)"))
+        }
+        statements = []
+        if "note" not in cols:
+            statements.append("ALTER TABLE order_files ADD COLUMN note VARCHAR(255)")
+        if "quantity" not in cols:
+            statements.append("ALTER TABLE order_files ADD COLUMN quantity INTEGER NOT NULL DEFAULT 1")
+
+        for stmt in statements:
+            db.session.execute(text(stmt))
+        if statements:
+            db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure order_files columns exist")
+
+
+with app.app_context():
+    ensure_order_file_columns()
 
 
 @app.template_filter("nl2br")
@@ -384,6 +418,8 @@ class OrderFile(db.Model):
     # Metadaten
     file_type = db.Column(db.String(20))   # z.B. 'stl' oder '3mf'
     filesize = db.Column(db.Integer)       # in Bytes
+    note = db.Column(db.String(255))       # Bemerkung zum Modell
+    quantity = db.Column(db.Integer, nullable=False, default=1)  # benötigte Anzahl
     uploaded_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     # Beziehung zurück zum Order
@@ -1034,6 +1070,13 @@ def order_detail(order_id):
         # --- 4) Zusätzliche Datei hochladen --------------------------------
         elif action == "upload_file":
             file = request.files.get("model_file")
+            file_note = request.form.get("file_note", "").strip() or None
+            file_quantity_raw = request.form.get("file_quantity", "").strip()
+            try:
+                file_quantity = max(1, int(file_quantity_raw or "1"))
+            except ValueError:
+                file_quantity = 1
+
             if not file or not file.filename:
                 flash(trans("flash_select_file"), "warning")
                 return redirect(url_for("order_detail", order_id=order.id))
@@ -1055,6 +1098,8 @@ def order_detail(order_id):
                 original_name=original_name,
                 stored_name="",
                 file_type=ext,
+                note=file_note,
+                quantity=file_quantity,
             )
             db.session.add(order_file)
             db.session.flush()  # gibt eine ID ohne Commit
@@ -1998,6 +2043,135 @@ def logout():
     trans = inject_globals().get("t")
     flash(trans("flash_logged_out"), "info")
     return redirect(url_for("landing"))
+
+
+# ============================================================
+# Admin: PDF-Export für Orders
+# ============================================================
+
+def _pdf_escape(text_value: str) -> str:
+    """
+    Escape für einfache PDF-Strings.
+    """
+    text_value = (text_value or "").replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+    # PDFDocEncoding ist grob Latin-1; wir ersetzen nicht darstellbare Zeichen.
+    return text_value.encode("latin-1", "replace").decode("latin-1")
+
+
+def _build_order_pdf(order, translator) -> bytes:
+    """
+    Baut ein minimalistisches PDF (A4) mit Auftragsdetails.
+    """
+    lines: List[Tuple[str, str]] = []
+    add = lambda label, value: lines.append((label, value)) if value else None
+
+    add("NeoFab", f"Version {APP_VERSION}")
+    add("", "")
+    add("Order ID", f"#{order.id}")
+    add(translator("order_title_label"), order.title)
+    add(translator("order_status_label"), STATUS_LABELS.get(order.status, order.status))
+    add(translator("order_owner_label"), order.user.email if order.user else "")
+    add(translator("order_material_label"), order.material.name if order.material else "")
+    add(translator("order_color_label"), order.color.name if order.color else "")
+    add(translator("order_cost_center_label"), order.cost_center.name if order.cost_center else "")
+    add(translator("order_created_label"), order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else "")
+    add(translator("order_updated_label"), order.updated_at.strftime("%Y-%m-%d %H:%M") if order.updated_at else "")
+    add(translator("order_summary_short"), order.summary_short or "")
+    add(translator("order_summary_long"), order.summary_long or "")
+    add(translator("order_description_label"), order.description or "")
+    add(translator("order_project_purpose"), order.project_purpose or "")
+    add(translator("order_project_use_case"), order.project_use_case or "")
+    add(translator("order_learning_points"), order.learning_points or "")
+    add(translator("order_background_info"), order.background_info or "")
+    add(translator("order_project_url"), order.project_url or "")
+    add(translator("order_tags"), order.tags_entry.tags if getattr(order, "tags_entry", None) else "")
+    add(translator("order_public_sharing"), "")
+    add("• " + translator("order_allow_poster"), translator("badge_yes") if order.public_allow_poster else translator("badge_no"))
+    add("• " + translator("order_allow_web"), translator("badge_yes") if order.public_allow_web else translator("badge_no"))
+    add("• " + translator("order_allow_social"), translator("badge_yes") if order.public_allow_social else translator("badge_no"))
+
+    add("", "")
+    add(translator("messages_header"), "")
+    for msg in order.messages:
+        meta = []
+        if msg.created_at:
+            meta.append(msg.created_at.strftime("%Y-%m-%d %H:%M"))
+        if msg.user:
+            meta.append(msg.user.email)
+        meta_str = " - ".join(meta)
+        content = msg.content.replace("\r", " ").replace("\n", " ").strip()
+        add(f"• {meta_str}", content)
+
+    text_rows: List[str] = []
+    for label, value in lines:
+        line = f"{label}: {value}".strip()
+        text_rows.append(line)
+
+    start_y = 820
+    step = 18
+    content_parts = ["BT", "/F1 12 Tf"]
+    for idx, row in enumerate(text_rows):
+        y = start_y - idx * step
+        content_parts.append(f"1 0 0 1 72 {y} Tm")
+        content_parts.append(f"({_pdf_escape(row)}) Tj")
+    content_parts.append("ET")
+    content_stream = "\n".join(content_parts).encode("latin-1")
+
+    objects = []
+    objects.append("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n")
+    objects.append("2 0 obj\n<< /Type /Pages /Count 1 /Kids [3 0 R] >>\nendobj\n")
+    objects.append(
+        "3 0 obj\n"
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
+        "/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\n"
+        "endobj\n"
+    )
+    objects.append(
+        f"4 0 obj\n<< /Length {len(content_stream)} >>\nstream\n".encode("latin-1")
+        + content_stream
+        + b"\nendstream\nendobj\n"
+    )
+    objects.append("5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n")
+
+    pdf_parts: List[bytes] = [b"%PDF-1.4\n"]
+    offsets = [0]
+    current = len(pdf_parts[0])
+    for obj in objects:
+        chunk = obj if isinstance(obj, (bytes, bytearray)) else obj.encode("latin-1")
+        offsets.append(current)
+        pdf_parts.append(chunk)
+        current += len(chunk)
+
+    xref_start = current
+    size = len(objects) + 1
+    xref_lines = [b"xref\n", f"0 {size}\n".encode("latin-1")]
+    xref_lines.append(b"0000000000 65535 f \n")
+    for off in offsets[1:]:
+        xref_lines.append(f"{off:010d} 00000 n \n".encode("latin-1"))
+    trailer = (
+        b"trailer\n<< /Size "
+        + str(size).encode("latin-1")
+        + b" /Root 1 0 R >>\nstartxref\n"
+        + str(xref_start).encode("latin-1")
+        + b"\n%%EOF"
+    )
+    pdf_parts.extend(xref_lines)
+    pdf_parts.append(trailer)
+    return b"".join(pdf_parts)
+
+
+@app.route("/admin/orders/<int:order_id>/pdf")
+@roles_required("admin")
+def admin_order_pdf(order_id):
+    order = Order.query.get_or_404(order_id)
+    trans = inject_globals().get("t")
+    pdf_bytes = _build_order_pdf(order, trans)
+    filename = f"order_{order.id}.pdf"
+    return app.response_class(
+        pdf_bytes,
+        mimetype="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
 
 
 # ============================================================

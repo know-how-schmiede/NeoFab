@@ -1,4 +1,8 @@
 # Timeline NeoFab
+## Version 0.4.6
+PDF Download Order-Details
+## Version 0.4.5
+Bemerkung und Anzahl bei Datei-Upload 3D Modelle
 ## Version 0.4.4
 Fränzosische Übersetzung
 ## Version 0.4.3
