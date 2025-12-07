@@ -48,6 +48,31 @@ from werkzeug.utils import secure_filename
 
 from functools import wraps
 from typing import List, Tuple
+from io import BytesIO
+
+from jinja2 import Environment, FileSystemLoader, select_autoescape, Template
+
+XHTML2PDF_IMPORT_ERR = None
+pisa = None
+XHTML2PDF_AVAILABLE = False
+try:
+    from xhtml2pdf import pisa as _pisa  # type: ignore
+    pisa = _pisa
+    XHTML2PDF_AVAILABLE = True
+except Exception as exc:
+    XHTML2PDF_IMPORT_ERR = exc
+    # Versuch: Usersite dem Pfad hinzufügen (falls Paket per --user installiert ist)
+    try:
+        import site, sys  # noqa
+        user_site = site.getusersitepackages()
+        if isinstance(user_site, str) and user_site not in sys.path:
+            sys.path.append(user_site)
+        from xhtml2pdf import pisa as _pisa  # type: ignore
+        pisa = _pisa
+        XHTML2PDF_AVAILABLE = True
+        XHTML2PDF_IMPORT_ERR = None
+    except Exception as exc2:
+        XHTML2PDF_IMPORT_ERR = exc2
 
 
 # ============================================================
@@ -74,6 +99,12 @@ I18N_DIR = BASE_DIR.parent / "i18n"
 DEFAULT_LANG = "en"
 SUPPORTED_LANGS = ("en", "de", "fr")
 _translations_cache = {}
+
+# Optionaler PDF-Template-Pfad (HTML)
+PDF_TEMPLATE_PATH = os.environ.get(
+    "NEOFAB_PDF_TEMPLATE",
+    str(BASE_DIR.parent / "doku" / "pdf_template.html"),
+)
 
 
 def load_language_file(lang: str) -> dict:
@@ -2058,6 +2089,107 @@ def _pdf_escape(text_value: str) -> str:
     return text_value.encode("latin-1", "replace").decode("latin-1")
 
 
+def build_order_context(order, translator) -> dict:
+    def fmt_dt(dt):
+        return dt.strftime("%Y-%m-%d %H:%M") if dt else ""
+
+    return {
+        "app_name": "NeoFab",
+        "app_version": APP_VERSION,
+        "order": order,
+        "order_dict": {
+            "id": order.id,
+            "title": order.title,
+            "status": STATUS_LABELS.get(order.status, order.status),
+            "owner": order.user.email if order.user else "",
+            "salutation": order.user.salutation if order.user else "",
+            "first_name": order.user.first_name if order.user else "",
+            "last_name": order.user.last_name if order.user else "",
+            "address": order.user.address if order.user else "",
+            "position": order.user.position if order.user else "",
+            "study_program": order.user.study_program if order.user else "",
+            "material": order.material.name if order.material else "",
+            "color": order.color.name if order.color else "",
+            "cost_center": order.cost_center.name if order.cost_center else "",
+            "created_at": fmt_dt(order.created_at),
+            "updated_at": fmt_dt(order.updated_at),
+            "description": order.description or "",
+            "summary_short": order.summary_short or "",
+            "summary_long": order.summary_long or "",
+            "project_purpose": order.project_purpose or "",
+            "project_use_case": order.project_use_case or "",
+            "learning_points": order.learning_points or "",
+            "background_info": order.background_info or "",
+            "project_url": order.project_url or "",
+            "tags": order.tags_entry.tags if getattr(order, "tags_entry", None) else "",
+            "public_allow_poster": order.public_allow_poster,
+            "public_allow_web": order.public_allow_web,
+            "public_allow_social": order.public_allow_social,
+        },
+        "messages": [
+            {
+                "author": msg.user.email if msg.user else "",
+                "role": msg.user.role if msg.user else "",
+                "created_at": fmt_dt(msg.created_at),
+                "content": msg.content,
+            }
+            for msg in order.messages
+        ],
+        "files": [
+            {
+                "name": f.original_name,
+                "file_type": (f.file_type or "").upper(),
+                "filesize": f.filesize,
+                "uploaded_at": fmt_dt(f.uploaded_at),
+                "note": f.note or "",
+                "quantity": f.quantity or 1,
+            }
+            for f in order.files
+        ],
+        "images": [
+            {
+                "name": img.original_name,
+                "filesize": img.filesize,
+                "uploaded_at": fmt_dt(img.uploaded_at),
+            }
+            for img in order.images
+        ],
+        "t": translator,
+    }
+
+
+def render_pdf_with_template(template_path: str, context: dict) -> bytes:
+    if not XHTML2PDF_AVAILABLE:
+        app.logger.info(
+            "xhtml2pdf not available, skipping template-based PDF. Import error: %r",
+            XHTML2PDF_IMPORT_ERR,
+        )
+        return b""
+
+    if not template_path:
+        app.logger.info("No PDF template path configured, skipping template-based PDF.")
+        return b""
+
+    tpl_path = Path(template_path)
+    if not tpl_path.exists():
+        app.logger.info("PDF template not found at %s, skipping template-based PDF.", tpl_path)
+        return b""
+
+    env = Environment(
+        loader=FileSystemLoader(str(tpl_path.parent)),
+        autoescape=select_autoescape(["html", "xml"]),
+    )
+    tpl = env.get_template(tpl_path.name)
+    html = tpl.render(**context)
+
+    result = BytesIO()
+    pisa_status = pisa.CreatePDF(html, dest=result, encoding="utf-8")
+    if pisa_status.err:
+        app.logger.error("xhtml2pdf failed with %s errors, falling back.", pisa_status.err)
+        return b""
+    return result.getvalue()
+
+
 def _build_order_pdf(order, translator) -> bytes:
     """
     Baut ein minimalistisches PDF (A4) mit Auftragsdetails.
@@ -2101,6 +2233,28 @@ def _build_order_pdf(order, translator) -> bytes:
         meta_str = " - ".join(meta)
         content = msg.content.replace("\r", " ").replace("\n", " ").strip()
         add(f"• {meta_str}", content)
+
+    add("", "")
+    add(translator("files_header"), "")
+    for f in order.files:
+        parts = []
+        if f.file_type:
+            parts.append(f.file_type.upper())
+        qty = f.quantity or 1
+        parts.append(f"qty {qty}")
+        if f.note:
+            parts.append(f.note)
+        add(f"• {f.original_name}", " | ".join(parts))
+
+    add("", "")
+    add(translator("images_header"), "")
+    for img in order.images:
+        meta = []
+        if img.filesize:
+            meta.append(f"{(img.filesize / 1024):.1f} KB")
+        if img.uploaded_at:
+            meta.append(img.uploaded_at.strftime("%Y-%m-%d %H:%M"))
+        add(f"• {img.original_name}", " | ".join(meta))
 
     text_rows: List[str] = []
     for label, value in lines:
@@ -2165,7 +2319,18 @@ def _build_order_pdf(order, translator) -> bytes:
 def admin_order_pdf(order_id):
     order = Order.query.get_or_404(order_id)
     trans = inject_globals().get("t")
-    pdf_bytes = _build_order_pdf(order, trans)
+    context = build_order_context(order, trans)
+
+    pdf_bytes = b""
+    try:
+        pdf_bytes = render_pdf_with_template(PDF_TEMPLATE_PATH, context)
+    except Exception:
+        app.logger.exception("Rendering PDF from template failed, falling back to default PDF.")
+
+    if not pdf_bytes:
+        app.logger.info("Fallback to built-in PDF generator for order %s", order_id)
+        pdf_bytes = _build_order_pdf(order, trans)
+
     filename = f"order_{order.id}.pdf"
     return app.response_class(
         pdf_bytes,

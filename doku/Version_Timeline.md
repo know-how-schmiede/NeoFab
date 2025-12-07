@@ -1,4 +1,6 @@
 # Timeline NeoFab
+## Version 0.4.7
+PDF Export mit Template
 ## Version 0.4.6
 PDF Download Order-Details
 ## Version 0.4.5

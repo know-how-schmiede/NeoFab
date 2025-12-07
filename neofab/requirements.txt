@@ -2,3 +2,4 @@ Flask
 Flask-Bootstrap
 Flask-Login
 Flask-SQLAlchemy
+xhtml2pdf>=0.2.15

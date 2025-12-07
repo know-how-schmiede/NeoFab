@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>NeoFab Order PDF</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; color: #222; }
+    header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #444; padding-bottom: 8px; margin-bottom: 20px; }
+    h1 { font-size: 20px; margin: 0; }
+    h2 { font-size: 16px; margin: 16px 0 8px; }
+    .meta { font-size: 12px; color: #666; }
+    .section { margin-bottom: 16px; }
+    .field { margin-bottom: 2px; }
+    .label {
+      font-weight: bold;
+      font-size: 1.4em;
+      display: inline-block;
+      min-width: 180px;   /* feste Breite für saubere Ausrichtung */
+      vertical-align: top;
+    }   
+    .value {
+      display: inline;     /* kein Zeilenumbruch mehr */
+      margin-left: 4px;    /* kleiner Abstand hinter dem Label */
+    }
+    .page-break { page-break-before: always; }
+    .messages { border-top: 1px solid #ddd; padding-top: 8px; }
+    .chat { display: flex; flex-direction: column; gap: 8px; }
+    .msg-row { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+    .msg-row.admin { align-items: flex-end; text-align: right; }
+    .meta-line { font-size: 11px; color: #555; margin: 0; }
+    .bubble {
+      max-width: 70%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #f5f5f5;
+      border: 1px solid #e0e0e0;
+      white-space: pre-wrap;
+      margin: 0;
+    }
+    .admin .bubble { background: #e8f1ff; border-color: #c4dafd; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <div class="meta">{{ app_name }} - Version {{ app_version }}</div>
+      <h1>Order #{{ order_dict.id }} - {{ order_dict.title }}</h1>
+      <hr>
+    </div>
+  </header>
+
+<div class="section">
+
+  <!-- Status + Owner -->
+  <div class="row">
+    <div class="field">
+      <span class="label">{{ t("order_status_label") }}:</span><br>
+      <span class="value">{{ order_dict.status }}</span>
+    </div>
+
+    <div class="field">
+      <span class="label">{{ t("order_owner_label") }}:</span><br>
+      <span class="value">{{ order_dict.owner }}</span>
+    </div>
+  </div>
+
+  <!-- Anrede + Vorname + Nachname -->
+  <div class="row">
+    <div class="field">
+      <span class="label">{{ t("label_salutation") }}:</span><br>
+      <span class="value">{{ order_dict.salutation }}</span>
+    </div>
+
+    <div class="field">
+      <span class="label">{{ t("label_first_name") }}:</span><br>
+      <span class="value">{{ order_dict.first_name }}</span>
+    </div>
+
+    <div class="field">
+      <span class="label">{{ t("label_last_name") }}:</span><br>
+      <span class="value">{{ order_dict.last_name }}</span>
+    </div>
+  </div>
+
+  <!-- Adresse (volle Breite) -->
+  <div class="row">
+    <div class="field" style="width:100%;">
+      <span class="label">{{ t("label_address") }}:</span><br>
+      <span class="value">{{ order_dict.address }}</span>
+    </div>
+  </div>
+
+  <!-- Position + Studiengang -->
+  <div class="row">
+    <div class="field">
+      <span class="label">{{ t("label_position") }}:</span><br>
+      <span class="value">{{ order_dict.position }}</span>
+    </div>
+
+    <div class="field">
+      <span class="label">{{ t("label_study_program") }}:</span><br>
+      <span class="value">{{ order_dict.study_program }}</span>
+    </div>
+  </div>
+
+  <!-- Material + Farbe + Kostenstelle -->
+  <div class="row">
+    <div class="field">
+      <span class="label">{{ t("order_material_label") }}:</span><br>
+      <span class="value">{{ order_dict.material }}</span>
+    </div>
+
+    <div class="field">
+      <span class="label">{{ t("order_color_label") }}:</span><br>
+      <span class="value">{{ order_dict.color }}</span>
+    </div>
+
+    <div class="field">
+      <span class="label">{{ t("order_cost_center_label") }}:</span><br>
+      <span class="value">{{ order_dict.cost_center }}</span>
+    </div>
+  </div>
+
+  <!-- Erstellt + Aktualisiert -->
+  <div class="row">
+    <div class="field">
+      <span class="label">{{ t("order_created_label") }}:</span>
+      <span class="value">{{ order_dict.created_at }}</span>
+    </div>
+
+    <div class="field">
+      <span class="label">{{ t("order_updated_label") }}:</span>
+      <span class="value">{{ order_dict.updated_at }}</span>
+    </div>
+  </div>
+
+</div>
+
+
+  <div class="section page-break">
+    <h2>{{ t("tab_project") }}</h2>
+    <hr>
+    <div class="field"><span class="label">{{ t("order_summary_short") }}:</span><br> {{ order_dict.summary_short }}</div>
+    <div class="field"><span class="label">{{ t("order_summary_long") }}:</span><br> {{ order_dict.summary_long }}</div>
+    <div class="field"><span class="label">{{ t("order_description_label") }}:</span><br> {{ order_dict.description }}</div>
+    <div class="field"><span class="label">{{ t("order_project_purpose") }}:</span><br> {{ order_dict.project_purpose }}</div>
+    <div class="field"><span class="label">{{ t("order_project_use_case") }}:</span><br> {{ order_dict.project_use_case }}</div>
+    <div class="field"><span class="label">{{ t("order_learning_points") }}:</span><br> {{ order_dict.learning_points }}</div>
+    <div class="field"><span class="label">{{ t("order_background_info") }}:</span><br> {{ order_dict.background_info }}</div>
+    <div class="field"><span class="label">{{ t("order_project_url") }}:</span><br> {{ order_dict.project_url }}</div>
+    <div class="field"><span class="label">{{ t("order_tags") }}:</span><br> {{ order_dict.tags }}</div>
+    <div class="field"><span class="label">{{ t("order_public_sharing") }}:</span>
+      <ul style="margin: 4px 0 0 0; padding-left: 18px;">
+        <li>{{ t("order_allow_poster") }}: {{ "Yes" if order_dict.public_allow_poster else "No" }}</li>
+        <li>{{ t("order_allow_web") }}: {{ "Yes" if order_dict.public_allow_web else "No" }}</li>
+        <li>{{ t("order_allow_social") }}: {{ "Yes" if order_dict.public_allow_social else "No" }}</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section messages page-break">
+    <h2>{{ t("messages_header") }}</h2>
+    <hr>
+    {% if messages %}
+      <div class="chat">
+        {% for m in messages %}
+          {% set is_admin = m.role == 'admin' %}
+          <div class="msg-row {% if is_admin %}admin{% endif %}">
+            <div class="meta-line">{{ m.author }} — {{ m.created_at }}</div>
+            <div class="bubble">{{ m.content }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="meta">{{ t("messages_empty") }}</div>
+    {% endif %}
+  </div>
+
+  <div class="section page-break">
+    <h2>{{ t("files_header") }}</h2>
+    <hr>
+    {% if files %}
+      <ul>
+        {% for f in files %}
+          <li>
+            <strong>{{ f.name }}</strong>
+            {% if f.file_type %} ({{ f.file_type }}){% endif %}
+            <br> {{ t("files_label_quantity") }}: {{ f.quantity }}
+            {% if f.note %} <br> {{ t("files_label_note") }}: {{ f.note }}{% endif %}
+            {% if f.uploaded_at %} — {{ f.uploaded_at }}{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="meta">{{ t("files_none") }}</div>
+    {% endif %}
+  </div>
+
+  <div class="section page-break">
+    <h2>{{ t("images_header") }}</h2>
+    <hr>
+    {% if images %}
+      <ul>
+        {% for img in images %}
+          <li>
+            <strong>{{ img.name }}</strong>
+            {% if img.uploaded_at %} <br> {{ img.uploaded_at }}{% endif %}
+            {% if img.filesize %} — {{ (img.filesize / 1024)|round(1) }} KB{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="meta">{{ t("images_none") }}</div>
+    {% endif %}
+  </div>
+</body>
+</html>
