@@ -1,4 +1,6 @@
 # Timeline NeoFab
+## Version 0.4.4
+Fränzosische Übersetzung
 ## Version 0.4.3
 i18n Umbau
 ## Version 0.4.2

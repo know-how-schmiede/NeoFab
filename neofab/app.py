@@ -71,6 +71,7 @@ app.config["IMAGE_UPLOAD_FOLDER"] = str(IMAGE_UPLOAD_FOLDER)
 # Übersetzungen aus externer Struktur laden (Ordner i18n im Projekt-Root)
 I18N_DIR = BASE_DIR.parent / "i18n"
 DEFAULT_LANG = "en"
+SUPPORTED_LANGS = ("en", "de", "fr")
 _translations_cache = {}
 
 
@@ -146,10 +147,14 @@ def inject_globals():
     Stellt globale Werte in allen Templates zur Verfügung.
     """
     def current_language():
+        lang = DEFAULT_LANG
         if current_user.is_authenticated and getattr(current_user, "language", None):
-            lang = (current_user.language or "en").lower()
-            return "de" if lang.startswith("de") else "en"
-        return "en"
+            lang = (current_user.language or DEFAULT_LANG).lower()
+
+        for code in SUPPORTED_LANGS:
+            if lang.startswith(code):
+                return code
+        return DEFAULT_LANG
 
     def t(key):
         lang = current_language()
@@ -635,7 +640,7 @@ def profile():
         new_password = request.form.get("password", "")
         new_password2 = request.form.get("password2", "")
         language = request.form.get("language", "").strip().lower() or "en"
-        if language not in ("en", "de"):
+        if language not in SUPPORTED_LANGS:
             language = "en"
 
         # Basisvalidierungen
@@ -721,7 +726,7 @@ def new_order():
         project_url = request.form.get("project_url", "").strip() or None
         tags_value = request.form.get("tags", "").strip() or None
         language = request.form.get("language", "").strip().lower() or "en"
-        if language not in ("en", "de"):
+        if language not in SUPPORTED_LANGS:
             language = "en"
 
         trans = inject_globals().get("t")
