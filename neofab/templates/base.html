@@ -33,11 +33,11 @@
 
       <!-- Brand / Logo -->
       <a class="navbar-brand d-flex align-items-center" href="{{ url_for('dashboard') if current_user.is_authenticated else url_for('landing') }}">
-        <!-- Wenn du später ein Logo hast, hier einfügen -->
-        <span class="me-2">
-          <i class="bi bi-cube-fill"></i>
-        </span>
-        <span>NeoFab v{{ app_version }}</span>
+        <img src="{{ url_for('static', filename='Logo_NeoFab_Name_200px.png') }}"
+             alt="NeoFab Logo"
+             height="32"
+             class="me-2">
+        <span class="small">v{{ app_version }}</span>
       </a>
 
       <!-- Toggler für Mobile -->
