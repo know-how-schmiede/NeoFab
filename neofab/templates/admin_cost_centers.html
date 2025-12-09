@@ -6,10 +6,10 @@
 <h1 class="mb-4">{{ t("admin_cost_centers_title") }}</h1>
 
 <div class="mb-3 d-flex gap-2 flex-wrap align-items-center">
-    <a href="{{ url_for('admin_cost_center_new') }}" class="btn btn-success">
+    <a href="{{ url_for('admin.admin_cost_center_new') }}" class="btn btn-success">
         {{ t("admin_cost_centers_add") }}
     </a>
-    <a href="{{ url_for('admin_panel') }}" class="btn btn-secondary">
+    <a href="{{ url_for('admin.admin_panel') }}" class="btn btn-secondary">
         {{ t("btn_back_admin") }}
     </a>
 </div>
@@ -39,11 +39,11 @@
                     {% endif %}
                 </td>
                 <td class="text-end">
-                    <a href="{{ url_for('admin_cost_center_edit', cc_id=cc.id) }}"
+                    <a href="{{ url_for('admin.admin_cost_center_edit', cc_id=cc.id) }}"
                        class="btn btn-sm btn-primary">
                         {{ t("btn_edit") }}
                     </a>
-                    <form action="{{ url_for('admin_cost_center_delete', cc_id=cc.id) }}"
+                    <form action="{{ url_for('admin.admin_cost_center_delete', cc_id=cc.id) }}"
                           method="post"
                           class="d-inline"
                           id="delete-cc-form-{{ cc.id }}">
@@ -64,10 +64,10 @@
 {% endif %}
 
 <div class="mt-4 d-flex gap-2 flex-wrap align-items-center">
-    <a href="{{ url_for('admin_cost_center_export') }}" class="btn btn-outline-secondary">
+    <a href="{{ url_for('admin.admin_cost_center_export') }}" class="btn btn-outline-secondary">
         <i class="bi bi-download me-1"></i>{{ t("btn_export_json") }}
     </a>
-    <form action="{{ url_for('admin_cost_center_import') }}" method="post" enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
+    <form action="{{ url_for('admin.admin_cost_center_import') }}" method="post" enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
         <label class="form-label mb-0 small">{{ t("label_import_json") }}</label>
         <input type="file" name="file" accept=".json,application/json" class="form-control form-control-sm" required>
         <button type="submit" class="btn btn-outline-primary btn-sm">

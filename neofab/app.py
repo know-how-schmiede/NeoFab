@@ -1,16 +1,16 @@
 # ============================================================
-# NeoFab – einfache 3D-Druck-Auftragsverwaltung
+# NeoFab ÔÇô einfache 3D-Druck-Auftragsverwaltung
 # ============================================================
 # - User-Registrierung & Login
-# - Aufträge mit Material / Farbe
-# - Chat-ähnliche Kommunikation pro Auftrag
+# - Auftr├ñge mit Material / Farbe
+# - Chat-├ñhnliche Kommunikation pro Auftrag
 # - Upload mehrerer 3D-Dateien (STL / 3MF) pro Auftrag
-# - Download & Löschen von Dateien
-# - Dashboard mit Files-Zähler pro Auftrag
+# - Download & L├Âschen von Dateien
+# - Dashboard mit Files-Z├ñhler pro Auftrag
 # ============================================================
 
 from version import APP_VERSION
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 import os
 import logging
@@ -32,25 +32,46 @@ from flask import (
     abort,
 )
 
-from flask_sqlalchemy import SQLAlchemy
-
 from flask_login import (
     LoginManager,
-    UserMixin,
     login_user,
     login_required,
     logout_user,
     current_user,
 )
 
-from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
-from functools import wraps
 from typing import List, Tuple
 from io import BytesIO
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape, Template
+from config import (
+    DEFAULT_SETTINGS,
+    SETTINGS_FILE,
+    coerce_positive_int,
+    load_app_settings,
+    save_app_settings,
+)
+from auth_utils import (
+    roles_required,
+    register_session_timeout,
+    SESSION_LAST_ACTIVE_KEY,
+)
+from routes import create_admin_blueprint
+from models import (
+    db,
+    User,
+    Order,
+    OrderMessage,
+    OrderReadStatus,
+    OrderFile,
+    OrderImage,
+    OrderTag,
+    Material,
+    Color,
+    CostCenter,
+)
 
 XHTML2PDF_IMPORT_ERR = None
 pisa = None
@@ -61,7 +82,7 @@ try:
     XHTML2PDF_AVAILABLE = True
 except Exception as exc:
     XHTML2PDF_IMPORT_ERR = exc
-    # Versuch: Usersite dem Pfad hinzufügen (falls Paket per --user installiert ist)
+    # Versuch: Usersite dem Pfad hinzuf├╝gen (falls Paket per --user installiert ist)
     try:
         import site, sys  # noqa
         user_site = site.getusersitepackages()
@@ -84,17 +105,17 @@ app = Flask(__name__)
 # Basis-Verzeichnis (Root des Projekts)
 BASE_DIR = Path(__file__).resolve().parent
 
-# Upload-Ordner für 3D-Modelle, z.B. "uploads/models"
+# Upload-Ordner f├╝r 3D-Modelle, z.B. "uploads/models"
 UPLOAD_FOLDER = BASE_DIR / "uploads" / "models"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = str(UPLOAD_FOLDER)
 
-# Upload-Ordner für Projektbilder
+# Upload-Ordner f├╝r Projektbilder
 IMAGE_UPLOAD_FOLDER = BASE_DIR / "uploads" / "images"
 os.makedirs(IMAGE_UPLOAD_FOLDER, exist_ok=True)
 app.config["IMAGE_UPLOAD_FOLDER"] = str(IMAGE_UPLOAD_FOLDER)
 
-# Übersetzungen aus externer Struktur laden (Ordner i18n im Projekt-Root)
+# ├£bersetzungen aus externer Struktur laden (Ordner i18n im Projekt-Root)
 I18N_DIR = BASE_DIR.parent / "i18n"
 DEFAULT_LANG = "en"
 SUPPORTED_LANGS = ("en", "de", "fr")
@@ -109,8 +130,8 @@ PDF_TEMPLATE_PATH = os.environ.get(
 
 def load_language_file(lang: str) -> dict:
     """
-    Lädt eine Sprachdatei (JSON) aus i18n/<lang>.json.
-    Gibt ein leeres Dict zurück, falls nicht vorhanden/lesbar.
+    L├ñdt eine Sprachdatei (JSON) aus i18n/<lang>.json.
+    Gibt ein leeres Dict zur├╝ck, falls nicht vorhanden/lesbar.
     """
     lang = (lang or DEFAULT_LANG).lower()
     file_path = I18N_DIR / f"{lang}.json"
@@ -128,14 +149,14 @@ def load_language_file(lang: str) -> dict:
 
 def get_translations(lang: str) -> dict:
     """
-    Cached Zugriff auf Übersetzungen.
+    Cached Zugriff auf ├£bersetzungen.
     """
     lang = (lang or DEFAULT_LANG).lower()
     if lang not in _translations_cache:
         _translations_cache[lang] = load_language_file(lang)
     return _translations_cache[lang]
 
-# Maximal erlaubte Upload-Größe (z.B. 50 MB)
+# Maximal erlaubte Upload-Gr├Â├ƒe (z.B. 50 MB)
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
 
 # Einfache Logging-Konfiguration
@@ -154,7 +175,7 @@ ORDER_STATUSES = [
 # Mapping der Status-Codes zu lesbaren Labels
 STATUS_LABELS = {value: label for value, label in ORDER_STATUSES}
 
-# Abwärtskompatibilität für alte deutsche Statuswerte
+# Abw├ñrtskompatibilit├ñt f├╝r alte deutsche Statuswerte
 STATUS_LABELS.setdefault("neu", "New")
 STATUS_LABELS.setdefault("in_bearbeitung", "In progress")
 STATUS_LABELS.setdefault("abgeschlossen", "Completed")
@@ -168,109 +189,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-# JSON-basierte Backend-Einstellungen (z. B. Session-Timeout)
-INSTANCE_DIR = BASE_DIR / "instance"
-SETTINGS_FILE = INSTANCE_DIR / "config.json"
-
-DEFAULT_SETTINGS = {
-    "session_timeout_minutes": 30,
-}
-
-_settings_cache = None
-_settings_mtime = None
-
-
-def _coerce_positive_int(value, fallback):
-    try:
-        value_int = int(value)
-        if value_int > 0:
-            return value_int
-    except (TypeError, ValueError):
-        pass
-    return fallback
-
-
-def _apply_session_timeout_setting(timeout_minutes: int) -> int:
-    timeout_minutes = _coerce_positive_int(
-        timeout_minutes,
-        DEFAULT_SETTINGS["session_timeout_minutes"],
-    )
-    app.permanent_session_lifetime = timedelta(minutes=timeout_minutes)
-    return timeout_minutes
-
-
-def load_app_settings(force_reload: bool = False) -> dict:
-    """
-    Laedt die JSON-Konfiguration (z. B. Session-Timeout) mit Fallback auf Defaults.
-    Erkennt externe Aenderungen ueber die mtime und laedt sie bei Bedarf neu.
-    """
-    global _settings_cache, _settings_mtime
-
-    if not force_reload and _settings_cache is not None:
-        try:
-            current_mtime = SETTINGS_FILE.stat().st_mtime
-        except FileNotFoundError:
-            current_mtime = None
-        if current_mtime == _settings_mtime:
-            return _settings_cache
-
-    settings = DEFAULT_SETTINGS.copy()
-    try:
-        if SETTINGS_FILE.exists():
-            with SETTINGS_FILE.open("r", encoding="utf-8") as f:
-                loaded = json.load(f)
-            if isinstance(loaded, dict):
-                settings["session_timeout_minutes"] = _coerce_positive_int(
-                    loaded.get("session_timeout_minutes"),
-                    DEFAULT_SETTINGS["session_timeout_minutes"],
-                )
-            _settings_mtime = SETTINGS_FILE.stat().st_mtime
-        else:
-            _settings_mtime = None
-    except Exception as exc:
-        app.logger.warning("Could not load settings from %s: %s", SETTINGS_FILE, exc)
-
-    settings["session_timeout_minutes"] = _apply_session_timeout_setting(
-        settings["session_timeout_minutes"]
-    )
-    _settings_cache = settings
-    return settings
-
-
-def save_app_settings(new_settings: dict) -> dict:
-    """
-    Schreibt Einstellungen in die JSON-Datei und aktualisiert Cache + Session-Lifetime.
-    """
-    global _settings_cache, _settings_mtime
-
-    settings = DEFAULT_SETTINGS.copy()
-    if isinstance(new_settings, dict):
-        settings["session_timeout_minutes"] = _coerce_positive_int(
-            new_settings.get("session_timeout_minutes"),
-            DEFAULT_SETTINGS["session_timeout_minutes"],
-        )
-
-    settings["session_timeout_minutes"] = _apply_session_timeout_setting(
-        settings["session_timeout_minutes"]
-    )
-
-    try:
-        SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
-        with SETTINGS_FILE.open("w", encoding="utf-8") as f:
-            json.dump(settings, f, ensure_ascii=False, indent=2)
-        _settings_mtime = SETTINGS_FILE.stat().st_mtime
-        _settings_cache = settings
-    except Exception as exc:
-        app.logger.error("Could not write settings to %s: %s", SETTINGS_FILE, exc)
-        raise
-
-    return settings
-
-
-# Initiales Laden (setzt auch permanent_session_lifetime)
-load_app_settings()
-
-SESSION_LAST_ACTIVE_KEY = "last_active_utc"
+load_app_settings(app)
 
 
 # ============================================================
@@ -280,7 +199,7 @@ SESSION_LAST_ACTIVE_KEY = "last_active_utc"
 @app.context_processor
 def inject_globals():
     """
-    Stellt globale Werte in allen Templates zur Verfügung.
+    Stellt globale Werte in allen Templates zur Verf├╝gung.
     """
     def current_language():
         lang = DEFAULT_LANG
@@ -307,15 +226,20 @@ def inject_globals():
 
 
 # ============================================================
+# Session-/Auth-Handler
+# ============================================================
+
+register_session_timeout(app, lambda: inject_globals().get('t'))
+
 # DB-Initialisierung & Hilfsfunktionen
 # ============================================================
 
-db = SQLAlchemy(app)
+db.init_app(app)
 
 
 def ensure_order_file_columns():
     """
-    Fügt fehlende Spalten für OrderFile hinzu (leichtgewichtige Migration).
+    F├╝gt fehlende Spalten f├╝r OrderFile hinzu (leichtgewichtige Migration).
     """
     try:
         exists = db.session.execute(
@@ -346,11 +270,19 @@ with app.app_context():
     ensure_order_file_columns()
 
 
+# ============================================================
+# Blueprints
+# ============================================================
+
+admin_bp = create_admin_blueprint(lambda: inject_globals().get("t"))
+app.register_blueprint(admin_bp)
+
+
 @app.template_filter("nl2br")
 def nl2br_filter(s: str):
     """
-    Filter für Jinja: wandelt Zeilenumbrüche in <br> um und escaped den Text zuvor.
-    Eignet sich für Chat-/Text-Ausgabe.
+    Filter f├╝r Jinja: wandelt Zeilenumbr├╝che in <br> um und escaped den Text zuvor.
+    Eignet sich f├╝r Chat-/Text-Ausgabe.
     """
     if not s:
         return ""
@@ -365,273 +297,9 @@ login_manager = LoginManager(app)
 login_manager.login_view = "login"  # wohin bei @login_required ohne Login?
 
 
-def roles_required(*roles):
-    """
-    Decorator: erlaubt Zugriff nur, wenn current_user.role in roles ist.
-
-    Nutzung:
-        @roles_required("admin")
-        @roles_required("admin", "manager")
-    """
-
-    def decorator(view_func):
-        @wraps(view_func)
-        @login_required
-        def wrapped(*args, **kwargs):
-            if current_user.role not in roles:
-                abort(403)  # Forbidden
-            return view_func(*args, **kwargs)
-
-        return wrapped
-
-    return decorator
-
-
 # ============================================================
-# Datenbank-Modelle
+# Datenbank-Modelle (ausgelagert in models.py)
 # ============================================================
-
-# --- User-Modell -------------------------------------------------------------
-
-class User(UserMixin, db.Model):
-    """
-    Benutzerkonto mit Login-Daten, Rolle und einigen Profilfeldern.
-    """
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(255), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(50), nullable=False, default="user")
-    language = db.Column(db.String(5), nullable=False, default="en")
-
-    # Zusatzfelder
-    salutation = db.Column(db.String(50))   # Anrede
-    first_name = db.Column(db.String(100))  # Vorname
-    last_name = db.Column(db.String(100))   # Nachname
-    address = db.Column(db.String(255))     # Adresse
-    position = db.Column(db.String(100))    # Position / Funktion
-    cost_center = db.Column(db.String(100)) # Kostenstelle
-    study_program = db.Column(db.String(150))  # Studiengang
-    note = db.Column(db.Text)              # Freitext / Bemerkung
-
-    # Timestamps
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    last_login_at = db.Column(db.DateTime, nullable=True)
-
-    # Beziehung zu Aufträgen
-    orders = db.relationship("Order", back_populates="user", lazy=True)
-
-    def set_password(self, password: str):
-        self.password_hash = generate_password_hash(password)
-
-    def check_password(self, password: str) -> bool:
-        return check_password_hash(self.password_hash, password)
-
-
-# --- Order-Modell ------------------------------------------------------------
-
-class Order(db.Model):
-    """
-    Auftragskopf: Titel, Beschreibung, Status, Owner,
-    optional Material/Farbe, Nachrichten & Dateien.
-    """
-    __tablename__ = "orders"
-
-    id = db.Column(db.Integer, primary_key=True)
-
-    title = db.Column(db.String(200), nullable=False)
-    description = db.Column(db.Text, nullable=True)
-
-    # Status: "new", "in_progress", "on_hold", "completed", "cancelled"
-    status = db.Column(db.String(50), nullable=False, default="new")
-
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = db.Column(
-        db.DateTime,
-        nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
-    )
-
-    # Besitzer / Anforderer
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
-    user = db.relationship("User", back_populates="orders")
-
-    # Material- und Farb-Auswahl (optional)
-    material_id = db.Column(db.Integer, db.ForeignKey("materials.id"), nullable=True)
-    color_id = db.Column(db.Integer, db.ForeignKey("colors.id"), nullable=True)
-    cost_center_id = db.Column(db.Integer, db.ForeignKey("cost_centers.id"), nullable=True)
-
-    material = db.relationship("Material")
-    color = db.relationship("Color")
-    cost_center = db.relationship("CostCenter")
-
-    # Nachrichten zum Auftrag
-    messages = db.relationship(
-        "OrderMessage",
-        back_populates="order",
-        cascade="all, delete-orphan",
-        order_by="OrderMessage.created_at",
-    )
-
-    # Hochgeladene 3D-Modelle (STL / 3MF) zu diesem Auftrag
-    files = db.relationship(
-        "OrderFile",
-        back_populates="order",
-        cascade="all, delete-orphan",
-        lazy=True,
-    )
-
-    # Öffentlichkeits-Felder
-    public_allow_poster = db.Column(db.Boolean, nullable=False, default=False)
-    public_allow_web = db.Column(db.Boolean, nullable=False, default=False)
-    public_allow_social = db.Column(db.Boolean, nullable=False, default=False)
-    public_display_name = db.Column(db.String(200))
-
-    summary_short = db.Column(db.String(300))
-    summary_long = db.Column(db.Text)
-    project_purpose = db.Column(db.Text)
-    project_use_case = db.Column(db.Text)
-    learning_points = db.Column(db.Text)
-    background_info = db.Column(db.Text)
-    project_url = db.Column(db.String(300))
-
-    images = db.relationship("OrderImage", back_populates="order", cascade="all, delete-orphan", lazy=True)
-    tags_entry = db.relationship("OrderTag", uselist=False, back_populates="order", cascade="all, delete-orphan")
-
-
-# --- OrderMessage (Chat-/Kommunikationseintrag) ------------------------------
-
-class OrderMessage(db.Model):
-    __tablename__ = "order_messages"
-
-    id = db.Column(db.Integer, primary_key=True)
-    content = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-
-    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
-
-    order = db.relationship("Order", back_populates="messages")
-    user = db.relationship("User")
-
-
-# --- OrderReadStatus (wann hat welcher User den Auftrag zuletzt gelesen) -----
-
-class OrderReadStatus(db.Model):
-    __tablename__ = "order_read_status"
-
-    id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
-    last_read_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-
-    order = db.relationship("Order")
-    user = db.relationship("User")
-
-    __table_args__ = (
-        db.UniqueConstraint("order_id", "user_id", name="uq_order_user"),
-    )
-
-
-# --- OrderFile (hochgeladene 3D-Modelle) ------------------------------------
-
-class OrderFile(db.Model):
-    """
-    Einzelner Datei-Eintrag zu einem Auftrag (z.B. STL oder 3MF).
-    """
-    __tablename__ = "order_files"
-
-    id = db.Column(db.Integer, primary_key=True)
-
-    # Zugehöriger Auftrag
-    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
-
-    # Dateinamen
-    original_name = db.Column(db.String(255), nullable=False)  # vom User hochgeladen
-    stored_name = db.Column(db.String(255), nullable=False)    # technischer Name auf Platte (mit ID-Präfix)
-
-    # Metadaten
-    file_type = db.Column(db.String(20))   # z.B. 'stl' oder '3mf'
-    filesize = db.Column(db.Integer)       # in Bytes
-    note = db.Column(db.String(255))       # Bemerkung zum Modell
-    quantity = db.Column(db.Integer, nullable=False, default=1)  # benötigte Anzahl
-    uploaded_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-
-    # Beziehung zurück zum Order
-    order = db.relationship("Order", back_populates="files")
-
-
-# --- OrderImage ---------------------------------------------------------------
-
-
-class OrderImage(db.Model):
-    __tablename__ = "order_images"
-
-    id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
-    original_name = db.Column(db.String(255), nullable=False)
-    stored_name = db.Column(db.String(255), nullable=False)
-    filesize = db.Column(db.Integer)
-    uploaded_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-
-    order = db.relationship("Order", back_populates="images")
-
-
-# --- OrderTag -----------------------------------------------------------------
-
-
-class OrderTag(db.Model):
-    __tablename__ = "order_tags"
-
-    id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False, unique=True)
-    tags = db.Column(db.String(300))
-
-    order = db.relationship("Order", back_populates="tags_entry")
-
-
-# --- Stammdaten: Material ----------------------------------------------------
-
-class Material(db.Model):
-    __tablename__ = "materials"
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), unique=True, nullable=False)
-    description = db.Column(db.String(255))  # Kurzbeschreibung / Notizen
-
-    def __repr__(self):
-        return f"<Material {self.name}>"
-
-
-# --- Stammdaten: Color -------------------------------------------------------
-
-class Color(db.Model):
-    __tablename__ = "colors"
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), unique=True, nullable=False)
-    hex_code = db.Column(db.String(7))  # z.B. '#FF0000'
-
-    def __repr__(self):
-        return f"<Color {self.name}>"
-
-
-# --- Stammdaten: Cost Center -------------------------------------------------
-
-
-class CostCenter(db.Model):
-    __tablename__ = "cost_centers"
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), unique=True, nullable=False)
-    note = db.Column(db.Text)
-    email = db.Column(db.String(255))
-    is_active = db.Column(db.Boolean, nullable=False, default=True)
-
-    def __repr__(self):
-        return f"<CostCenter {self.name}>"
-
-
 # ============================================================
 # Login-Backend
 # ============================================================
@@ -641,49 +309,13 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 
-@app.before_request
-def enforce_session_timeout():
-    """
-    Meldet eingeloggte Nutzer nach Inaktivitaet automatisch ab.
-    """
-    if not current_user.is_authenticated:
-        return
-
-    settings = load_app_settings()
-    timeout_minutes = _coerce_positive_int(
-        settings.get("session_timeout_minutes"),
-        DEFAULT_SETTINGS["session_timeout_minutes"],
-    )
-
-    now = datetime.utcnow()
-    last_seen_raw = session.get(SESSION_LAST_ACTIVE_KEY)
-
-    if last_seen_raw:
-        try:
-            last_seen = datetime.fromisoformat(last_seen_raw)
-        except Exception:
-            last_seen = None
-
-        if last_seen and now - last_seen > timedelta(minutes=timeout_minutes):
-            logout_user()
-            session.clear()
-            trans = inject_globals().get("t")
-            flash(trans("flash_session_expired"), "warning")
-            return redirect(url_for("login"))
-
-    is_static_request = (request.endpoint or "").startswith("static")
-    if not is_static_request:
-        session.permanent = True
-        session[SESSION_LAST_ACTIVE_KEY] = now.isoformat()
-
-
 # ============================================================
 # CLI-Kommandos (Datenbank & Stammdaten)
 # ============================================================
 
 @app.cli.command("init-db")
 def init_db():
-    """Initialisiert die Datenbank (einmalig ausführen)."""
+    """Initialisiert die Datenbank (einmalig ausf├╝hren)."""
     db.create_all()
     print("Datenbank initialisiert.")
 
@@ -720,7 +352,7 @@ def init_stammdaten():
 
     base_colors = [
         ("Schwarz", "#000000"),
-        ("Weiß", "#FFFFFF"),
+        ("Wei├ƒ", "#FFFFFF"),
         ("Rot", "#FF0000"),
         ("Gelb", "#FFFF00"),
         ("Blau", "#0000FF"),
@@ -765,7 +397,7 @@ def login():
         user = User.query.filter_by(email=email).first()
         if user and user.check_password(password):
             login_user(user)
-            load_app_settings()
+            load_app_settings(app)
             session.permanent = True
             session[SESSION_LAST_ACTIVE_KEY] = datetime.utcnow().isoformat()
             user.last_login_at = datetime.utcnow()
@@ -782,7 +414,7 @@ def login():
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    """Registrierungs-Formular & Account-Anlage für neue Nutzer."""
+    """Registrierungs-Formular & Account-Anlage f├╝r neue Nutzer."""
     if current_user.is_authenticated:
         return redirect(url_for("dashboard"))
 
@@ -895,7 +527,7 @@ def new_order():
     Formular zum Anlegen eines neuen Auftrags.
     Optional: direkter Upload einer 3D-Datei (STL/3MF) beim Erstellen.
     """
-    # Stammdaten laden (für GET und POST)
+    # Stammdaten laden (f├╝r GET und POST)
     materials = Material.query.order_by(Material.name.asc()).all()
     colors = Color.query.order_by(Color.name.asc()).all()
     cost_centers = CostCenter.query.order_by(CostCenter.name.asc()).all()
@@ -906,7 +538,7 @@ def new_order():
 
         # --- Status-Handling ---
         if current_user.role == "admin":
-            # Admin darf initialen Status wählen
+            # Admin darf initialen Status w├ñhlen
             status = request.form.get("status", "new")
             valid_status_values = [s[0] for s in ORDER_STATUSES]
             if status not in valid_status_values:
@@ -921,7 +553,7 @@ def new_order():
         color_id = request.form.get("color_id") or None
         cost_center_id = request.form.get("cost_center_id") or None
 
-        # Öffentlichkeits-Felder
+        # ├ûffentlichkeits-Felder
         public_allow_poster = bool(request.form.get("public_allow_poster"))
         public_allow_web = bool(request.form.get("public_allow_web"))
         public_allow_social = bool(request.form.get("public_allow_social"))
@@ -1075,13 +707,13 @@ def order_detail(order_id):
     """
     Detailansicht eines Auftrags:
     - Stammdaten bearbeiten
-    - Status ändern (nur Admin)
+    - Status ├ñndern (nur Admin)
     - Nachrichten schreiben
-    - Dateien hochladen / löschen
+    - Dateien hochladen / l├Âschen
     """
     order = Order.query.get_or_404(order_id)
 
-    # Access control: normale User sehen nur eigene Aufträge
+    # Access control: normale User sehen nur eigene Auftr├ñge
     if current_user.role != "admin" and order.user_id != current_user.id:
         abort(403)
 
@@ -1123,7 +755,7 @@ def order_detail(order_id):
                 order.title = title
                 order.description = description or None
 
-                # Material / Farbe / Kostenstelle aktualisieren (für alle Rollen erlaubt)
+                # Material / Farbe / Kostenstelle aktualisieren (f├╝r alle Rollen erlaubt)
                 material_id = request.form.get("material_id") or None
                 color_id = request.form.get("color_id") or None
                 cost_center_id = request.form.get("cost_center_id") or None
@@ -1152,7 +784,7 @@ def order_detail(order_id):
                 else:
                     order.cost_center_id = None
 
-                # Öffentlichkeits-Felder übernehmen
+                # ├ûffentlichkeits-Felder ├╝bernehmen
                 order.public_allow_poster = public_allow_poster
                 order.public_allow_web = public_allow_web
                 order.public_allow_social = public_allow_social
@@ -1176,7 +808,7 @@ def order_detail(order_id):
                         db.session.delete(order.tags_entry)
                         order.tags_entry = None
 
-                # Statuswechsel nur für Admin
+                # Statuswechsel nur f├╝r Admin
                 if current_user.role == "admin":
                     valid_status_values = [s[0] for s in ORDER_STATUSES]
                     app.logger.debug(f"[order_detail] Valid status values: {valid_status_values}")
@@ -1194,7 +826,7 @@ def order_detail(order_id):
                 flash(trans("flash_order_updated"), "success")
                 return redirect(url_for("order_detail", order_id=order.id))
 
-        # --- 2) Neue Nachricht hinzufügen ----------------------------------
+        # --- 2) Neue Nachricht hinzuf├╝gen ----------------------------------
         elif action == "add_message":
             content = request.form.get("content", "").strip()
             app.logger.debug(f"[order_detail] ADD_MESSAGE for order {order.id}: {content!r}")
@@ -1219,7 +851,7 @@ def order_detail(order_id):
                 f"[order_detail] CANCEL_ORDER requested by user={current_user.email}, "
                 f"order_id={order.id}, current_status={order.status!r}"
             )
-            # User darf nur eigene Aufträge stornieren, Admin alle
+            # User darf nur eigene Auftr├ñge stornieren, Admin alle
             if current_user.role == "admin" or order.user_id == current_user.id:
                 if order.status not in ("completed", "cancelled"):
                     order.status = "cancelled"
@@ -1241,7 +873,7 @@ def order_detail(order_id):
 
             return redirect(url_for("order_detail", order_id=order.id))
 
-        # --- 4) Zusätzliche Datei hochladen --------------------------------
+        # --- 4) Zus├ñtzliche Datei hochladen --------------------------------
         elif action == "upload_file":
             file = request.files.get("model_file")
             file_note = request.form.get("file_note", "").strip() or None
@@ -1352,7 +984,7 @@ def order_detail(order_id):
             flash(trans("flash_image_uploaded"), "success")
             return redirect(url_for("order_detail", order_id=order.id))
 
-        # --- 6) Datei löschen ----------------------------------------------
+        # --- 6) Datei l├Âschen ----------------------------------------------
         elif action == "delete_file":
             try:
                 file_id = int(request.form.get("file_id", "0"))
@@ -1372,7 +1004,7 @@ def order_detail(order_id):
                 flash(trans("flash_file_not_found"), "warning")
                 return redirect(url_for("order_detail", order_id=order.id))
 
-            # Physische Datei löschen
+            # Physische Datei l├Âschen
             order_folder = Path(app.config["UPLOAD_FOLDER"]) / f"order_{order.id}"
             full_path = order_folder / order_file.stored_name
 
@@ -1384,7 +1016,7 @@ def order_detail(order_id):
                         f"[order_detail] Could not delete file on disk: {full_path}"
                     )
 
-            # DB-Eintrag löschen
+            # DB-Eintrag l├Âschen
             db.session.delete(order_file)
             db.session.commit()
 
@@ -1395,7 +1027,7 @@ def order_detail(order_id):
             flash(trans("flash_file_deleted"), "info")
             return redirect(url_for("order_detail", order_id=order.id))
 
-        # --- 7) Projektbild löschen ----------------------------------------
+        # --- 7) Projektbild l├Âschen ----------------------------------------
         elif action == "delete_image":
             try:
                 image_id = int(request.form.get("image_id", "0"))
@@ -1455,7 +1087,7 @@ def order_detail(order_id):
 
     db.session.commit()
 
-    # Zusätzlich in Session merken (pro User, pro Order)
+    # Zus├ñtzlich in Session merken (pro User, pro Order)
     session_key = f"order_last_read_{order.id}"
     session[session_key] = now.isoformat()
     app.logger.debug(
@@ -1464,7 +1096,7 @@ def order_detail(order_id):
 
     messages = order.messages
 
-    # Stammdaten für Auswahlfelder laden
+    # Stammdaten f├╝r Auswahlfelder laden
     materials = Material.query.order_by(Material.name.asc()).all()
     colors = Color.query.order_by(Color.name.asc()).all()
     cost_centers = CostCenter.query.order_by(CostCenter.name.asc()).all()
@@ -1489,7 +1121,7 @@ def order_detail(order_id):
 @login_required
 def order_messages_fragment(order_id):
     """
-    Liefert nur den Nachrichten-Thread als HTML-Fragment fǬr Auto-Refresh.
+    Liefert nur den Nachrichten-Thread als HTML-Fragment fÃ¼r Auto-Refresh.
     """
     order = Order.query.get_or_404(order_id)
 
@@ -1533,7 +1165,7 @@ def download_order_image(order_id, image_id):
 @login_required
 def download_order_file(order_id, file_id):
     """
-    Einfache Download-Route für eine Datei zu einem Auftrag.
+    Einfache Download-Route f├╝r eine Datei zu einem Auftrag.
     """
     trans = inject_globals().get("t")
     # Auftrag laden
@@ -1574,7 +1206,7 @@ def download_order_file(order_id, file_id):
 @login_required
 def dashboard():
     """
-    Übersicht aller Aufträge (Admin: alle, User: nur eigene).
+    ├£bersicht aller Auftr├ñge (Admin: alle, User: nur eigene).
     Zeigt:
     - Status, Material, Farbe, Owner
     - "new message"-Badge
@@ -1658,7 +1290,7 @@ def dashboard():
 
     app.logger.debug(f"[dashboard] read_by_order (session): {read_by_order}")
 
-    # 5) "last_new_message" pro Order berechnen (für "new message"-Badge)
+    # 5) "last_new_message" pro Order berechnen (f├╝r "new message"-Badge)
     last_new_message = {}
     for o in orders:
         latest = latest_by_order.get(o.id)      # datetime oder None
@@ -1685,556 +1317,6 @@ def dashboard():
     )
 
 
-# ============================================================
-# Admin-Bereich: User, Material, Farben
-# ============================================================
-
-@app.route("/admin")
-@roles_required("admin")
-def admin_panel():
-    """Einfache Admin-Startseite."""
-    return render_template("admin.html")
-
-@app.route("/admin/settings", methods=["GET", "POST"])
-@roles_required("admin")
-def admin_settings():
-    """Systemweite Einstellungen (Session-Timeout etc.)."""
-    trans = inject_globals().get("t")
-    settings = load_app_settings(force_reload=True)
-
-    if request.method == "POST":
-        raw_timeout = (request.form.get("session_timeout_minutes") or "").strip()
-        timeout_value = _coerce_positive_int(raw_timeout, None)
-
-        if timeout_value is None:
-            flash(trans("flash_settings_invalid_timeout"), "danger")
-        else:
-            try:
-                updated_settings = settings.copy()
-                updated_settings["session_timeout_minutes"] = timeout_value
-                save_app_settings(updated_settings)
-                flash(trans("flash_settings_saved"), "success")
-                return redirect(url_for("admin_settings"))
-            except Exception:
-                app.logger.exception("Failed to save admin settings")
-                flash(trans("flash_settings_save_error"), "danger")
-
-    return render_template(
-        "admin_settings.html",
-        settings=settings,
-        settings_path=str(SETTINGS_FILE),
-    )
-
-
-@app.route("/admin/users")
-@roles_required("admin")
-def admin_user_list():
-    """Übersicht aller User (nur für Admin)."""
-    users = User.query.order_by(User.id.asc()).all()
-    return render_template("admin_users.html", users=users)
-
-
-@app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
-@roles_required("admin")
-def admin_user_edit(user_id):
-    """User-Daten bearbeiten (Admin)."""
-    user = User.query.get_or_404(user_id)
-
-    if request.method == "POST":
-        trans = inject_globals().get("t")
-        email = request.form.get("email", "").strip().lower()
-        role = request.form.get("role", "user").strip()
-        new_password = request.form.get("password", "")
-
-        salutation = request.form.get("salutation") or None
-        first_name = request.form.get("first_name") or None
-        last_name = request.form.get("last_name") or None
-        address = request.form.get("address") or None
-        position = request.form.get("position") or None
-        cost_center = request.form.get("cost_center") or None
-        study_program = request.form.get("study_program") or None
-        note = request.form.get("note") or None
-
-        if not email:
-            flash(trans("flash_email_required"), "danger")
-        else:
-            existing = User.query.filter_by(email=email).first()
-            if existing and existing.id != user.id:
-                flash(trans("flash_user_email_exists"), "danger")
-            else:
-                user.email = email
-                user.role = role
-
-                user.salutation = salutation
-                user.first_name = first_name
-                user.last_name = last_name
-                user.address = address
-                user.position = position
-                user.cost_center = cost_center
-                user.study_program = study_program
-                user.note = note
-
-                if new_password:
-                    user.set_password(new_password)
-
-                db.session.commit()
-                flash(trans("flash_user_updated"), "success")
-                return redirect(url_for("admin_user_list"))
-
-    return render_template("admin_user_edit.html", user=user)
-
-
-# --- Admin: Material-Stammdaten ---------------------------------------------
-
-@app.route("/admin/materials")
-@roles_required("admin")
-def admin_material_list():
-    materials = Material.query.order_by(Material.name.asc()).all()
-    return render_template("admin_materials.html", materials=materials)
-
-
-@app.route("/admin/materials/export")
-@roles_required("admin")
-def admin_material_export():
-    """
-    Exportiert alle Materialien als JSON (name, description) mit Versionsinfo.
-    """
-    materials = Material.query.order_by(Material.name.asc()).all()
-    payload = {
-        "version": APP_VERSION,
-        "materials": [
-            {"name": m.name, "description": m.description or ""}
-            for m in materials
-        ],
-    }
-    output = json.dumps(payload, ensure_ascii=False, indent=2)
-
-    return app.response_class(
-        output,
-        mimetype="application/json",
-        headers={"Content-Disposition": "attachment; filename=NeoFab_materials.json"},
-    )
-
-
-@app.route("/admin/materials/import", methods=["POST"])
-@roles_required("admin")
-def admin_material_import():
-    """
-    Importiert Materialien aus einer JSON-Datei:
-    {
-      "version": "...",
-      "materials": [{ "name": "...", "description": "..." }, ...]
-    }
-    Bestehende Materialien werden vorher entfernt.
-    """
-    trans = inject_globals().get("t")
-    file = request.files.get("file")
-    if not file or not file.filename:
-        flash(trans("flash_json_choose_file"), "warning")
-        return redirect(url_for("admin_material_list"))
-
-    try:
-        content = file.read().decode("utf-8-sig")
-        data = json.loads(content)
-    except Exception:
-        flash(trans("flash_invalid_json"), "danger")
-        return redirect(url_for("admin_material_list"))
-
-    rows = data.get("materials", []) if isinstance(data, dict) else []
-
-    # Bestehende Materialien vor Import leeren
-    Material.query.delete()
-
-    created = skipped = 0
-    for entry in rows:
-        name = (entry.get("name") or "").strip() if isinstance(entry, dict) else ""
-        description = (entry.get("description") or "").strip() if isinstance(entry, dict) else None
-
-        if not name:
-            skipped += 1
-            continue
-
-        db.session.add(Material(name=name, description=description or None))
-        created += 1
-
-    db.session.commit()
-    flash(trans("flash_import_result_simple").format(created=created, skipped=skipped), "success")
-    return redirect(url_for("admin_material_list"))
-
-
-@app.route("/admin/materials/new", methods=["GET", "POST"])
-@roles_required("admin")
-def admin_material_new():
-    trans = inject_globals().get("t")
-    if request.method == "POST":
-        name = request.form.get("name", "").strip()
-        description = request.form.get("description", "").strip() or None
-
-        if not name:
-            flash(trans("flash_material_required"), "danger")
-        else:
-            existing = Material.query.filter_by(name=name).first()
-            if existing:
-                flash(trans("flash_material_exists"), "danger")
-            else:
-                m = Material(name=name, description=description)
-                db.session.add(m)
-                db.session.commit()
-                flash(trans("flash_material_created"), "success")
-                return redirect(url_for("admin_material_list"))
-
-    return render_template("admin_material_edit.html", material=None)
-
-
-@app.route("/admin/materials/<int:material_id>/edit", methods=["GET", "POST"])
-@roles_required("admin")
-def admin_material_edit(material_id):
-    trans = inject_globals().get("t")
-    material = Material.query.get_or_404(material_id)
-
-    if request.method == "POST":
-        name = request.form.get("name", "").strip()
-        description = request.form.get("description", "").strip() or None
-
-        if not name:
-            flash(trans("flash_material_required"), "danger")
-        else:
-            existing = Material.query.filter_by(name=name).first()
-            if existing and existing.id != material.id:
-                flash(trans("flash_material_exists"), "danger")
-            else:
-                material.name = name
-                material.description = description
-                db.session.commit()
-                flash(trans("flash_material_updated"), "success")
-                return redirect(url_for("admin_material_list"))
-
-    return render_template("admin_material_edit.html", material=material)
-
-
-@app.route("/admin/materials/<int:material_id>/delete", methods=["POST"])
-@roles_required("admin")
-def admin_material_delete(material_id):
-    trans = inject_globals().get("t")
-    material = Material.query.get_or_404(material_id)
-    db.session.delete(material)
-    db.session.commit()
-    flash(trans("flash_material_deleted"), "info")
-    return redirect(url_for("admin_material_list"))
-
-
-# --- Admin: Color-Stammdaten -----------------------------------------------
-
-@app.route("/admin/colors")
-@roles_required("admin")
-def admin_color_list():
-    colors = Color.query.order_by(Color.name.asc()).all()
-    return render_template("admin_colors.html", colors=colors)
-
-
-@app.route("/admin/colors/export")
-@roles_required("admin")
-def admin_color_export():
-    """
-    Exportiert alle Farben als JSON (name, hex_code) mit Versionsinfo.
-    """
-    colors = Color.query.order_by(Color.name.asc()).all()
-    payload = {
-        "version": APP_VERSION,
-        "colors": [
-            {"name": c.name, "hex_code": c.hex_code or ""}
-            for c in colors
-        ],
-    }
-    output = json.dumps(payload, ensure_ascii=False, indent=2)
-
-    return app.response_class(
-        output,
-        mimetype="application/json",
-        headers={"Content-Disposition": "attachment; filename=NeoFab_colors.json"},
-    )
-
-
-@app.route("/admin/colors/import", methods=["POST"])
-@roles_required("admin")
-def admin_color_import():
-    """
-    Importiert Farben aus einer JSON-Datei:
-    {
-      "version": "...",
-      "colors": [{ "name": "...", "hex_code": "#RRGGBB" }, ...]
-    }
-    Existierende Namen werden aktualisiert, neue angelegt.
-    """
-    trans = inject_globals().get("t")
-    file = request.files.get("file")
-    if not file or not file.filename:
-        flash(trans("flash_json_choose_file"), "warning")
-        return redirect(url_for("admin_color_list"))
-
-    try:
-        content = file.read().decode("utf-8-sig")
-        data = json.loads(content)
-    except Exception:
-        flash(trans("flash_invalid_json"), "danger")
-        return redirect(url_for("admin_color_list"))
-
-    rows = data.get("colors", []) if isinstance(data, dict) else []
-
-    # Bestehende Farben vor Import leeren
-    Color.query.delete()
-    created = updated = skipped = 0
-    for entry in rows:
-        name = (entry.get("name") or "").strip() if isinstance(entry, dict) else ""
-        hex_code = (entry.get("hex_code") or "").strip() if isinstance(entry, dict) else None
-
-        if not name:
-            skipped += 1
-            continue
-
-        color = Color.query.filter_by(name=name).first()
-        if color:
-            color.hex_code = hex_code or None
-            updated += 1
-        else:
-            db.session.add(Color(name=name, hex_code=hex_code or None))
-            created += 1
-
-    db.session.commit()
-    flash(
-        trans("flash_import_result_extended").format(
-            created=created, updated=updated, skipped=skipped
-        ),
-        "success",
-    )
-    return redirect(url_for("admin_color_list"))
-
-
-@app.route("/admin/colors/new", methods=["GET", "POST"])
-@roles_required("admin")
-def admin_color_new():
-    trans = inject_globals().get("t")
-    if request.method == "POST":
-        name = request.form.get("name", "").strip()
-        hex_code = request.form.get("hex_code", "").strip() or None
-
-        if not name:
-            flash(trans("flash_color_required"), "danger")
-        else:
-            existing = Color.query.filter_by(name=name).first()
-            if existing:
-                flash(trans("flash_color_exists"), "danger")
-            else:
-                c = Color(name=name, hex_code=hex_code)
-                db.session.add(c)
-                db.session.commit()
-                flash(trans("flash_color_created"), "success")
-                return redirect(url_for("admin_color_list"))
-
-    return render_template("admin_color_edit.html", color=None)
-
-
-@app.route("/admin/colors/<int:color_id>/edit", methods=["GET", "POST"])
-@roles_required("admin")
-def admin_color_edit(color_id):
-    trans = inject_globals().get("t")
-    color = Color.query.get_or_404(color_id)
-
-    if request.method == "POST":
-        name = request.form.get("name", "").strip()
-        hex_code = request.form.get("hex_code", "").strip() or None
-
-        if not name:
-            flash(trans("flash_color_required"), "danger")
-        else:
-            existing = Color.query.filter_by(name=name).first()
-            if existing and existing.id != color.id:
-                flash(trans("flash_color_exists"), "danger")
-            else:
-                color.name = name
-                color.hex_code = hex_code
-                db.session.commit()
-                flash(trans("flash_color_updated"), "success")
-                return redirect(url_for("admin_color_list"))
-
-    return render_template("admin_color_edit.html", color=color)
-
-
-@app.route("/admin/colors/<int:color_id>/delete", methods=["POST"])
-@roles_required("admin")
-def admin_color_delete(color_id):
-    trans = inject_globals().get("t")
-    color = Color.query.get_or_404(color_id)
-    db.session.delete(color)
-    db.session.commit()
-    flash(trans("flash_color_deleted"), "info")
-    return redirect(url_for("admin_color_list"))
-
-
-# --- Admin: Cost Center -------------------------------------------------------
-
-
-@app.route("/admin/cost-centers")
-@roles_required("admin")
-def admin_cost_center_list():
-    cost_centers = CostCenter.query.order_by(CostCenter.name.asc()).all()
-    return render_template("admin_cost_centers.html", cost_centers=cost_centers)
-
-
-@app.route("/admin/cost-centers/new", methods=["GET", "POST"])
-@roles_required("admin")
-def admin_cost_center_new():
-    trans = inject_globals().get("t")
-    if request.method == "POST":
-        name = request.form.get("name", "").strip()
-        email = request.form.get("email", "").strip() or None
-        note = request.form.get("note", "").strip() or None
-        is_active = bool(request.form.get("is_active"))
-
-        if not name:
-            flash(trans("flash_cost_center_required"), "danger")
-        else:
-            existing = CostCenter.query.filter(func.lower(CostCenter.name) == name.lower()).first()
-            if existing:
-                flash(trans("flash_cost_center_exists"), "danger")
-            else:
-                cc = CostCenter(name=name, email=email, note=note, is_active=is_active)
-                db.session.add(cc)
-                db.session.commit()
-                flash(trans("flash_cost_center_created"), "success")
-                return redirect(url_for("admin_cost_center_list"))
-
-    return render_template("admin_cost_center_edit.html", cost_center=None)
-
-
-@app.route("/admin/cost-centers/<int:cc_id>/edit", methods=["GET", "POST"])
-@roles_required("admin")
-def admin_cost_center_edit(cc_id):
-    trans = inject_globals().get("t")
-    cost_center = CostCenter.query.get_or_404(cc_id)
-
-    if request.method == "POST":
-        name = request.form.get("name", "").strip()
-        email = request.form.get("email", "").strip() or None
-        note = request.form.get("note", "").strip() or None
-        is_active = bool(request.form.get("is_active"))
-
-        if not name:
-            flash(trans("flash_cost_center_required"), "danger")
-        else:
-            existing = CostCenter.query.filter(func.lower(CostCenter.name) == name.lower()).first()
-            if existing and existing.id != cost_center.id:
-                flash(trans("flash_cost_center_exists"), "danger")
-            else:
-                cost_center.name = name
-                cost_center.email = email
-                cost_center.note = note
-                cost_center.is_active = is_active
-                db.session.commit()
-                flash(trans("flash_cost_center_updated"), "success")
-                return redirect(url_for("admin_cost_center_list"))
-
-    return render_template("admin_cost_center_edit.html", cost_center=cost_center)
-
-
-@app.route("/admin/cost-centers/<int:cc_id>/delete", methods=["POST"])
-@roles_required("admin")
-def admin_cost_center_delete(cc_id):
-    trans = inject_globals().get("t")
-    cost_center = CostCenter.query.get_or_404(cc_id)
-    db.session.delete(cost_center)
-    db.session.commit()
-    flash(trans("flash_cost_center_deleted"), "info")
-    return redirect(url_for("admin_cost_center_list"))
-
-
-@app.route("/admin/cost-centers/export")
-@roles_required("admin")
-def admin_cost_center_export():
-    """
-    Exportiert alle Kostenstellen als JSON mit Versionsinfo.
-    """
-    cost_centers = CostCenter.query.order_by(CostCenter.name.asc()).all()
-    payload = {
-        "version": APP_VERSION,
-        "cost_centers": [
-            {
-                "name": cc.name,
-                "note": cc.note or "",
-                "email": cc.email or "",
-                "is_active": bool(cc.is_active),
-            }
-            for cc in cost_centers
-        ],
-    }
-    output = json.dumps(payload, ensure_ascii=False, indent=2)
-
-    return app.response_class(
-        output,
-        mimetype="application/json",
-        headers={"Content-Disposition": "attachment; filename=NeoFab_cost_centers.json"},
-    )
-
-
-@app.route("/admin/cost-centers/import", methods=["POST"])
-@roles_required("admin")
-def admin_cost_center_import():
-    """
-    Importiert Kostenstellen aus einer JSON-Datei:
-    {
-      "version": "...",
-      "cost_centers": [{ "name": "...", "note": "...", "email": "...", "is_active": true }, ...]
-    }
-    Bestehende Einträge werden vorher entfernt.
-    """
-    trans = inject_globals().get("t")
-    file = request.files.get("file")
-    if not file or not file.filename:
-        flash(trans("flash_json_choose_file"), "warning")
-        return redirect(url_for("admin_cost_center_list"))
-
-    try:
-        content = file.read().decode("utf-8-sig")
-        data = json.loads(content)
-    except Exception:
-        flash(trans("flash_invalid_json"), "danger")
-        return redirect(url_for("admin_cost_center_list"))
-
-    rows = data.get("cost_centers", []) if isinstance(data, dict) else []
-
-    # Bestehende Kostenstellen vor Import leeren
-    CostCenter.query.delete()
-
-    created = skipped = 0
-    for entry in rows:
-        name = (entry.get("name") or "").strip() if isinstance(entry, dict) else ""
-        note = (entry.get("note") or "").strip() if isinstance(entry, dict) else None
-        email = (entry.get("email") or "").strip() if isinstance(entry, dict) else None
-        is_active = bool(entry.get("is_active")) if isinstance(entry, dict) else True
-
-        if not name:
-            skipped += 1
-            continue
-
-        db.session.add(
-            CostCenter(
-                name=name,
-                note=note or None,
-                email=email or None,
-                is_active=is_active,
-            )
-        )
-        created += 1
-
-    db.session.commit()
-    flash(
-        trans("flash_import_result_simple").format(
-            created=created, skipped=skipped
-        ),
-        "success",
-    )
-    return redirect(url_for("admin_cost_center_list"))
-
 
 # ============================================================
 # Logout
@@ -2256,7 +1338,7 @@ def logout():
 
 def _pdf_escape(text_value: str) -> str:
     """
-    Escape für einfache PDF-Strings.
+    Escape f├╝r einfache PDF-Strings.
     """
     text_value = (text_value or "").replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
     # PDFDocEncoding ist grob Latin-1; wir ersetzen nicht darstellbare Zeichen.
@@ -2392,9 +1474,9 @@ def _build_order_pdf(order, translator) -> bytes:
     add(translator("order_project_url"), order.project_url or "")
     add(translator("order_tags"), order.tags_entry.tags if getattr(order, "tags_entry", None) else "")
     add(translator("order_public_sharing"), "")
-    add("• " + translator("order_allow_poster"), translator("badge_yes") if order.public_allow_poster else translator("badge_no"))
-    add("• " + translator("order_allow_web"), translator("badge_yes") if order.public_allow_web else translator("badge_no"))
-    add("• " + translator("order_allow_social"), translator("badge_yes") if order.public_allow_social else translator("badge_no"))
+    add("ÔÇó " + translator("order_allow_poster"), translator("badge_yes") if order.public_allow_poster else translator("badge_no"))
+    add("ÔÇó " + translator("order_allow_web"), translator("badge_yes") if order.public_allow_web else translator("badge_no"))
+    add("ÔÇó " + translator("order_allow_social"), translator("badge_yes") if order.public_allow_social else translator("badge_no"))
 
     add("", "")
     add(translator("messages_header"), "")
@@ -2406,7 +1488,7 @@ def _build_order_pdf(order, translator) -> bytes:
             meta.append(msg.user.email)
         meta_str = " - ".join(meta)
         content = msg.content.replace("\r", " ").replace("\n", " ").strip()
-        add(f"• {meta_str}", content)
+        add(f"ÔÇó {meta_str}", content)
 
     add("", "")
     add(translator("files_header"), "")
@@ -2418,7 +1500,7 @@ def _build_order_pdf(order, translator) -> bytes:
         parts.append(f"qty {qty}")
         if f.note:
             parts.append(f.note)
-        add(f"• {f.original_name}", " | ".join(parts))
+        add(f"ÔÇó {f.original_name}", " | ".join(parts))
 
     add("", "")
     add(translator("images_header"), "")
@@ -2428,7 +1510,7 @@ def _build_order_pdf(order, translator) -> bytes:
             meta.append(f"{(img.filesize / 1024):.1f} KB")
         if img.uploaded_at:
             meta.append(img.uploaded_at.strftime("%Y-%m-%d %H:%M"))
-        add(f"• {img.original_name}", " | ".join(meta))
+        add(f"ÔÇó {img.original_name}", " | ".join(meta))
 
     text_rows: List[str] = []
     for label, value in lines:
