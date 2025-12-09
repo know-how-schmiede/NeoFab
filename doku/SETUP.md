@@ -189,3 +189,97 @@ Zuvor die alte Datenbank löschen:
 ```
 flask --app app init-db
 ```
+
+
+# neues Setup für Debian 13 LXC-Container unter Proxmox
+Verhinderung Fehler bei PDF-Export
+```
+apt install sudo
+```
+
+```
+sudo apt update
+```
+
+```
+sudo apt install -y python3 python3-venv python3-pip git
+```
+
+```
+sudo apt update
+```
+
+```
+sudo apt upgrade
+```
+
+```
+sudo apt install -y \
+    pkg-config \
+    libcairo2-dev \
+    python3-dev \
+    build-essential \
+    meson \
+    ninja-build \
+    libffi-dev
+```
+
+```
+adduser neofab
+```
+
+```
+su - neofab
+```
+
+```
+mkdir -p ~/projects/neofab
+```
+
+```
+cd projects/neofab
+```
+
+```
+git clone https://github.com/Know-How-Schmiede/neofab.git
+```
+
+```
+cd neofab
+```
+
+```
+python3 -m venv .venv
+```
+
+```
+source .venv/bin/activate
+```
+
+```
+pip install -r neofab/requirements.txt
+```
+
+```
+export FLASK_APP=run.py
+```
+
+```
+cd neofab
+```
+
+```
+flask --app app version
+```
+
+```
+flask --app app init-db
+```
+
+```
+flask --app app create-admin
+```
+
+```
+flask --app app run --host=0.0.0.0 --port=8080
+```
