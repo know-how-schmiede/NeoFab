@@ -139,6 +139,7 @@
 
   <div class="section page-break">
     <h2>{{ t("tab_project") }}</h2>
+    <p>Order #{{ order_dict.id }} - {{ order_dict.title }}</p>
     <hr>
     <div class="field"><span class="label">{{ t("order_summary_short") }}:</span><br> {{ order_dict.summary_short }}</div>
     <div class="field"><span class="label">{{ t("order_summary_long") }}:</span><br> {{ order_dict.summary_long }}</div>
@@ -160,6 +161,7 @@
 
   <div class="section messages page-break">
     <h2>{{ t("messages_header") }}</h2>
+    <p>Order #{{ order_dict.id }} - {{ order_dict.title }}</p>
     <hr>
     {% if messages %}
       <div class="chat">
@@ -178,6 +180,7 @@
 
   <div class="section page-break">
     <h2>{{ t("files_header") }}</h2>
+    <p>Order #{{ order_dict.id }} - {{ order_dict.title }}</p>
     <hr>
     {% if files %}
       <ul>
@@ -198,6 +201,7 @@
 
   <div class="section page-break">
     <h2>{{ t("images_header") }}</h2>
+    <p>Order #{{ order_dict.id }} - {{ order_dict.title }}</p>
     <hr>
     {% if images %}
       <ul>
