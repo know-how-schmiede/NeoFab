@@ -1,4 +1,8 @@
 # Timeline NeoFab
+## Version 0.4.9
+Session-Variablen, automatisches Ausloggen mit Konfig
+## Version 0.4.8
+Logo
 ## Version 0.4.7
 PDF Export mit Template
 ## Version 0.4.6

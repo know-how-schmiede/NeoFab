@@ -10,7 +10,7 @@
 # ============================================================
 
 from version import APP_VERSION
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 import os
 import logging
@@ -167,6 +167,110 @@ db_path = BASE_DIR / "neofab.db"
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# JSON-basierte Backend-Einstellungen (z. B. Session-Timeout)
+INSTANCE_DIR = BASE_DIR / "instance"
+SETTINGS_FILE = INSTANCE_DIR / "config.json"
+
+DEFAULT_SETTINGS = {
+    "session_timeout_minutes": 30,
+}
+
+_settings_cache = None
+_settings_mtime = None
+
+
+def _coerce_positive_int(value, fallback):
+    try:
+        value_int = int(value)
+        if value_int > 0:
+            return value_int
+    except (TypeError, ValueError):
+        pass
+    return fallback
+
+
+def _apply_session_timeout_setting(timeout_minutes: int) -> int:
+    timeout_minutes = _coerce_positive_int(
+        timeout_minutes,
+        DEFAULT_SETTINGS["session_timeout_minutes"],
+    )
+    app.permanent_session_lifetime = timedelta(minutes=timeout_minutes)
+    return timeout_minutes
+
+
+def load_app_settings(force_reload: bool = False) -> dict:
+    """
+    Laedt die JSON-Konfiguration (z. B. Session-Timeout) mit Fallback auf Defaults.
+    Erkennt externe Aenderungen ueber die mtime und laedt sie bei Bedarf neu.
+    """
+    global _settings_cache, _settings_mtime
+
+    if not force_reload and _settings_cache is not None:
+        try:
+            current_mtime = SETTINGS_FILE.stat().st_mtime
+        except FileNotFoundError:
+            current_mtime = None
+        if current_mtime == _settings_mtime:
+            return _settings_cache
+
+    settings = DEFAULT_SETTINGS.copy()
+    try:
+        if SETTINGS_FILE.exists():
+            with SETTINGS_FILE.open("r", encoding="utf-8") as f:
+                loaded = json.load(f)
+            if isinstance(loaded, dict):
+                settings["session_timeout_minutes"] = _coerce_positive_int(
+                    loaded.get("session_timeout_minutes"),
+                    DEFAULT_SETTINGS["session_timeout_minutes"],
+                )
+            _settings_mtime = SETTINGS_FILE.stat().st_mtime
+        else:
+            _settings_mtime = None
+    except Exception as exc:
+        app.logger.warning("Could not load settings from %s: %s", SETTINGS_FILE, exc)
+
+    settings["session_timeout_minutes"] = _apply_session_timeout_setting(
+        settings["session_timeout_minutes"]
+    )
+    _settings_cache = settings
+    return settings
+
+
+def save_app_settings(new_settings: dict) -> dict:
+    """
+    Schreibt Einstellungen in die JSON-Datei und aktualisiert Cache + Session-Lifetime.
+    """
+    global _settings_cache, _settings_mtime
+
+    settings = DEFAULT_SETTINGS.copy()
+    if isinstance(new_settings, dict):
+        settings["session_timeout_minutes"] = _coerce_positive_int(
+            new_settings.get("session_timeout_minutes"),
+            DEFAULT_SETTINGS["session_timeout_minutes"],
+        )
+
+    settings["session_timeout_minutes"] = _apply_session_timeout_setting(
+        settings["session_timeout_minutes"]
+    )
+
+    try:
+        SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with SETTINGS_FILE.open("w", encoding="utf-8") as f:
+            json.dump(settings, f, ensure_ascii=False, indent=2)
+        _settings_mtime = SETTINGS_FILE.stat().st_mtime
+        _settings_cache = settings
+    except Exception as exc:
+        app.logger.error("Could not write settings to %s: %s", SETTINGS_FILE, exc)
+        raise
+
+    return settings
+
+
+# Initiales Laden (setzt auch permanent_session_lifetime)
+load_app_settings()
+
+SESSION_LAST_ACTIVE_KEY = "last_active_utc"
 
 
 # ============================================================
@@ -537,6 +641,42 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 
+@app.before_request
+def enforce_session_timeout():
+    """
+    Meldet eingeloggte Nutzer nach Inaktivitaet automatisch ab.
+    """
+    if not current_user.is_authenticated:
+        return
+
+    settings = load_app_settings()
+    timeout_minutes = _coerce_positive_int(
+        settings.get("session_timeout_minutes"),
+        DEFAULT_SETTINGS["session_timeout_minutes"],
+    )
+
+    now = datetime.utcnow()
+    last_seen_raw = session.get(SESSION_LAST_ACTIVE_KEY)
+
+    if last_seen_raw:
+        try:
+            last_seen = datetime.fromisoformat(last_seen_raw)
+        except Exception:
+            last_seen = None
+
+        if last_seen and now - last_seen > timedelta(minutes=timeout_minutes):
+            logout_user()
+            session.clear()
+            trans = inject_globals().get("t")
+            flash(trans("flash_session_expired"), "warning")
+            return redirect(url_for("login"))
+
+    is_static_request = (request.endpoint or "").startswith("static")
+    if not is_static_request:
+        session.permanent = True
+        session[SESSION_LAST_ACTIVE_KEY] = now.isoformat()
+
+
 # ============================================================
 # CLI-Kommandos (Datenbank & Stammdaten)
 # ============================================================
@@ -625,6 +765,9 @@ def login():
         user = User.query.filter_by(email=email).first()
         if user and user.check_password(password):
             login_user(user)
+            load_app_settings()
+            session.permanent = True
+            session[SESSION_LAST_ACTIVE_KEY] = datetime.utcnow().isoformat()
             user.last_login_at = datetime.utcnow()
             db.session.commit()
 
@@ -1552,6 +1695,36 @@ def admin_panel():
     """Einfache Admin-Startseite."""
     return render_template("admin.html")
 
+@app.route("/admin/settings", methods=["GET", "POST"])
+@roles_required("admin")
+def admin_settings():
+    """Systemweite Einstellungen (Session-Timeout etc.)."""
+    trans = inject_globals().get("t")
+    settings = load_app_settings(force_reload=True)
+
+    if request.method == "POST":
+        raw_timeout = (request.form.get("session_timeout_minutes") or "").strip()
+        timeout_value = _coerce_positive_int(raw_timeout, None)
+
+        if timeout_value is None:
+            flash(trans("flash_settings_invalid_timeout"), "danger")
+        else:
+            try:
+                updated_settings = settings.copy()
+                updated_settings["session_timeout_minutes"] = timeout_value
+                save_app_settings(updated_settings)
+                flash(trans("flash_settings_saved"), "success")
+                return redirect(url_for("admin_settings"))
+            except Exception:
+                app.logger.exception("Failed to save admin settings")
+                flash(trans("flash_settings_save_error"), "danger")
+
+    return render_template(
+        "admin_settings.html",
+        settings=settings,
+        settings_path=str(SETTINGS_FILE),
+    )
+
 
 @app.route("/admin/users")
 @roles_required("admin")
@@ -2071,6 +2244,7 @@ def admin_cost_center_import():
 @login_required
 def logout():
     logout_user()
+    session.clear()
     trans = inject_globals().get("t")
     flash(trans("flash_logged_out"), "info")
     return redirect(url_for("landing"))

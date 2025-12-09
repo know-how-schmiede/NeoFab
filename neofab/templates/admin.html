@@ -86,6 +86,24 @@
         </div>
       </div>
 
+      <!-- System Settings -->
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title">
+              <i class="bi bi-shield-lock me-1"></i>
+              {{ t("admin_settings_title") }}
+            </h5>
+            <p class="card-text flex-grow-1">
+              {{ t("admin_settings_desc") }}
+            </p>
+            <a href="{{ url_for('admin_settings') }}" class="btn btn-primary mt-auto">
+              {{ t("admin_settings_open") }}
+            </a>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t("admin_settings_title") }} - NeoFab{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">{{ t("admin_settings_title") }}</h1>
+
+<div class="card">
+  <div class="card-body">
+    <form method="post" class="row g-3">
+      <div class="col-md-6">
+        <label for="session_timeout_minutes" class="form-label">
+          {{ t("admin_settings_timeout_label") }}
+        </label>
+        <input type="number"
+               class="form-control"
+               id="session_timeout_minutes"
+               name="session_timeout_minutes"
+               min="1"
+               required
+               value="{{ settings.get('session_timeout_minutes') }}">
+        <div class="form-text">
+          {{ t("admin_settings_timeout_help") }}
+        </div>
+      </div>
+
+      <div class="col-12">
+        <div class="alert alert-secondary small mb-0">
+          {{ t("admin_settings_storage_hint").format(path=settings_path) }}
+        </div>
+      </div>
+
+      <div class="col-12">
+        <button type="submit" class="btn btn-primary">
+          {{ t("btn_save") }}
+        </button>
+        <a href="{{ url_for('admin_panel') }}" class="btn btn-secondary">
+          {{ t("btn_back_admin") }}
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
