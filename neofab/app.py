@@ -12,6 +12,8 @@
 from version import APP_VERSION
 from datetime import datetime
 from pathlib import Path
+import base64
+import mimetypes
 import os
 import logging
 import json
@@ -44,6 +46,8 @@ from werkzeug.utils import secure_filename
 
 from typing import List, Tuple
 from io import BytesIO
+
+from PIL import Image
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape, Template
 from config import (
@@ -114,6 +118,9 @@ app.config["UPLOAD_FOLDER"] = str(UPLOAD_FOLDER)
 IMAGE_UPLOAD_FOLDER = BASE_DIR / "uploads" / "images"
 os.makedirs(IMAGE_UPLOAD_FOLDER, exist_ok=True)
 app.config["IMAGE_UPLOAD_FOLDER"] = str(IMAGE_UPLOAD_FOLDER)
+
+# Max width for generated thumbnails (px)
+THUMBNAIL_MAX_WIDTH = 200
 
 # ├£bersetzungen aus externer Struktur laden (Ordner i18n im Projekt-Root)
 I18N_DIR = BASE_DIR.parent / "i18n"
@@ -268,6 +275,33 @@ def ensure_order_file_columns():
 
 with app.app_context():
     ensure_order_file_columns()
+
+
+def save_image_thumbnail(source_path: Path, target_path: Path, max_width: int = THUMBNAIL_MAX_WIDTH) -> bool:
+    """
+    Create a thumbnail at most `max_width` pixels wide while keeping aspect ratio.
+    Stores the result at `target_path`. Returns True on success, False otherwise.
+    """
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with Image.open(source_path) as img:
+            width, height = img.size
+            if width <= 0 or height <= 0:
+                raise ValueError("Invalid image dimensions")
+
+            if width > max_width:
+                new_height = max(1, int(height * (max_width / float(width))))
+                img = img.resize((max_width, new_height), Image.LANCZOS)
+
+            save_format = img.format or "PNG"
+            if save_format.upper() in {"JPEG", "JPG"} and img.mode in {"RGBA", "LA", "P"}:
+                img = img.convert("RGB")
+
+            img.save(target_path, format=save_format)
+        return True
+    except Exception as exc:  # noqa: BLE001 - log and continue without blocking the upload
+        app.logger.warning("Could not create thumbnail for %s: %s", source_path, exc)
+        return False
 
 
 # ============================================================
@@ -971,6 +1005,10 @@ def order_detail(order_id):
             full_path = image_folder / stored_name
             file.save(str(full_path))
 
+            thumb_folder = image_folder / "thumbnails"
+            thumb_path = thumb_folder / stored_name
+            save_image_thumbnail(full_path, thumb_path)
+
             try:
                 image_entry.filesize = full_path.stat().st_size
             except OSError:
@@ -1056,6 +1094,13 @@ def order_detail(order_id):
                 except OSError:
                     app.logger.warning(f"[order_detail] Could not delete image on disk: {full_path}")
 
+            thumb_path = image_folder / "thumbnails" / image_entry.stored_name
+            if thumb_path.exists():
+                try:
+                    thumb_path.unlink()
+                except OSError:
+                    app.logger.warning(f"[order_detail] Could not delete thumbnail on disk: {thumb_path}")
+
             db.session.delete(image_entry)
             db.session.commit()
 
@@ -1131,6 +1176,38 @@ def order_messages_fragment(order_id):
 
     messages = order.messages
     return render_template("order_messages_fragment.html", messages=messages)
+
+
+@app.route("/orders/<int:order_id>/images/<int:image_id>/thumbnail")
+@login_required
+def order_image_thumbnail(order_id, image_id):
+    order = Order.query.get_or_404(order_id)
+    if current_user.role != "admin" and order.user_id != current_user.id:
+        abort(403)
+
+    image_entry = OrderImage.query.filter_by(id=image_id, order_id=order.id).first_or_404()
+
+    thumb_folder = Path(app.config["IMAGE_UPLOAD_FOLDER"]) / f"order_{order.id}" / "thumbnails"
+    thumb_path = thumb_folder / image_entry.stored_name
+
+    if thumb_path.exists():
+        return send_from_directory(
+            directory=str(thumb_folder),
+            path=image_entry.stored_name,
+            as_attachment=False,
+        )
+
+    image_folder = Path(app.config["IMAGE_UPLOAD_FOLDER"]) / f"order_{order.id}"
+    fallback_path = image_folder / image_entry.stored_name
+
+    if fallback_path.exists():
+        return send_from_directory(
+            directory=str(image_folder),
+            path=image_entry.stored_name,
+            as_attachment=False,
+        )
+
+    abort(404)
 
 
 @app.route("/orders/<int:order_id>/images/<int:image_id>/download")
@@ -1349,6 +1426,37 @@ def build_order_context(order, translator) -> dict:
     def fmt_dt(dt):
         return dt.strftime("%Y-%m-%d %H:%M") if dt else ""
 
+    def image_thumb_data_uri(image_entry: OrderImage) -> str:
+        """
+        Resolve a thumbnail (fallback to original) as data URI for PDF rendering.
+        Generates the thumbnail on demand if it does not yet exist.
+        """
+        base_folder = Path(app.config["IMAGE_UPLOAD_FOLDER"]) / f"order_{order.id}"
+        original_path = base_folder / image_entry.stored_name
+        thumb_path = base_folder / "thumbnails" / image_entry.stored_name
+
+        if thumb_path.exists():
+            chosen = thumb_path
+        elif original_path.exists():
+            # create thumbnail if missing; ignore failures silently
+            save_image_thumbnail(original_path, thumb_path)
+            chosen = thumb_path if thumb_path.exists() else original_path
+        else:
+            chosen = None
+
+        if not chosen or not chosen.exists():
+            return ""
+
+        mime, _ = mimetypes.guess_type(chosen.name)
+        if not mime:
+            mime = "image/png"
+        try:
+            data = base64.b64encode(chosen.read_bytes()).decode("ascii")
+            return f"data:{mime};base64,{data}"
+        except Exception as exc:  # noqa: BLE001
+            app.logger.warning("Could not embed thumbnail for PDF (%s): %s", chosen, exc)
+            return ""
+
     return {
         "app_name": "NeoFab",
         "app_version": APP_VERSION,
@@ -1407,6 +1515,7 @@ def build_order_context(order, translator) -> dict:
                 "name": img.original_name,
                 "filesize": img.filesize,
                 "uploaded_at": fmt_dt(img.uploaded_at),
+                "thumb_data_uri": image_thumb_data_uri(img),
             }
             for img in order.images
         ],

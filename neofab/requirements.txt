@@ -2,6 +2,7 @@ Flask
 Flask-Bootstrap
 Flask-Login
 Flask-SQLAlchemy
+Pillow
 xhtml2pdf
 svglib
 reportlab

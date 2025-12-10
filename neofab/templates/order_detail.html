@@ -456,27 +456,40 @@
         {% if order.images %}
           <ul class="list-group mb-3">
             {% for img in order.images %}
-              <li class="list-group-item d-flex justify-content-between align-items-center">
-                <div>
-                  <strong>{{ img.original_name }}</strong>
-                  <small class="text-muted d-block">
-                    {% set parts = [] %}
-                    {% if img.filesize %}{% set _ = parts.append(((img.filesize / 1024)|round(1)) ~ " KB") %}{% endif %}
-                    {% if img.uploaded_at %}{% set _ = parts.append("uploaded " ~ img.uploaded_at.strftime("%Y-%m-%d %H:%M")) %}{% endif %}
-                    {{ " | ".join(parts) }}
-                  </small>
-                </div>
-                <div class="d-flex gap-2">
-                  <a class="btn btn-sm btn-outline-primary" href="{{ url_for('download_order_image', order_id=order.id, image_id=img.id) }}">
-                    <i class="bi bi-download me-1"></i>{{ t("btn_download") }}
-                  </a>
-                  <form method="post" onsubmit="return confirm('{{ t('confirm_delete_image') }}');">
-                    <input type="hidden" name="action" value="delete_image">
-                    <input type="hidden" name="image_id" value="{{ img.id }}">
-                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                      <i class="bi bi-trash me-1"></i>{{ t("btn_delete") }}
-                    </button>
-                  </form>
+              <li class="list-group-item">
+                <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+                  <div class="d-flex gap-3 align-items-start">
+                    <div class="flex-shrink-0">
+                      <img
+                        src="{{ url_for('order_image_thumbnail', order_id=order.id, image_id=img.id) }}"
+                        alt="{{ img.original_name }}"
+                        class="img-thumbnail"
+                        style="max-width: 200px; height: auto;"
+                        loading="lazy"
+                      >
+                    </div>
+                    <div>
+                      <strong>{{ img.original_name }}</strong>
+                      <small class="text-muted d-block">
+                        {% set parts = [] %}
+                        {% if img.filesize %}{% set _ = parts.append(((img.filesize / 1024)|round(1)) ~ " KB") %}{% endif %}
+                        {% if img.uploaded_at %}{% set _ = parts.append("uploaded " ~ img.uploaded_at.strftime("%Y-%m-%d %H:%M")) %}{% endif %}
+                        {{ " | ".join(parts) }}
+                      </small>
+                    </div>
+                  </div>
+                  <div class="d-flex gap-2">
+                    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('download_order_image', order_id=order.id, image_id=img.id) }}">
+                      <i class="bi bi-download me-1"></i>{{ t("btn_download") }}
+                    </a>
+                    <form method="post" onsubmit="return confirm('{{ t('confirm_delete_image') }}');">
+                      <input type="hidden" name="action" value="delete_image">
+                      <input type="hidden" name="image_id" value="{{ img.id }}">
+                      <button type="submit" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-trash me-1"></i>{{ t("btn_delete") }}
+                      </button>
+                    </form>
+                  </div>
                 </div>
               </li>
             {% endfor %}

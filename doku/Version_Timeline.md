@@ -1,4 +1,6 @@
 # Timeline NeoFab
+## Version 0.4.12
+Tumpnail bei Bilder-Upload
 ## Version 0.4.11
 Module aus app.py auslagern
 ## Version 0.4.9

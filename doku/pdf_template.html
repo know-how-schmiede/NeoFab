@@ -38,6 +38,13 @@
       margin: 0;
     }
     .admin .bubble { background: #e8f1ff; border-color: #c4dafd; }
+    .image-thumb {
+      max-width: 200px;
+      height: auto;
+      border: 1px solid #ddd;
+      padding: 3px;
+      margin: 6px 0;
+    }
   </style>
 </head>
 <body>
@@ -208,8 +215,12 @@
         {% for img in images %}
           <li>
             <strong>{{ img.name }}</strong>
+            {% if img.thumb_data_uri %}
+              <br>
+              <img src="{{ img.thumb_data_uri }}" alt="{{ img.name }}" class="image-thumb">
+            {% endif %}
             {% if img.uploaded_at %} <br> {{ img.uploaded_at }}{% endif %}
-            {% if img.filesize %} — {{ (img.filesize / 1024)|round(1) }} KB{% endif %}
+            {% if img.filesize %} – {{ (img.filesize / 1024)|round(1) }} KB{% endif %}
           </li>
         {% endfor %}
       </ul>

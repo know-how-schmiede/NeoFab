@@ -194,11 +194,15 @@ flask --app app init-db
 # neues Setup für Debian 13 LXC-Container unter Proxmox
 Verhinderung Fehler bei PDF-Export
 ```
-apt install sudo
+apt install sudo -y
 ```
 
 ```
-sudo apt update
+sudo apt update -y
+```
+
+```
+sudo apt upgrade -y
 ```
 
 ```
@@ -206,11 +210,11 @@ sudo apt install -y python3 python3-venv python3-pip git
 ```
 
 ```
-sudo apt update
+sudo apt update -y
 ```
 
 ```
-sudo apt upgrade
+sudo apt upgrade -y
 ```
 
 ```
