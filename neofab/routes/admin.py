@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import secrets
 import json
 from typing import Callable, Optional
 from urllib.parse import parse_qs, urlparse
@@ -234,6 +235,134 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         """Übersicht aller User (nur für Admin)."""
         users = User.query.order_by(User.id.asc()).all()
         return render_template("admin_users.html", users=users)
+
+    @bp.route("/users/export", endpoint="admin_user_export")
+    @roles_required("admin")
+    def admin_user_export():
+        """
+        Exportiert alle User als JSON (inkl. Passwort-Hash) mit Versionsinfo.
+        """
+        users = User.query.order_by(User.id.asc()).all()
+        payload = {
+            "version": APP_VERSION,
+            "users": [
+                {
+                    "email": u.email,
+                    "role": u.role,
+                    "language": u.language,
+                    "salutation": u.salutation or "",
+                    "first_name": u.first_name or "",
+                    "last_name": u.last_name or "",
+                    "address": u.address or "",
+                    "position": u.position or "",
+                    "cost_center": u.cost_center or "",
+                    "study_program": u.study_program or "",
+                    "note": u.note or "",
+                    "created_at": u.created_at.isoformat() if u.created_at else "",
+                    "last_login_at": u.last_login_at.isoformat() if u.last_login_at else "",
+                    "password_hash": u.password_hash,
+                }
+                for u in users
+            ],
+        }
+        output = json.dumps(payload, ensure_ascii=False, indent=2)
+
+        return current_app.response_class(
+            output,
+            mimetype="application/json",
+            headers={"Content-Disposition": "attachment; filename=NeoFab_users.json"},
+        )
+
+    @bp.route("/users/import", methods=["POST"], endpoint="admin_user_import")
+    @roles_required("admin")
+    def admin_user_import():
+        """
+        Importiert User aus einer JSON-Datei (upsert per Email).
+        Bestehende User bleiben erhalten und werden per Email aktualisiert, neue werden angelegt.
+        """
+        trans = t
+        file = request.files.get("file")
+        if not file or not file.filename:
+            flash(trans("flash_json_choose_file"), "warning")
+            return redirect(url_for(".admin_user_list"))
+
+        try:
+            content = file.read().decode("utf-8-sig")
+            data = json.loads(content)
+        except Exception:
+            flash(trans("flash_invalid_json"), "danger")
+            return redirect(url_for(".admin_user_list"))
+
+        rows = data.get("users", []) if isinstance(data, dict) else []
+
+        created = updated = skipped = 0
+
+        def parse_dt(raw):
+            if not raw:
+                return None
+            try:
+                return datetime.fromisoformat(str(raw))
+            except Exception:
+                return None
+
+        for entry in rows:
+            if not isinstance(entry, dict):
+                skipped += 1
+                continue
+
+            email = (entry.get("email") or "").strip().lower()
+            if not email:
+                skipped += 1
+                continue
+
+            user = User.query.filter_by(email=email).first()
+            is_new = False
+            if not user:
+                user = User(email=email, role="user")
+                is_new = True
+
+            user.role = (entry.get("role") or user.role or "user").strip() or "user"
+            user.language = (entry.get("language") or user.language or "en").strip() or "en"
+
+            user.salutation = (entry.get("salutation") or "").strip() or None
+            user.first_name = (entry.get("first_name") or "").strip() or None
+            user.last_name = (entry.get("last_name") or "").strip() or None
+            user.address = (entry.get("address") or "").strip() or None
+            user.position = (entry.get("position") or "").strip() or None
+            user.cost_center = (entry.get("cost_center") or "").strip() or None
+            user.study_program = (entry.get("study_program") or "").strip() or None
+            user.note = (entry.get("note") or "").strip() or None
+
+            created_at = parse_dt(entry.get("created_at"))
+            if created_at:
+                user.created_at = created_at
+            last_login = parse_dt(entry.get("last_login_at"))
+            if last_login:
+                user.last_login_at = last_login
+
+            raw_pw_hash = (entry.get("password_hash") or "").strip()
+            raw_pw_plain = (entry.get("password") or "").strip()
+            if raw_pw_plain:
+                user.set_password(raw_pw_plain)
+            elif raw_pw_hash:
+                user.password_hash = raw_pw_hash
+            elif is_new and not user.password_hash:
+                user.set_password(secrets.token_urlsafe(12))
+
+            if is_new:
+                db.session.add(user)
+                created += 1
+            else:
+                updated += 1
+
+        db.session.commit()
+        flash(
+            trans("flash_import_result_extended").format(
+                created=created, updated=updated, skipped=skipped
+            ),
+            "success",
+        )
+        return redirect(url_for(".admin_user_list"))
 
     @bp.route("/users/<int:user_id>/edit", methods=["GET", "POST"], endpoint="admin_user_edit")
     @roles_required("admin")
