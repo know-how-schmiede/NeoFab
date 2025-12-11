@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from datetime import datetime
 import json
 from typing import Callable, Optional
+from urllib.parse import parse_qs, urlparse
 
 from flask import (
     Blueprint,
@@ -16,7 +18,7 @@ from sqlalchemy import func
 
 from auth_utils import roles_required
 from config import SETTINGS_FILE, coerce_positive_int, load_app_settings, save_app_settings
-from models import Color, CostCenter, Material, User, db
+from models import Color, CostCenter, Material, TrainingVideo, User, db
 from version import APP_VERSION
 
 
@@ -29,6 +31,45 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
     bp = Blueprint("admin", __name__, url_prefix="/admin")
 
     t = lambda key: _translator(get_translator)(key)
+
+    def normalize_youtube_url(raw_url: str) -> tuple[bool, str]:
+        """
+        Leichtgewichtige Validierung/Normalisierung f泻r YouTube-Links.
+        """
+        url = (raw_url or "").strip()
+        if not url:
+            return False, ""
+
+        candidate = url if "://" in url else f"https://{url}"
+        try:
+            parsed = urlparse(candidate)
+        except Exception:
+            return False, candidate
+
+        if parsed.scheme not in ("http", "https"):
+            return False, candidate
+
+        host = (parsed.hostname or "").lower()
+        if not any(host.endswith(h) for h in ("youtube.com", "youtu.be")):
+            return False, candidate
+
+        video_id = None
+        if host.endswith("youtu.be"):
+            path_parts = [p for p in parsed.path.split("/") if p]
+            video_id = path_parts[0] if path_parts else None
+        elif host.endswith("youtube.com"):
+            qs = parse_qs(parsed.query)
+            video_id = qs.get("v", [None])[0]
+            if not video_id:
+                path_parts = [p for p in parsed.path.split("/") if p]
+                if len(path_parts) >= 2 and path_parts[0] == "embed":
+                    video_id = path_parts[1]
+
+        if not video_id:
+            return False, candidate
+
+        normalized = f"https://www.youtube.com/watch?v={video_id}"
+        return True, normalized
 
     # Admin Panel / Settings -------------------------------------------------
 
@@ -396,6 +437,82 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         db.session.commit()
         flash(trans("flash_color_deleted"), "info")
         return redirect(url_for(".admin_color_list"))
+
+    # Training Videos (Tutorials) ------------------------------------------
+
+    @bp.route("/training-videos", endpoint="admin_training_video_list")
+    @roles_required("admin")
+    def admin_training_video_list():
+        videos = TrainingVideo.query.order_by(TrainingVideo.created_at.desc()).all()
+        return render_template("admin_training_videos.html", videos=videos)
+
+    @bp.route("/training-videos/new", methods=["GET", "POST"], endpoint="admin_training_video_new")
+    @roles_required("admin")
+    def admin_training_video_new():
+        trans = t
+        if request.method == "POST":
+            title = request.form.get("title", "").strip()
+            description = request.form.get("description", "").strip() or None
+            youtube_url = request.form.get("youtube_url", "").strip()
+
+            is_valid, normalized_url = normalize_youtube_url(youtube_url)
+            if not title:
+                flash(trans("flash_training_title_required"), "danger")
+            elif not youtube_url:
+                flash(trans("flash_training_url_required"), "danger")
+            elif not is_valid:
+                flash(trans("flash_training_url_invalid"), "danger")
+            else:
+                video = TrainingVideo(
+                    title=title,
+                    description=description,
+                    youtube_url=normalized_url or youtube_url,
+                )
+                db.session.add(video)
+                db.session.commit()
+                flash(trans("flash_training_created"), "success")
+                return redirect(url_for(".admin_training_video_list"))
+
+        return render_template("admin_training_video_edit.html", video=None)
+
+    @bp.route("/training-videos/<int:video_id>/edit", methods=["GET", "POST"], endpoint="admin_training_video_edit")
+    @roles_required("admin")
+    def admin_training_video_edit(video_id):
+        trans = t
+        video = TrainingVideo.query.get_or_404(video_id)
+
+        if request.method == "POST":
+            title = request.form.get("title", "").strip()
+            description = request.form.get("description", "").strip() or None
+            youtube_url = request.form.get("youtube_url", "").strip()
+
+            is_valid, normalized_url = normalize_youtube_url(youtube_url)
+            if not title:
+                flash(trans("flash_training_title_required"), "danger")
+            elif not youtube_url:
+                flash(trans("flash_training_url_required"), "danger")
+            elif not is_valid:
+                flash(trans("flash_training_url_invalid"), "danger")
+            else:
+                video.title = title
+                video.description = description
+                video.youtube_url = normalized_url or youtube_url
+                video.updated_at = datetime.utcnow()
+                db.session.commit()
+                flash(trans("flash_training_updated"), "success")
+                return redirect(url_for(".admin_training_video_list"))
+
+        return render_template("admin_training_video_edit.html", video=video)
+
+    @bp.route("/training-videos/<int:video_id>/delete", methods=["POST"], endpoint="admin_training_video_delete")
+    @roles_required("admin")
+    def admin_training_video_delete(video_id):
+        trans = t
+        video = TrainingVideo.query.get_or_404(video_id)
+        db.session.delete(video)
+        db.session.commit()
+        flash(trans("flash_training_deleted"), "info")
+        return redirect(url_for(".admin_training_video_list"))
 
     # Cost Centers ----------------------------------------------------------
 

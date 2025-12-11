@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t("tutorials_title") }} - NeoFab{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+  <div>
+    <h1 class="mb-1">{{ t("tutorials_title") }}</h1>
+    <p class="text-muted mb-0">{{ t("tutorials_description") }}</p>
+  </div>
+</div>
+
+{% if videos %}
+  <div class="row row-cols-1 row-cols-md-2 g-3">
+    {% for entry in videos %}
+      {% set video = entry.video %}
+      <div class="col">
+        <div class="card h-100">
+          <div class="card-body d-flex flex-column">
+            <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+              <h2 class="h5 mb-0">{{ video.title }}</h2>
+              <span class="badge bg-light text-dark">{{ t("tutorials_badge_youtube") }}</span>
+            </div>
+            <div class="ratio ratio-16x9 mb-3 tutorial-player"
+                 data-embed="{{ entry.embed_url }}"
+                 data-thumb="{{ entry.thumb_url or '' }}">
+              <div class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center text-light tutorial-placeholder"
+                   role="button"
+                   tabindex="0"
+                   style="background-image: url('{{ entry.thumb_url }}'); background-size: cover; background-position: center; background-color: rgba(0,0,0,0.75);">
+                <div class="bg-dark bg-opacity-50 w-100 h-100 position-absolute top-0 start-0"></div>
+                <div class="position-absolute d-flex flex-column justify-content-center align-items-center">
+                  <i class="bi bi-play-circle-fill fs-1"></i>
+                  <span class="small mt-1">{{ t("tutorials_open") }}</span>
+                </div>
+              </div>
+              <iframe class="w-100 h-100 border-0 d-none"
+                      title="{{ video.title }}"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowfullscreen
+                      loading="lazy"></iframe>
+            </div>
+            {% if video.description %}
+              <p class="text-muted">{{ video.description }}</p>
+            {% endif %}
+            <div class="mt-auto">
+              <a href="{{ video.youtube_url }}" target="_blank" rel="noopener" class="btn btn-outline-primary">
+                <i class="bi bi-box-arrow-up-right me-1"></i>{{ t("tutorials_open") }}
+              </a>
+            </div>
+          </div>
+          <div class="card-footer small text-muted">
+            {{ t("tutorials_link_label") }}
+            <a href="{{ video.youtube_url }}" target="_blank" rel="noopener">{{ video.youtube_url }}</a>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="alert alert-info mt-3">
+    {{ t("tutorials_empty") }}
+  </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.tutorial-player').forEach(function(playerEl) {
+    const iframe = playerEl.querySelector('iframe');
+    const placeholder = playerEl.querySelector('.tutorial-placeholder');
+    const embedUrl = playerEl.getAttribute('data-embed');
+    const thumb = playerEl.getAttribute('data-thumb');
+    if (!iframe || !placeholder || !embedUrl) return;
+
+    if (thumb) {
+      placeholder.style.backgroundImage = `url('${thumb}')`;
+    }
+
+    const activate = function() {
+      const separator = embedUrl.includes('?') ? '&' : '?';
+      iframe.src = embedUrl + separator + 'autoplay=1&rel=0';
+      iframe.classList.remove('d-none');
+      placeholder.classList.add('d-none');
+    };
+
+    placeholder.addEventListener('click', activate);
+    placeholder.addEventListener('keypress', function(evt) {
+      if (evt.key === 'Enter' || evt.key === ' ') {
+        evt.preventDefault();
+        activate();
+      }
+    });
+  });
+});
+</script>
+{% endblock %}

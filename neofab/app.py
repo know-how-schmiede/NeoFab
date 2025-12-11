@@ -17,6 +17,7 @@ import mimetypes
 import os
 import logging
 import json
+from urllib.parse import parse_qs, urlparse
 
 from sqlalchemy import func, text
 
@@ -75,6 +76,7 @@ from models import (
     Material,
     Color,
     CostCenter,
+    TrainingVideo,
 )
 
 XHTML2PDF_IMPORT_ERR = None
@@ -273,8 +275,39 @@ def ensure_order_file_columns():
         app.logger.exception("Failed to ensure order_files columns exist")
 
 
+def ensure_training_videos_table():
+    """
+    Creates the training_videos table if it is missing (lightweight migration).
+    """
+    try:
+        exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='training_videos'")
+        ).scalar()
+        if exists:
+            return
+
+        db.session.execute(
+            text(
+                """
+                CREATE TABLE training_videos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title VARCHAR(200) NOT NULL,
+                    description TEXT,
+                    youtube_url VARCHAR(500) NOT NULL,
+                    created_at DATETIME NOT NULL,
+                    updated_at DATETIME NOT NULL
+                )
+                """
+            )
+        )
+        db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure training_videos table exists")
+
+
 with app.app_context():
     ensure_order_file_columns()
+    ensure_training_videos_table()
 
 
 def save_image_thumbnail(source_path: Path, target_path: Path, max_width: int = THUMBNAIL_MAX_WIDTH) -> bool:
@@ -548,6 +581,61 @@ def profile():
                 return redirect(url_for("profile"))
 
     return render_template("profile.html", user=user)
+
+
+# ============================================================
+# Routen: Tutorials
+# ============================================================
+
+
+def extract_youtube_id(url: str) -> str | None:
+    """
+    Extracts the YouTube video ID from typical watch/embed/short URLs.
+    """
+    if not url:
+        return None
+    candidate = url if "://" in url else f"https://{url}"
+    try:
+        parsed = urlparse(candidate)
+    except Exception:
+        return None
+
+    host = (parsed.hostname or "").lower()
+    video_id = None
+    if host.endswith("youtu.be"):
+        parts = [p for p in parsed.path.split("/") if p]
+        video_id = parts[0] if parts else None
+    elif host.endswith("youtube.com"):
+        qs = parse_qs(parsed.query)
+        video_id = qs.get("v", [None])[0]
+        if not video_id:
+            parts = [p for p in parsed.path.split("/") if p]
+            if len(parts) >= 2 and parts[0] == "embed":
+                video_id = parts[1]
+
+    return video_id
+
+
+@app.route("/tutorials")
+@login_required
+def tutorials():
+    """
+    Zeigt verfuegbare Trainingsvideos fuer Anwender.
+    """
+    videos = TrainingVideo.query.order_by(TrainingVideo.created_at.desc()).all()
+
+    def build_video_entry(video: TrainingVideo) -> dict:
+        vid = extract_youtube_id(video.youtube_url)
+        embed_url = f"https://www.youtube.com/embed/{vid}" if vid else video.youtube_url
+        thumb_url = f"https://img.youtube.com/vi/{vid}/hqdefault.jpg" if vid else None
+        return {
+            "video": video,
+            "embed_url": embed_url,
+            "thumb_url": thumb_url,
+        }
+
+    video_entries = [build_video_entry(v) for v in videos]
+    return render_template("tutorials.html", videos=video_entries)
 
 
 # ============================================================

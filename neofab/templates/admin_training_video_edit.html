@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {{ video and t("admin_training_form_title_edit") or t("admin_training_form_title_new") }} - NeoFab
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">
+    {{ video and t("admin_training_form_title_edit") or t("admin_training_form_title_new") }}
+</h1>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            <div class="mb-3">
+                <label for="title" class="form-label">{{ t("admin_training_label_title") }}</label>
+                <input type="text"
+                       class="form-control"
+                       id="title"
+                       name="title"
+                       required
+                       value="{{ video.title if video else '' }}">
+            </div>
+
+            <div class="mb-3">
+                <label for="description" class="form-label">{{ t("admin_training_label_description") }}</label>
+                <textarea class="form-control"
+                          id="description"
+                          name="description"
+                          rows="3"
+                          placeholder="{{ t('admin_training_description_hint') }}">{{ video.description if video else '' }}</textarea>
+            </div>
+
+            <div class="mb-3">
+                <label for="youtube_url" class="form-label">{{ t("admin_training_label_url") }}</label>
+                <input type="url"
+                       class="form-control"
+                       id="youtube_url"
+                       name="youtube_url"
+                       required
+                       value="{{ video.youtube_url if video else '' }}">
+                <div class="form-text">{{ t("admin_training_url_hint") }}</div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">{{ t("btn_save") }}</button>
+            <a href="{{ url_for('admin.admin_training_video_list') }}" class="btn btn-secondary">{{ t("btn_cancel") }}</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

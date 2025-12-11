@@ -230,6 +230,23 @@ class CostCenter(db.Model):
         return f"<CostCenter {self.name}>"
 
 
+# --- Training Videos (Tutorials) ---------------------------------------------
+
+
+class TrainingVideo(db.Model):
+    __tablename__ = "training_videos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    youtube_url = db.Column(db.String(500), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<TrainingVideo {self.title}>"
+
+
 __all__ = [
     "db",
     "User",
@@ -242,4 +259,5 @@ __all__ = [
     "Material",
     "Color",
     "CostCenter",
+    "TrainingVideo",
 ]
