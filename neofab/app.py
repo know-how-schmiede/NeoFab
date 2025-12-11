@@ -18,7 +18,9 @@ import os
 import logging
 import json
 import re
+import smtplib
 from urllib.parse import parse_qs, urlparse
+from email.message import EmailMessage
 
 from sqlalchemy import func, text
 
@@ -343,6 +345,97 @@ def save_image_thumbnail(source_path: Path, target_path: Path, max_width: int = 
         return True
     except Exception as exc:  # noqa: BLE001 - log and continue without blocking the upload
         app.logger.warning("Could not create thumbnail for %s: %s", source_path, exc)
+        return False
+
+
+def send_admin_order_notification(order: Order) -> bool:
+    """
+    Send a notification email to all admin users for a newly created order.
+    Never raises; returns True on success, False otherwise.
+    """
+    try:
+        settings = load_app_settings(app, force_reload=True)
+        smtp_host = settings.get("smtp_host")
+        smtp_port = settings.get("smtp_port")
+        smtp_use_tls = bool(settings.get("smtp_use_tls"))
+        smtp_use_ssl = bool(settings.get("smtp_use_ssl"))
+        smtp_user = settings.get("smtp_user")
+        smtp_password = settings.get("smtp_password")
+        smtp_from = settings.get("smtp_from_address")
+
+        if not smtp_host or not smtp_port or not smtp_from:
+            app.logger.info("SMTP not configured, skipping admin notification.")
+            return False
+
+        admin_users = User.query.filter_by(role="admin").all()
+        recipients: list[str] = []
+        seen = set()
+        for user in admin_users:
+            email = (user.email or "").strip()
+            if not email:
+                continue
+            key = email.lower()
+            if key in seen:
+                continue
+            recipients.append(email)
+            seen.add(key)
+
+        if not recipients:
+            app.logger.info("No admin recipients found, skipping admin notification.")
+            return False
+
+        try:
+            order_url = url_for("order_detail", order_id=order.id, _external=True)
+        except Exception:
+            order_url = url_for("order_detail", order_id=order.id)
+
+        status_label = STATUS_LABELS.get(order.status, order.status)
+        created_by = current_user.email if current_user.is_authenticated else ""
+        created_at = order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else ""
+
+        msg = EmailMessage()
+        msg["Subject"] = f"NeoFab: New order #{order.id}"
+        msg["From"] = smtp_from
+        msg["To"] = ", ".join(recipients)
+
+        body_lines = [
+            "A new order has been created.",
+            f"ID: {order.id}",
+            f"Title: {order.title}",
+            f"Status: {status_label}",
+            f"Created by: {created_by}",
+            f"Created at: {created_at}",
+            f"Link: {order_url}",
+        ]
+        if order.summary_short:
+            body_lines.extend(["", "Summary:", order.summary_short])
+
+        msg.set_content("\n".join(body_lines))
+
+        if smtp_use_ssl:
+            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10)
+        else:
+            server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+
+        with server:
+            server.ehlo()
+            if smtp_use_tls and not smtp_use_ssl:
+                server.starttls()
+                server.ehlo()
+            if smtp_user:
+                server.login(smtp_user, smtp_password or "")
+            server.send_message(msg)
+
+        app.logger.info(
+            "Sent admin notification for order %s to %s",
+            order.id,
+            ", ".join(recipients),
+        )
+        return True
+    except Exception:
+        app.logger.exception(
+            "Failed to send admin notification for order %s", getattr(order, "id", "?")
+        )
         return False
 
 
@@ -827,6 +920,8 @@ def new_order():
             f"status={order.status!r}, user={current_user.email}, "
             f"material_id={order.material_id}, color_id={order.color_id}"
         )
+
+        send_admin_order_notification(order)
 
         flash(trans("flash_order_created"), "success")
         return redirect(url_for("dashboard"))

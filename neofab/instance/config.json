@@ -1,5 +1,5 @@
 {
-  "session_timeout_minutes": 30,
+  "session_timeout_minutes": 15,
   "smtp_host": "smtp.hostinger.com",
   "smtp_port": 465,
   "smtp_use_tls": false,

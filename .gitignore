@@ -7,3 +7,5 @@
 *.db
 *.pyc
 /neofab/uploads
+neofab/instance/config.json
+/neofab/instance
