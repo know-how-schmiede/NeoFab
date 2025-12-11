@@ -348,9 +348,35 @@ def save_image_thumbnail(source_path: Path, target_path: Path, max_width: int = 
         return False
 
 
+def _collect_order_recipients(order: Order, include_owner: bool = False) -> list[str]:
+    recipients: list[str] = []
+    seen = set()
+
+    admin_users = User.query.filter_by(role="admin").all()
+    for user in admin_users:
+        email = (user.email or "").strip()
+        if not email:
+            continue
+        key = email.lower()
+        if key in seen:
+            continue
+        recipients.append(email)
+        seen.add(key)
+
+    if include_owner and order.user:
+        owner_email = (order.user.email or "").strip()
+        if owner_email:
+            key = owner_email.lower()
+            if key not in seen:
+                recipients.append(owner_email)
+                seen.add(key)
+
+    return recipients
+
+
 def send_admin_order_notification(order: Order) -> bool:
     """
-    Send a notification email to all admin users for a newly created order.
+    Send a notification email to all admin users (plus order creator) for a newly created order.
     Never raises; returns True on success, False otherwise.
     """
     try:
@@ -367,21 +393,9 @@ def send_admin_order_notification(order: Order) -> bool:
             app.logger.info("SMTP not configured, skipping admin notification.")
             return False
 
-        admin_users = User.query.filter_by(role="admin").all()
-        recipients: list[str] = []
-        seen = set()
-        for user in admin_users:
-            email = (user.email or "").strip()
-            if not email:
-                continue
-            key = email.lower()
-            if key in seen:
-                continue
-            recipients.append(email)
-            seen.add(key)
-
+        recipients = _collect_order_recipients(order, include_owner=True)
         if not recipients:
-            app.logger.info("No admin recipients found, skipping admin notification.")
+            app.logger.info("No recipients found, skipping admin notification.")
             return False
 
         try:
@@ -397,6 +411,8 @@ def send_admin_order_notification(order: Order) -> bool:
         msg["Subject"] = f"NeoFab: New order #{order.id}"
         msg["From"] = smtp_from
         msg["To"] = ", ".join(recipients)
+        if order.user and order.user.email:
+            msg["Reply-To"] = order.user.email
 
         body_lines = [
             "A new order has been created.",
@@ -424,7 +440,7 @@ def send_admin_order_notification(order: Order) -> bool:
                 server.ehlo()
             if smtp_user:
                 server.login(smtp_user, smtp_password or "")
-            server.send_message(msg)
+            server.send_message(msg, from_addr=smtp_user or smtp_from)
 
         app.logger.info(
             "Sent admin notification for order %s to %s",
@@ -435,6 +451,86 @@ def send_admin_order_notification(order: Order) -> bool:
     except Exception:
         app.logger.exception(
             "Failed to send admin notification for order %s", getattr(order, "id", "?")
+        )
+        return False
+
+
+def send_order_status_change_notification(order: Order, old_status: str, new_status: str) -> bool:
+    """
+    Notify admins and the order owner about a status change.
+    Never raises; returns True on success, False otherwise.
+    """
+    try:
+        settings = load_app_settings(app, force_reload=True)
+        smtp_host = settings.get("smtp_host")
+        smtp_port = settings.get("smtp_port")
+        smtp_use_tls = bool(settings.get("smtp_use_tls"))
+        smtp_use_ssl = bool(settings.get("smtp_use_ssl"))
+        smtp_user = settings.get("smtp_user")
+        smtp_password = settings.get("smtp_password")
+        smtp_from = settings.get("smtp_from_address")
+
+        if not smtp_host or not smtp_port or not smtp_from:
+            app.logger.info("SMTP not configured, skipping status notification.")
+            return False
+
+        recipients = _collect_order_recipients(order, include_owner=True)
+        if not recipients:
+            app.logger.info("No recipients found, skipping status notification.")
+            return False
+
+        try:
+            order_url = url_for("order_detail", order_id=order.id, _external=True)
+        except Exception:
+            order_url = url_for("order_detail", order_id=order.id)
+
+        old_label = STATUS_LABELS.get(old_status, old_status)
+        new_label = STATUS_LABELS.get(new_status, new_status)
+        changed_by = current_user.email if current_user.is_authenticated else ""
+
+        msg = EmailMessage()
+        msg["Subject"] = f"NeoFab: Order #{order.id} status changed to {new_label}"
+        msg["From"] = smtp_from
+        msg["To"] = ", ".join(recipients)
+        if order.user and order.user.email:
+            msg["Reply-To"] = order.user.email
+
+        body_lines = [
+            "The order status has changed.",
+            f"ID: {order.id}",
+            f"Title: {order.title}",
+            f"Status: {old_label} -> {new_label}",
+            f"Changed by: {changed_by}",
+            f"Link: {order_url}",
+        ]
+        if order.summary_short:
+            body_lines.extend(["", "Summary:", order.summary_short])
+
+        msg.set_content("\n".join(body_lines))
+
+        if smtp_use_ssl:
+            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10)
+        else:
+            server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+
+        with server:
+            server.ehlo()
+            if smtp_use_tls and not smtp_use_ssl:
+                server.starttls()
+                server.ehlo()
+            if smtp_user:
+                server.login(smtp_user, smtp_password or "")
+            server.send_message(msg, from_addr=smtp_user or smtp_from)
+
+        app.logger.info(
+            "Sent status change notification for order %s to %s",
+            order.id,
+            ", ".join(recipients),
+        )
+        return True
+    except Exception:
+        app.logger.exception(
+            "Failed to send status change notification for order %s", getattr(order, "id", "?")
         )
         return False
 
@@ -967,6 +1063,7 @@ def order_detail(order_id):
             title = request.form.get("title", "").strip()
             description = request.form.get("description", "").strip()
             status = request.form.get("status", order.status)
+            previous_status = order.status
 
             public_allow_poster = bool(request.form.get("public_allow_poster"))
             public_allow_web = bool(request.form.get("public_allow_web"))
@@ -1062,6 +1159,10 @@ def order_detail(order_id):
                     f"[order_detail] UPDATE_ORDER after commit: id={order.id}, "
                     f"title={order.title!r}, status={order.status!r}"
                 )
+
+                if previous_status != order.status:
+                    send_order_status_change_notification(order, previous_status, order.status)
+
                 flash(trans("flash_order_updated"), "success")
                 return redirect(url_for("order_detail", order_id=order.id))
 
@@ -1090,6 +1191,7 @@ def order_detail(order_id):
                 f"[order_detail] CANCEL_ORDER requested by user={current_user.email}, "
                 f"order_id={order.id}, current_status={order.status!r}"
             )
+            previous_status = order.status
             # User darf nur eigene Auftr├ñge stornieren, Admin alle
             if current_user.role == "admin" or order.user_id == current_user.id:
                 if order.status not in ("completed", "cancelled"):
@@ -1098,6 +1200,7 @@ def order_detail(order_id):
                     app.logger.debug(
                         f"[order_detail] Order {order.id} cancelled. New status={order.status!r}"
                     )
+                    send_order_status_change_notification(order, previous_status, order.status)
                     flash(trans("flash_order_cancelled"), "info")
                 else:
                     app.logger.debug(
