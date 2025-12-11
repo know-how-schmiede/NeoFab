@@ -566,6 +566,117 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         ).all()
         return render_template("admin_training_videos.html", videos=videos)
 
+    @bp.route("/training-videos/export", endpoint="admin_training_video_export")
+    @roles_required("admin")
+    def admin_training_video_export():
+        """
+        Exportiert alle Trainingsvideos als JSON mit Versionsinfo.
+        """
+        videos = TrainingVideo.query.order_by(
+            TrainingVideo.sort_order.asc(), TrainingVideo.created_at.asc()
+        ).all()
+        payload = {
+            "version": APP_VERSION,
+            "training_videos": [
+                {
+                    "title": v.title,
+                    "description": v.description or "",
+                    "youtube_url": v.youtube_url,
+                    "sort_order": v.sort_order or 0,
+                }
+                for v in videos
+            ],
+        }
+        output = json.dumps(payload, ensure_ascii=False, indent=2)
+
+        return current_app.response_class(
+            output,
+            mimetype="application/json",
+            headers={
+                "Content-Disposition": "attachment; filename=NeoFab_training_videos.json"
+            },
+        )
+
+    @bp.route("/training-videos/import", methods=["POST"], endpoint="admin_training_video_import")
+    @roles_required("admin")
+    def admin_training_video_import():
+        """
+        Importiert Trainingsvideos aus einer JSON-Datei:
+        {
+          "version": "...",
+          "training_videos": [{ "title": "...", "description": "...", "youtube_url": "...", "sort_order": 1 }, ...]
+        }
+        Bestehende Einträge werden vorher entfernt.
+        """
+        trans = t
+        file = request.files.get("file")
+        if not file or not file.filename:
+            flash(trans("flash_json_choose_file"), "warning")
+            return redirect(url_for(".admin_training_video_list"))
+
+        try:
+            content = file.read().decode("utf-8-sig")
+            data = json.loads(content)
+        except Exception:
+            flash(trans("flash_invalid_json"), "danger")
+            return redirect(url_for(".admin_training_video_list"))
+
+        rows = data.get("training_videos", []) if isinstance(data, dict) else []
+
+        TrainingVideo.query.delete()
+
+        prepared = []
+        created = skipped = 0
+        for idx, entry in enumerate(rows, start=1):
+            if not isinstance(entry, dict):
+                skipped += 1
+                continue
+            title = (entry.get("title") or "").strip()
+            youtube_url = (entry.get("youtube_url") or "").strip()
+            description = (entry.get("description") or "").strip() or None
+            raw_sort = entry.get("sort_order")
+            sort_val = None
+            try:
+                sort_val = int(raw_sort)
+                if sort_val <= 0:
+                    sort_val = None
+            except Exception:
+                sort_val = None
+
+            if not title or not youtube_url:
+                skipped += 1
+                continue
+
+            order_key = sort_val if sort_val is not None else idx
+            prepared.append(
+                {
+                    "order_key": order_key,
+                    "title": title,
+                    "description": description,
+                    "youtube_url": youtube_url,
+                }
+            )
+            created += 1
+
+        prepared.sort(key=lambda x: (x["order_key"], x["title"].lower()))
+
+        now = datetime.utcnow()
+        for pos, item in enumerate(prepared, start=1):
+            video = TrainingVideo(
+                title=item["title"],
+                description=item["description"],
+                youtube_url=item["youtube_url"],
+                sort_order=pos,
+                created_at=now,
+                updated_at=now,
+            )
+            db.session.add(video)
+
+        db.session.commit()
+        normalize_training_video_order()
+        flash(trans("flash_import_result_simple").format(created=created, skipped=skipped), "success")
+        return redirect(url_for(".admin_training_video_list"))
+
     @bp.route("/training-videos/new", methods=["GET", "POST"], endpoint="admin_training_video_new")
     @roles_required("admin")
     def admin_training_video_new():
