@@ -1,4 +1,6 @@
 # Timeline NeoFab
+## Version 0.5.0
+Sortierfunktion Video-Tutorials und neues Release
 ## Version 0.4.13
 Tutorial-Videos Youtube einbinden
 ## Version 0.4.12

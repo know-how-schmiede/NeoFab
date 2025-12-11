@@ -27,9 +27,17 @@
               <div class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center text-light tutorial-placeholder"
                    role="button"
                    tabindex="0"
-                   style="background-image: url('{{ entry.thumb_url }}'); background-size: cover; background-position: center; background-color: rgba(0,0,0,0.75);">
-                <div class="bg-dark bg-opacity-50 w-100 h-100 position-absolute top-0 start-0"></div>
-                <div class="position-absolute d-flex flex-column justify-content-center align-items-center">
+                   style="
+                     {% if entry.thumb_url %}
+                       background-image: url('{{ entry.thumb_url }}');
+                       background-size: cover;
+                       background-position: center;
+                     {% else %}
+                       background: linear-gradient(135deg, #1b1f3b, #2c3e50);
+                     {% endif %}
+                   ">
+                <div class="d-flex flex-column justify-content-center align-items-center px-3 py-2 rounded-pill"
+                     style="background: rgba(0,0,0,0.35); backdrop-filter: blur(2px);">
                   <i class="bi bi-play-circle-fill fs-1"></i>
                   <span class="small mt-1">{{ t("tutorials_open") }}</span>
                 </div>
@@ -48,10 +56,6 @@
                 <i class="bi bi-box-arrow-up-right me-1"></i>{{ t("tutorials_open") }}
               </a>
             </div>
-          </div>
-          <div class="card-footer small text-muted">
-            {{ t("tutorials_link_label") }}
-            <a href="{{ video.youtube_url }}" target="_blank" rel="noopener">{{ video.youtube_url }}</a>
           </div>
         </div>
       </div>

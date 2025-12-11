@@ -79,6 +79,8 @@
   "btn_edit": "Modifier",
   "btn_export_json": "Exporter en JSON",
   "btn_import": "Importer",
+  "btn_move_down": "Descendre",
+  "btn_move_up": "Monter",
   "btn_save": "Enregistrer",
   "btn_save_changes": "Enregistrer les modifications",
   "btn_send": "Envoyer",

@@ -21,7 +21,7 @@
                 <th style="width: 25%;">{{ t("admin_training_table_title") }}</th>
                 <th style="width: 40%;">{{ t("admin_training_table_description") }}</th>
                 <th style="width: 20%;">{{ t("admin_training_table_link") }}</th>
-                <th class="text-end" style="width: 15%;">{{ t("table_actions") }}</th>
+                <th class="text-end" style="width: 18%;">{{ t("table_actions") }}</th>
             </tr>
         </thead>
         <tbody>
@@ -38,6 +38,26 @@
                     </a>
                 </td>
                 <td class="text-end">
+                    <div class="btn-group me-1" role="group" aria-label="{{ t('table_actions') }}">
+                        <form action="{{ url_for('admin.admin_training_video_move_up', video_id=video.id) }}"
+                              method="post" class="d-inline">
+                            <button type="submit"
+                                    class="btn btn-sm btn-outline-secondary"
+                                    title="{{ t('btn_move_up') }}">
+                                ▲
+                                <span class="visually-hidden">{{ t('btn_move_up') }}</span>
+                            </button>
+                        </form>
+                        <form action="{{ url_for('admin.admin_training_video_move_down', video_id=video.id) }}"
+                              method="post" class="d-inline">
+                            <button type="submit"
+                                    class="btn btn-sm btn-outline-secondary"
+                                    title="{{ t('btn_move_down') }}">
+                                ▼
+                                <span class="visually-hidden">{{ t('btn_move_down') }}</span>
+                            </button>
+                        </form>
+                    </div>
                     <a href="{{ url_for('admin.admin_training_video_edit', video_id=video.id) }}"
                        class="btn btn-sm btn-primary">
                         {{ t("btn_edit") }}

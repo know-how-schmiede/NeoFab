@@ -32,6 +32,39 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
 
     t = lambda key: _translator(get_translator)(key)
 
+    def normalize_training_video_order() -> None:
+        """Ensure sequential sort_order without gaps."""
+        videos = TrainingVideo.query.order_by(
+            TrainingVideo.sort_order.asc(), TrainingVideo.created_at.asc(), TrainingVideo.id.asc()
+        ).all()
+        dirty = False
+        for idx, vid in enumerate(videos, start=1):
+            if vid.sort_order != idx:
+                vid.sort_order = idx
+                dirty = True
+        if dirty:
+            db.session.commit()
+
+    def swap_training_video(video_id: int, direction: str) -> None:
+        """Swap the sort order of a video with its neighbor (up/down)."""
+        normalize_training_video_order()
+        videos = TrainingVideo.query.order_by(TrainingVideo.sort_order.asc(), TrainingVideo.id.asc()).all()
+        idx = next((i for i, v in enumerate(videos) if v.id == video_id), None)
+        if idx is None:
+            return
+
+        if direction == "up" and idx > 0:
+            neighbor_idx = idx - 1
+        elif direction == "down" and idx < len(videos) - 1:
+            neighbor_idx = idx + 1
+        else:
+            return
+
+        current = videos[idx]
+        neighbor = videos[neighbor_idx]
+        current.sort_order, neighbor.sort_order = neighbor.sort_order, current.sort_order
+        db.session.commit()
+
     def normalize_youtube_url(raw_url: str) -> tuple[bool, str]:
         """
         Leichtgewichtige Validierung/Normalisierung f泻r YouTube-Links.
@@ -50,19 +83,22 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             return False, candidate
 
         host = (parsed.hostname or "").lower()
-        if not any(host.endswith(h) for h in ("youtube.com", "youtu.be")):
+        allowed_hosts = ("youtube.com", "youtu.be", "youtube-nocookie.com")
+        if not any(host.endswith(h) for h in allowed_hosts):
             return False, candidate
 
         video_id = None
         if host.endswith("youtu.be"):
             path_parts = [p for p in parsed.path.split("/") if p]
             video_id = path_parts[0] if path_parts else None
-        elif host.endswith("youtube.com"):
+        elif host.endswith("youtube.com") or host.endswith("youtube-nocookie.com"):
             qs = parse_qs(parsed.query)
             video_id = qs.get("v", [None])[0]
             if not video_id:
                 path_parts = [p for p in parsed.path.split("/") if p]
                 if len(path_parts) >= 2 and path_parts[0] == "embed":
+                    video_id = path_parts[1]
+                elif len(path_parts) >= 2 and path_parts[0] == "shorts":
                     video_id = path_parts[1]
 
         if not video_id:
@@ -443,7 +479,10 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
     @bp.route("/training-videos", endpoint="admin_training_video_list")
     @roles_required("admin")
     def admin_training_video_list():
-        videos = TrainingVideo.query.order_by(TrainingVideo.created_at.desc()).all()
+        normalize_training_video_order()
+        videos = TrainingVideo.query.order_by(
+            TrainingVideo.sort_order.asc(), TrainingVideo.created_at.desc()
+        ).all()
         return render_template("admin_training_videos.html", videos=videos)
 
     @bp.route("/training-videos/new", methods=["GET", "POST"], endpoint="admin_training_video_new")
@@ -463,10 +502,13 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             elif not is_valid:
                 flash(trans("flash_training_url_invalid"), "danger")
             else:
+                max_order = db.session.query(func.max(TrainingVideo.sort_order)).scalar()
+                next_order = (max_order or 0) + 1
                 video = TrainingVideo(
                     title=title,
                     description=description,
                     youtube_url=normalized_url or youtube_url,
+                    sort_order=next_order,
                 )
                 db.session.add(video)
                 db.session.commit()
@@ -511,7 +553,20 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         video = TrainingVideo.query.get_or_404(video_id)
         db.session.delete(video)
         db.session.commit()
+        normalize_training_video_order()
         flash(trans("flash_training_deleted"), "info")
+        return redirect(url_for(".admin_training_video_list"))
+
+    @bp.route("/training-videos/<int:video_id>/move-up", methods=["POST"], endpoint="admin_training_video_move_up")
+    @roles_required("admin")
+    def admin_training_video_move_up(video_id):
+        swap_training_video(video_id, "up")
+        return redirect(url_for(".admin_training_video_list"))
+
+    @bp.route("/training-videos/<int:video_id>/move-down", methods=["POST"], endpoint="admin_training_video_move_down")
+    @roles_required("admin")
+    def admin_training_video_move_down(video_id):
+        swap_training_video(video_id, "down")
         return redirect(url_for(".admin_training_video_list"))
 
     # Cost Centers ----------------------------------------------------------

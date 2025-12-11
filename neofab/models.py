@@ -240,6 +240,7 @@ class TrainingVideo(db.Model):
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
     youtube_url = db.Column(db.String(500), nullable=False)
+    sort_order = db.Column(db.Integer, nullable=False, default=0)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -17,6 +17,7 @@ import mimetypes
 import os
 import logging
 import json
+import re
 from urllib.parse import parse_qs, urlparse
 
 from sqlalchemy import func, text
@@ -277,30 +278,38 @@ def ensure_order_file_columns():
 
 def ensure_training_videos_table():
     """
-    Creates the training_videos table if it is missing (lightweight migration).
+    Ensures the training_videos table and required columns exist.
     """
     try:
         exists = db.session.execute(
             text("SELECT name FROM sqlite_master WHERE type='table' AND name='training_videos'")
         ).scalar()
-        if exists:
+        if not exists:
+            db.session.execute(
+                text(
+                    """
+                    CREATE TABLE training_videos (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        title VARCHAR(200) NOT NULL,
+                        description TEXT,
+                        youtube_url VARCHAR(500) NOT NULL,
+                        sort_order INTEGER NOT NULL DEFAULT 0,
+                        created_at DATETIME NOT NULL,
+                        updated_at DATETIME NOT NULL
+                    )
+                    """
+                )
+            )
+            db.session.commit()
             return
 
-        db.session.execute(
-            text(
-                """
-                CREATE TABLE training_videos (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    title VARCHAR(200) NOT NULL,
-                    description TEXT,
-                    youtube_url VARCHAR(500) NOT NULL,
-                    created_at DATETIME NOT NULL,
-                    updated_at DATETIME NOT NULL
-                )
-                """
-            )
-        )
-        db.session.commit()
+        cols = {
+            row[1]
+            for row in db.session.execute(text("PRAGMA table_info(training_videos)"))
+        }
+        if "sort_order" not in cols:
+            db.session.execute(text("ALTER TABLE training_videos ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0"))
+            db.session.commit()
     except Exception:
         app.logger.exception("Failed to ensure training_videos table exists")
 
@@ -590,7 +599,8 @@ def profile():
 
 def extract_youtube_id(url: str) -> str | None:
     """
-    Extracts the YouTube video ID from typical watch/embed/short URLs.
+    Extracts the YouTube video ID from typical watch/embed/shorts URLs.
+    Supports youtube.com, youtube-nocookie.com, youtu.be and m.youtube.com.
     """
     if not url:
         return None
@@ -602,16 +612,24 @@ def extract_youtube_id(url: str) -> str | None:
 
     host = (parsed.hostname or "").lower()
     video_id = None
+
+    # Direct host-based parsing
     if host.endswith("youtu.be"):
         parts = [p for p in parsed.path.split("/") if p]
         video_id = parts[0] if parts else None
-    elif host.endswith("youtube.com"):
+    else:
         qs = parse_qs(parsed.query)
         video_id = qs.get("v", [None])[0]
         if not video_id:
             parts = [p for p in parsed.path.split("/") if p]
-            if len(parts) >= 2 and parts[0] == "embed":
+            if len(parts) >= 2 and parts[0] in {"embed", "shorts"}:
                 video_id = parts[1]
+
+    # Regex fallback to catch uncommon formats
+    if not video_id:
+        match = re.search(r"(?:v=|\/)([0-9A-Za-z_-]{11})(?:[&?#]|$)", url)
+        if match:
+            video_id = match.group(1)
 
     return video_id
 
@@ -622,11 +640,15 @@ def tutorials():
     """
     Zeigt verfuegbare Trainingsvideos fuer Anwender.
     """
-    videos = TrainingVideo.query.order_by(TrainingVideo.created_at.desc()).all()
+    videos = TrainingVideo.query.order_by(TrainingVideo.sort_order.asc(), TrainingVideo.created_at.desc()).all()
 
     def build_video_entry(video: TrainingVideo) -> dict:
         vid = extract_youtube_id(video.youtube_url)
-        embed_url = f"https://www.youtube.com/embed/{vid}" if vid else video.youtube_url
+        embed_url = (
+            f"https://www.youtube-nocookie.com/embed/{vid}"
+            if vid
+            else video.youtube_url
+        )
         thumb_url = f"https://img.youtube.com/vi/{vid}/hqdefault.jpg" if vid else None
         return {
             "video": video,
