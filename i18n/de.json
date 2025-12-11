@@ -260,5 +260,22 @@
   "table_note": "Notiz",
   "table_preview": "Vorschau",
   "table_role": "Rolle",
-  "title": "Titel"
+  "title": "Titel",
+  "admin_settings_tab_email": "E-Mail",
+  "admin_settings_tab_general": "Allgemein",
+  "email_from_address": "Absenderadresse",
+  "email_send_test": "Testmail senden",
+  "email_smtp_host": "SMTP-Host",
+  "email_smtp_password": "Passwort",
+  "email_smtp_port": "Port",
+  "email_smtp_user": "Benutzer",
+  "email_test_hint": "Verwendet die oben gespeicherten SMTP-Einstellungen.",
+  "email_test_recipient": "Test-Empf?nger",
+  "email_use_ssl": "SSL",
+  "email_use_tls": "TLS",
+  "flash_email_required_fields": "Bitte SMTP-Host, Port und Absenderadresse angeben.",
+  "flash_email_settings_saved": "E-Mail-Einstellungen gespeichert.",
+  "flash_email_test_failed": "Testmail konnte nicht gesendet werden: {error}",
+  "flash_email_test_recipient_required": "Bitte einen Empf?nger f?r die Testmail angeben.",
+  "flash_email_test_sent": "Testmail gesendet an {recipient}."
 }

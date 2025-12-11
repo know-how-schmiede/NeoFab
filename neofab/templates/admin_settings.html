@@ -7,38 +7,117 @@
 
 <div class="card">
   <div class="card-body">
-    <form method="post" class="row g-3">
-      <div class="col-md-6">
-        <label for="session_timeout_minutes" class="form-label">
-          {{ t("admin_settings_timeout_label") }}
-        </label>
-        <input type="number"
-               class="form-control"
-               id="session_timeout_minutes"
-               name="session_timeout_minutes"
-               min="1"
-               required
-               value="{{ settings.get('session_timeout_minutes') }}">
-        <div class="form-text">
-          {{ t("admin_settings_timeout_help") }}
-        </div>
-      </div>
-
-      <div class="col-12">
-        <div class="alert alert-secondary small mb-0">
-          {{ t("admin_settings_storage_hint").format(path=settings_path) }}
-        </div>
-      </div>
-
-      <div class="col-12">
-        <button type="submit" class="btn btn-primary">
-          {{ t("btn_save") }}
+    <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab" aria-controls="general" aria-selected="true">
+          {{ t("admin_settings_tab_general") }}
         </button>
-        <a href="{{ url_for('admin.admin_panel') }}" class="btn btn-secondary">
-          {{ t("btn_back_admin") }}
-        </a>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="email-tab" data-bs-toggle="tab" data-bs-target="#email" type="button" role="tab" aria-controls="email" aria-selected="false">
+          {{ t("admin_settings_tab_email") }}
+        </button>
+      </li>
+    </ul>
+
+    <div class="tab-content pt-3">
+      <div class="tab-pane fade show active" id="general" role="tabpanel" aria-labelledby="general-tab">
+        <form method="post" class="row g-3">
+          <input type="hidden" name="form_type" value="general">
+          <div class="col-md-6">
+            <label for="session_timeout_minutes" class="form-label">
+              {{ t("admin_settings_timeout_label") }}
+            </label>
+            <input type="number"
+                   class="form-control"
+                   id="session_timeout_minutes"
+                   name="session_timeout_minutes"
+                   min="1"
+                   required
+                   value="{{ settings.get('session_timeout_minutes') }}">
+            <div class="form-text">
+              {{ t("admin_settings_timeout_help") }}
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="alert alert-secondary small mb-0">
+              {{ t("admin_settings_storage_hint").format(path=settings_path) }}
+            </div>
+          </div>
+
+          <div class="col-12">
+            <button type="submit" class="btn btn-primary">
+              {{ t("btn_save") }}
+            </button>
+            <a href="{{ url_for('admin.admin_panel') }}" class="btn btn-secondary">
+              {{ t("btn_back_admin") }}
+            </a>
+          </div>
+        </form>
       </div>
-    </form>
+
+      <div class="tab-pane fade" id="email" role="tabpanel" aria-labelledby="email-tab">
+        <form method="post" class="row g-3">
+          <input type="hidden" name="form_type" value="email">
+
+          <div class="col-md-6">
+            <label for="smtp_host" class="form-label">{{ t("email_smtp_host") }}</label>
+            <input type="text" class="form-control" id="smtp_host" name="smtp_host" required value="{{ settings.get('smtp_host', '') }}">
+          </div>
+          <div class="col-md-3">
+            <label for="smtp_port" class="form-label">{{ t("email_smtp_port") }}</label>
+            <input type="number" class="form-control" id="smtp_port" name="smtp_port" min="1" required value="{{ settings.get('smtp_port', 0) }}">
+          </div>
+          <div class="col-md-3 d-flex align-items-end">
+            <div class="form-check me-3">
+              <input class="form-check-input" type="checkbox" id="smtp_use_tls" name="smtp_use_tls" {% if settings.get('smtp_use_tls') %}checked{% endif %}>
+              <label class="form-check-label" for="smtp_use_tls">{{ t("email_use_tls") }}</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="smtp_use_ssl" name="smtp_use_ssl" {% if settings.get('smtp_use_ssl') %}checked{% endif %}>
+              <label class="form-check-label" for="smtp_use_ssl">{{ t("email_use_ssl") }}</label>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <label for="smtp_user" class="form-label">{{ t("email_smtp_user") }}</label>
+            <input type="text" class="form-control" id="smtp_user" name="smtp_user" value="{{ settings.get('smtp_user', '') }}">
+          </div>
+          <div class="col-md-6">
+            <label for="smtp_password" class="form-label">{{ t("email_smtp_password") }}</label>
+            <input type="password" class="form-control" id="smtp_password" name="smtp_password" value="{{ settings.get('smtp_password', '') }}">
+          </div>
+
+          <div class="col-md-6">
+            <label for="smtp_from_address" class="form-label">{{ t("email_from_address") }}</label>
+            <input type="email" class="form-control" id="smtp_from_address" name="smtp_from_address" required value="{{ settings.get('smtp_from_address', '') }}">
+          </div>
+
+          <div class="col-12 d-flex gap-2 align-items-center">
+            <button type="submit" class="btn btn-primary">{{ t("btn_save") }}</button>
+            <a href="{{ url_for('admin.admin_panel') }}" class="btn btn-secondary">
+              {{ t("btn_back_admin") }}
+            </a>
+          </div>
+        </form>
+
+        <hr>
+        <form method="post" class="row g-3">
+          <input type="hidden" name="form_type" value="email_test">
+          <div class="col-md-6">
+            <label for="test_email_to" class="form-label">{{ t("email_test_recipient") }}</label>
+            <input type="email" class="form-control" id="test_email_to" name="test_email_to" placeholder="user@example.com" required>
+            <div class="form-text">{{ t("email_test_hint") }}</div>
+          </div>
+          <div class="col-12">
+            <button type="submit" class="btn btn-outline-primary">
+              <i class="bi bi-send me-1"></i>{{ t("email_send_test") }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}

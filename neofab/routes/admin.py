@@ -4,6 +4,8 @@ from datetime import datetime
 import json
 from typing import Callable, Optional
 from urllib.parse import parse_qs, urlparse
+import smtplib
+from email.message import EmailMessage
 
 from flask import (
     Blueprint,
@@ -123,21 +125,100 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         settings = load_app_settings(current_app, force_reload=True)
 
         if request.method == "POST":
-            raw_timeout = (request.form.get("session_timeout_minutes") or "").strip()
-            timeout_value = coerce_positive_int(raw_timeout, None)
+            form_type = request.form.get("form_type", "general")
 
-            if timeout_value is None:
-                flash(trans("flash_settings_invalid_timeout"), "danger")
-            else:
-                try:
-                    updated_settings = settings.copy()
-                    updated_settings["session_timeout_minutes"] = timeout_value
-                    save_app_settings(current_app, updated_settings)
-                    flash(trans("flash_settings_saved"), "success")
-                    return redirect(url_for(".admin_settings"))
-                except Exception:
-                    current_app.logger.exception("Failed to save admin settings")
-                    flash(trans("flash_settings_save_error"), "danger")
+            if form_type == "general":
+                raw_timeout = (request.form.get("session_timeout_minutes") or "").strip()
+                timeout_value = coerce_positive_int(raw_timeout, None)
+
+                if timeout_value is None:
+                    flash(trans("flash_settings_invalid_timeout"), "danger")
+                else:
+                    try:
+                        updated_settings = settings.copy()
+                        updated_settings["session_timeout_minutes"] = timeout_value
+                        save_app_settings(current_app, updated_settings)
+                        flash(trans("flash_settings_saved"), "success")
+                        return redirect(url_for(".admin_settings"))
+                    except Exception:
+                        current_app.logger.exception("Failed to save admin settings")
+                        flash(trans("flash_settings_save_error"), "danger")
+
+            elif form_type == "email":
+                smtp_host = (request.form.get("smtp_host") or "").strip()
+                smtp_port = coerce_positive_int(request.form.get("smtp_port"), 0)
+                smtp_use_tls = bool(request.form.get("smtp_use_tls"))
+                smtp_use_ssl = bool(request.form.get("smtp_use_ssl"))
+                smtp_user = (request.form.get("smtp_user") or "").strip()
+                smtp_password = request.form.get("smtp_password") or ""
+                smtp_from_address = (request.form.get("smtp_from_address") or "").strip()
+
+                if not smtp_host or not smtp_port or not smtp_from_address:
+                    flash(trans("flash_email_required_fields"), "danger")
+                else:
+                    try:
+                        updated_settings = settings.copy()
+                        updated_settings.update(
+                            {
+                                "smtp_host": smtp_host,
+                                "smtp_port": smtp_port,
+                                "smtp_use_tls": smtp_use_tls,
+                                "smtp_use_ssl": smtp_use_ssl,
+                                "smtp_user": smtp_user,
+                                "smtp_password": smtp_password,
+                                "smtp_from_address": smtp_from_address,
+                            }
+                        )
+                        save_app_settings(current_app, updated_settings)
+                        flash(trans("flash_email_settings_saved"), "success")
+                        return redirect(url_for(".admin_settings"))
+                    except Exception:
+                        current_app.logger.exception("Failed to save email settings")
+                        flash(trans("flash_settings_save_error"), "danger")
+
+            elif form_type == "email_test":
+                test_recipient = (request.form.get("test_email_to") or "").strip()
+                if not test_recipient:
+                    flash(trans("flash_email_test_recipient_required"), "danger")
+                else:
+                    try:
+                        settings = load_app_settings(current_app, force_reload=True)
+                        smtp_host = settings.get("smtp_host")
+                        smtp_port = settings.get("smtp_port")
+                        smtp_use_tls = bool(settings.get("smtp_use_tls"))
+                        smtp_use_ssl = bool(settings.get("smtp_use_ssl"))
+                        smtp_user = settings.get("smtp_user")
+                        smtp_password = settings.get("smtp_password")
+                        smtp_from = settings.get("smtp_from_address")
+
+                        if not smtp_host or not smtp_port or not smtp_from:
+                            flash(trans("flash_email_required_fields"), "danger")
+                        else:
+                            msg = EmailMessage()
+                            msg["Subject"] = "NeoFab test email"
+                            msg["From"] = smtp_from
+                            msg["To"] = test_recipient
+                            msg.set_content(
+                                "This is a test email from NeoFab. If you received this, SMTP is configured correctly."
+                            )
+
+                            if smtp_use_ssl:
+                                server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10)
+                            else:
+                                server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+                            with server:
+                                server.ehlo()
+                                if smtp_use_tls and not smtp_use_ssl:
+                                    server.starttls()
+                                    server.ehlo()
+                                if smtp_user:
+                                    server.login(smtp_user, smtp_password or "")
+                                server.send_message(msg)
+
+                            flash(trans("flash_email_test_sent").format(recipient=test_recipient), "success")
+                    except Exception as exc:
+                        current_app.logger.exception("Failed to send test email")
+                        flash(trans("flash_email_test_failed").format(error=exc), "danger")
 
         return render_template(
             "admin_settings.html",

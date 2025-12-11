@@ -1,4 +1,8 @@
 # Timeline NeoFab
+## Version 0.5.2
+Info-eMail bei neuer Order
+## Version 0.5.1
+Vorbereitungen Status-Emails versenden (Backend)
 ## Version 0.5.0
 Sortierfunktion Video-Tutorials und neues Release
 ## Version 0.4.13

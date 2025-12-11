@@ -1,3 +1,10 @@
 {
-  "session_timeout_minutes": 30
+  "session_timeout_minutes": 30,
+  "smtp_host": "smtp.hostinger.com",
+  "smtp_port": 465,
+  "smtp_use_tls": false,
+  "smtp_use_ssl": true,
+  "smtp_user": "info@know-how-schmiede.de",
+  "smtp_password": "[X-Wing2025IsGeil]",
+  "smtp_from_address": "info@know-how-schmiede.de"
 }

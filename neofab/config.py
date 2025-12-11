@@ -10,6 +10,13 @@ SETTINGS_FILE = INSTANCE_DIR / "config.json"
 
 DEFAULT_SETTINGS = {
     "session_timeout_minutes": 30,
+    "smtp_host": "",
+    "smtp_port": 0,
+    "smtp_use_tls": False,
+    "smtp_use_ssl": False,
+    "smtp_user": "",
+    "smtp_password": "",
+    "smtp_from_address": "",
 }
 
 _settings_cache: Optional[Dict[str, Any]] = None
@@ -62,6 +69,13 @@ def load_app_settings(app, force_reload: bool = False) -> Dict[str, Any]:
                     loaded.get("session_timeout_minutes"),
                     DEFAULT_SETTINGS["session_timeout_minutes"],
                 )
+                settings["smtp_host"] = str(loaded.get("smtp_host", "") or "").strip()
+                settings["smtp_port"] = coerce_positive_int(loaded.get("smtp_port"), 0)
+                settings["smtp_use_tls"] = bool(loaded.get("smtp_use_tls"))
+                settings["smtp_use_ssl"] = bool(loaded.get("smtp_use_ssl"))
+                settings["smtp_user"] = str(loaded.get("smtp_user", "") or "").strip()
+                settings["smtp_password"] = str(loaded.get("smtp_password", "") or "")
+                settings["smtp_from_address"] = str(loaded.get("smtp_from_address", "") or "").strip()
             _settings_mtime = SETTINGS_FILE.stat().st_mtime
         else:
             _settings_mtime = None
@@ -88,6 +102,13 @@ def save_app_settings(app, new_settings: Dict[str, Any]) -> Dict[str, Any]:
             new_settings.get("session_timeout_minutes"),
             DEFAULT_SETTINGS["session_timeout_minutes"],
         )
+        settings["smtp_host"] = str(new_settings.get("smtp_host", "") or "").strip()
+        settings["smtp_port"] = coerce_positive_int(new_settings.get("smtp_port"), 0)
+        settings["smtp_use_tls"] = bool(new_settings.get("smtp_use_tls"))
+        settings["smtp_use_ssl"] = bool(new_settings.get("smtp_use_ssl"))
+        settings["smtp_user"] = str(new_settings.get("smtp_user", "") or "").strip()
+        settings["smtp_password"] = str(new_settings.get("smtp_password", "") or "")
+        settings["smtp_from_address"] = str(new_settings.get("smtp_from_address", "") or "").strip()
 
     settings["session_timeout_minutes"] = _apply_session_timeout_setting(
         app,

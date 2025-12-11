@@ -260,5 +260,22 @@
   "table_note": "Note",
   "table_preview": "Aperçu",
   "table_role": "Rôle",
-  "title": "Titre"
+  "title": "Titre",
+  "admin_settings_tab_email": "Email",
+  "admin_settings_tab_general": "G?n?ral",
+  "email_from_address": "Adresse d'exp?diteur",
+  "email_send_test": "Envoyer un email de test",
+  "email_smtp_host": "H?te SMTP",
+  "email_smtp_password": "Mot de passe",
+  "email_smtp_port": "Port",
+  "email_smtp_user": "Utilisateur",
+  "email_test_hint": "Utilise les param?tres SMTP enregistr?s ci-dessus.",
+  "email_test_recipient": "Destinataire du test",
+  "email_use_ssl": "SSL",
+  "email_use_tls": "TLS",
+  "flash_email_required_fields": "Veuillez indiquer l'h?te SMTP, le port et l'adresse d'exp?dition.",
+  "flash_email_settings_saved": "Param?tres email enregistr?s.",
+  "flash_email_test_failed": "?chec de l'email de test : {error}",
+  "flash_email_test_recipient_required": "Veuillez fournir un destinataire pour l'email de test.",
+  "flash_email_test_sent": "Email de test envoy? ? {recipient}."
 }
