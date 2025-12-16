@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+#
+# Configure NeoFab as a systemd service (Gunicorn).
+# Assumes setupNeoFab was run and the virtualenv exists.
+
+set -euo pipefail
+
+if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
+  echo "Please run this script as root (e.g., sudo ./setupNeoFabService)." >&2
+  exit 1
+fi
+
+prompt() {
+  local var="$1" label="$2" default="$3" value
+  read -r -p "$label [$default]: " value || true
+  printf -v "$var" "%s" "${value:-$default}"
+}
+
+prompt APP_USER "System user running NeoFab" "neofab"
+prompt APP_HOME "Install directory" "/home/${APP_USER}/projects/neofab"
+prompt FLASK_ENV "Flask environment" "production"
+prompt FLASK_PORT "Gunicorn port" "8080"
+prompt SERVICE_NAME "systemd service name" "neofab"
+
+VENV_DIR="$APP_HOME/.venv"
+WORK_DIR="$APP_HOME/neofab"
+SERVICE_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
+
+if [[ ! -x "$VENV_DIR/bin/python" ]]; then
+  echo "Virtualenv not found at $VENV_DIR. Please run setupNeoFab first." >&2
+  exit 1
+fi
+
+if [[ ! -f "$WORK_DIR/app.py" ]]; then
+  echo "Could not find app.py in $WORK_DIR. Check your install path." >&2
+  exit 1
+fi
+
+run_as_app_user() {
+  sudo -u "$APP_USER" bash -lc "$*"
+}
+
+echo "==> Installing gunicorn inside the virtualenv..."
+run_as_app_user "cd \"$APP_HOME\" && source .venv/bin/activate && pip install --upgrade gunicorn"
+
+echo "==> Writing systemd unit to $SERVICE_PATH ..."
+cat > "$SERVICE_PATH" <<EOF
+[Unit]
+Description=NeoFab (Gunicorn)
+After=network.target
+
+[Service]
+User=${APP_USER}
+Group=${APP_USER}
+WorkingDirectory=${WORK_DIR}
+Environment="FLASK_APP=app"
+Environment="FLASK_ENV=${FLASK_ENV}"
+ExecStart=${VENV_DIR}/bin/gunicorn -b 0.0.0.0:${FLASK_PORT} app:app
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+echo "==> Reloading systemd..."
+systemctl daemon-reload
+
+read -r -p "Enable and start service now? (Y/n): " START_NOW || true
+if [[ ! "$START_NOW" =~ ^[Nn] ]]; then
+  systemctl enable --now "$SERVICE_NAME"
+fi
+
+cat <<EOF
+
+====================================================
+NeoFab service setup completed
+----------------------------------------------------
+- Service name:       $SERVICE_NAME
+- User/Group:         $APP_USER
+- Working dir:        $WORK_DIR
+- Virtualenv:         $VENV_DIR
+- Gunicorn port:      $FLASK_PORT
+- Environment:        FLASK_APP=app, FLASK_ENV=$FLASK_ENV
+- Systemd unit:       $SERVICE_PATH
+----------------------------------------------------
+Useful commands:
+  systemctl status $SERVICE_NAME
+  journalctl -u $SERVICE_NAME -f
+  systemctl restart $SERVICE_NAME
+====================================================
+EOF

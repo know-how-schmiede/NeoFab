@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+#
+# Interactive installer for NeoFab on Debian 13 (LXC/VM/Server).
+# - Installs required packages
+# - Clones/updates the repo
+# - Creates virtualenv and installs Python deps
+# - Initializes DB and creates the admin user
+# - Optionally starts the Flask dev server in the terminal
+
+set -euo pipefail
+
+if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
+  echo "Please run this script as root (e.g., sudo ./setupNeoFab)." >&2
+  exit 1
+fi
+
+prompt() {
+  local var="$1" label="$2" default="$3" value
+  read -r -p "$label [$default]: " value || true
+  printf -v "$var" "%s" "${value:-$default}"
+}
+
+prompt_secret() {
+  local var="$1" label="$2" value
+  read -r -s -p "$label: " value || true
+  echo
+  printf -v "$var" "%s" "$value"
+}
+
+prompt APP_USER "System user to run NeoFab" "neofab"
+prompt APP_HOME "Install directory" "/home/${APP_USER}/projects/neofab"
+prompt REPO_URL "Git repository URL" "https://github.com/Know-How-Schmiede/neofab.git"
+prompt GIT_BRANCH "Git branch (leave empty for default)" ""
+prompt FLASK_PORT "Flask port for test run" "8080"
+prompt FLASK_ENV "Flask environment" "development"
+
+while :; do
+  prompt ADMIN_EMAIL "Admin email" "admin@example.com"
+  [[ -n "$ADMIN_EMAIL" ]] && break
+  echo "Email must not be empty."
+done
+
+while :; do
+  prompt_secret ADMIN_PASSWORD "Admin password"
+  [[ -n "$ADMIN_PASSWORD" ]] && break
+  echo "Password must not be empty."
+done
+
+prompt INIT_STAMMDATEN "Initialize sample materials/colors (y/n)" "y"
+
+run_as_app_user() {
+  sudo -u "$APP_USER" bash -lc "$*"
+}
+
+echo "==> Installing base packages..."
+apt update -y
+apt upgrade -y
+apt install -y sudo python3 python3-venv python3-pip git \
+  build-essential pkg-config libcairo2-dev python3-dev cmake \
+  meson ninja-build libffi-dev
+
+if ! id -u "$APP_USER" >/dev/null 2>&1; then
+  echo "==> Creating system user $APP_USER ..."
+  useradd -m -s /bin/bash "$APP_USER"
+fi
+
+echo "==> Preparing directory $APP_HOME ..."
+run_as_app_user "mkdir -p \"$APP_HOME\""
+
+if [[ ! -d "$APP_HOME/.git" ]]; then
+  echo "==> Cloning repository..."
+  run_as_app_user "git clone \"$REPO_URL\" \"$APP_HOME\""
+else
+  echo "==> Updating repository..."
+  run_as_app_user "cd \"$APP_HOME\" && git fetch --all --prune"
+fi
+
+if [[ -n "$GIT_BRANCH" ]]; then
+  run_as_app_user "cd \"$APP_HOME\" && git checkout \"$GIT_BRANCH\" && git pull --ff-only origin \"$GIT_BRANCH\""
+else
+  run_as_app_user "cd \"$APP_HOME\" && git pull --ff-only"
+fi
+
+echo "==> Creating virtualenv..."
+run_as_app_user "cd \"$APP_HOME\" && python3 -m venv .venv"
+
+echo "==> Installing Python dependencies..."
+run_as_app_user "cd \"$APP_HOME\" && source .venv/bin/activate && pip install --upgrade pip setuptools wheel && pip install -r neofab/requirements.txt"
+
+ENV_EXPORT="export FLASK_APP=app FLASK_ENV=$FLASK_ENV"
+
+echo "==> Initializing database..."
+run_as_app_user "cd \"$APP_HOME/neofab\" && source \"$APP_HOME/.venv/bin/activate\" && $ENV_EXPORT && flask --app app init-db"
+
+if [[ "$INIT_STAMMDATEN" =~ ^[Yy] ]]; then
+  echo "==> Loading sample materials/colors..."
+  run_as_app_user "cd \"$APP_HOME/neofab\" && source \"$APP_HOME/.venv/bin/activate\" && $ENV_EXPORT && flask --app app init-stammdaten"
+fi
+
+echo "==> Creating admin user..."
+run_as_app_user "cd \"$APP_HOME/neofab\" && source \"$APP_HOME/.venv/bin/activate\" && $ENV_EXPORT && printf '%s\n%s\n' \"$ADMIN_EMAIL\" \"$ADMIN_PASSWORD\" | flask --app app create-admin"
+
+cat <<EOF
+
+====================================================
+NeoFab installation complete (terminal test setup)
+----------------------------------------------------
+- System user:          $APP_USER
+- App directory:        $APP_HOME
+- Virtualenv:           $APP_HOME/.venv
+- Working dir:          $APP_HOME/neofab
+- Flask env:            $FLASK_ENV
+- Test server port:     $FLASK_PORT
+- Admin account:        $ADMIN_EMAIL
+- Database:             $APP_HOME/neofab/neofab.db
+----------------------------------------------------
+To start the test server in this terminal:
+sudo -u $APP_USER bash -lc 'cd "$APP_HOME/neofab" && source "$APP_HOME/.venv/bin/activate" && FLASK_APP=app FLASK_ENV=$FLASK_ENV flask run --host=0.0.0.0 --port=$FLASK_PORT'
+====================================================
+EOF
+
+read -r -p "Start the Flask dev server now? (y/N): " START_NOW || true
+if [[ "$START_NOW" =~ ^[Yy] ]]; then
+  echo "Starting server (Ctrl+C to stop)..."
+  exec sudo -u "$APP_USER" bash -lc "cd \"$APP_HOME/neofab\" && source \"$APP_HOME/.venv/bin/activate\" && FLASK_APP=app FLASK_ENV=$FLASK_ENV flask run --host=0.0.0.0 --port=$FLASK_PORT"
+fi
+
+echo "Done. You can start the server later using the command above."
