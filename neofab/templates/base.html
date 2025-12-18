@@ -113,19 +113,19 @@
               {{ t("nav_theme") }}
             </label>
             <select id="themeSelect" class="form-select form-select-sm">
-              <option value="lux">Lux</option>
-              <option value="flatly">Flatly</option>
-              <option value="materia">Materia</option>
-              <option value="minty">Minty</option>
-              <option value="pulse">Pulse</option>
-              <option value="sandstone">Sandstone</option>
-              <option value="solar">Solar</option>
               <option value="spacelab">Spacelab</option>
               <option value="yeti">Yeti</option>
+              <option value="brite">Brite</option>
+              <option value="journal">Journal</option>
+              <option value="sandstone">Sandstone</option>
               <option value="slate">Slate</option>
-              <option value="darkly">Darkly</option>
-              <option value="cyborg">Cyborg</option>
-              <option value="superhero">Superhero</option>
+              <option value="cerulean">Cerulean</option>
+              <option value="pulse">Pulse</option>
+              <option value="solar">Solar</option>
+              <option value="united">United</option>
+              <option value="cosmo">Cosmo</option>
+              <option value="flatly">Flatly</option>
+              <option value="lumen">Lumen</option>
             </select>
           </div>
         </div>
@@ -136,6 +136,7 @@
   <!-- Hauptinhalt -->
   <div class="{% block container_class %}container{% endblock %} my-3 layout-container">
 
+    {% block app_header %}
     <!-- App-Header wie bei PrintFleet -->
     <header class="mb-3">
       <h1 class="h3 mb-1">NeoFab v{{ app_version }}</h1>
@@ -143,6 +144,7 @@
         3D printing job management
       </p>
     </header>
+    {% endblock %}
 
     <!-- Flash-Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -175,28 +177,28 @@
       const BASE_URL = 'https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/';
 
       const THEMES = {
-        lux:       'lux',
-        flatly:    'flatly',
-        materia:   'materia',
-        minty:     'minty',
-        pulse:     'pulse',
-        sandstone: 'sandstone',
-        solar:     'solar',
         spacelab:  'spacelab',
         yeti:      'yeti',
+        brite:     'litera',   // Brite mapped to Litera (closest Bootswatch)
+        journal:   'journal',
+        sandstone: 'sandstone',
         slate:     'slate',
-        darkly:    'darkly',
-        cyborg:    'cyborg',
-        superhero: 'superhero'
+        cerulean:  'cerulean',
+        pulse:     'pulse',
+        solar:     'solar',
+        united:    'united',
+        cosmo:     'cosmo',
+        flatly:    'flatly',
+        lumen:     'lumen'
       };
 
       function applyTheme(themeKey) {
-        const slug = THEMES[themeKey] || THEMES['lux'];
+        const slug = THEMES[themeKey] || THEMES['spacelab'];
         linkEl.href = BASE_URL + slug + '/bootstrap.min.css';
       }
 
       const savedTheme = localStorage.getItem(THEME_KEY);
-      const initialTheme = (savedTheme && THEMES[savedTheme]) ? savedTheme : 'lux';
+      const initialTheme = (savedTheme && THEMES[savedTheme]) ? savedTheme : 'spacelab';
 
       applyTheme(initialTheme);
       select.value = initialTheme;

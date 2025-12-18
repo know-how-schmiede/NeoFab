@@ -87,3 +87,35 @@ body {
 .site-footer {
     flex-shrink: 0;
 }
+
+/* === High-contrast text across themes (keep theme colors) === */
+:root {
+    --nf-body-color: var(--bs-body-color, #212529);
+    --nf-muted: var(--bs-secondary-color, #6c757d);
+}
+
+body {
+    color: var(--nf-body-color);
+}
+
+.text-muted {
+    color: var(--nf-muted) !important;
+}
+
+.card,
+.list-group-item,
+.modal-content,
+.dropdown-menu,
+.toast,
+.popover,
+.popover-body,
+.offcanvas,
+.navbar,
+.accordion-item,
+.alert,
+.bg-light,
+.alert-light,
+.badge.bg-light,
+.list-group-item {
+    color: var(--nf-body-color) !important;
+}

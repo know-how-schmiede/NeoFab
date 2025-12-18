@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.5.9
+
+CSS Anpassungen
+
 ## Version 0.5.8
 
 Footer mit Impressum und Datenschutz

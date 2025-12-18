@@ -2,18 +2,25 @@
 
 {% block title %}NeoFab – Welcome{% endblock %}
 
+{% block app_header %}{% endblock %}
+
 {% block content %}
 <div class="container py-5">
-    <div class="text-center">
-        <h1 class="display-4 fw-bold">Welcome to NeoFab</h1>
-        <p class="lead mt-3">
-            Your platform for managing 3D printing jobs efficiently.
-        </p>
+  <div class="text-center">
+    <h1 class="display-4 fw-bold d-flex align-items-center justify-content-center gap-3">
+      <img src="{{ url_for('static', filename='Logo_NeoFab_Name_200px.png') }}"
+           alt="NeoFab Logo"
+           class="img-fluid"
+           style="max-height: 64px;">
+      <span class="visually-hidden">NeoFab</span>
+    </h1>
+    <p class="lead mt-4">
+      Your platform for managing 3D printing jobs efficiently.
+    </p>
 
-        <a class="btn btn-primary btn-lg mt-4" href="{{ url_for('login') }}">
-            Log In
-        </a>
-
-    </div>
+    <a class="btn btn-primary btn-lg mt-4" href="{{ url_for('login') }}">
+      Log In
+    </a>
+  </div>
 </div>
 {% endblock %}
