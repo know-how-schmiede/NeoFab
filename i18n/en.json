@@ -190,6 +190,8 @@
   "images_header": "Project Images",
   "images_none": "No images uploaded yet.",
   "images_upload_label": "Add image (png, jpg, jpeg, gif, webp)",
+  "images_label_note": "Note",
+  "images_note_placeholder": "Optional note for this image",
   "label_active": "Active",
   "label_address": "Address",
   "label_cost_center": "Cost Center",

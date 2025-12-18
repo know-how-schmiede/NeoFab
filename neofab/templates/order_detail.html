@@ -474,6 +474,7 @@
                         {% set parts = [] %}
                         {% if img.filesize %}{% set _ = parts.append(((img.filesize / 1024)|round(1)) ~ " KB") %}{% endif %}
                         {% if img.uploaded_at %}{% set _ = parts.append("uploaded " ~ img.uploaded_at.strftime("%Y-%m-%d %H:%M")) %}{% endif %}
+                        {% if img.note %}{% set _ = parts.append(img.note) %}{% endif %}
                         {{ " | ".join(parts) }}
                       </small>
                     </div>
@@ -510,6 +511,19 @@
                    id="image_file"
                    name="image_file"
                    accept=".png,.jpg,.jpeg,.gif,.webp">
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-md-8">
+              <label for="image_note" class="form-label">{{ t("images_label_note") }}</label>
+              <input
+                type="text"
+                class="form-control"
+                id="image_note"
+                name="image_note"
+                maxlength="255"
+                placeholder="{{ t('images_note_placeholder') }}"
+              >
+            </div>
           </div>
           <button type="submit" class="btn btn-secondary btn-sm">
             <i class="bi bi-plus-circle me-1"></i>

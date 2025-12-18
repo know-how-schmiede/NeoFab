@@ -173,6 +173,8 @@
   "images_header": "Images du projet",
   "images_none": "Aucune image n'a encore été téléversée.",
   "images_upload_label": "Ajouter une image (png, jpg, jpeg, gif, webp)",
+  "images_label_note": "Remarque",
+  "images_note_placeholder": "Remarque optionnelle pour cette image",
   "label_active": "Actif",
   "label_address": "Adresse",
   "label_cost_center": "Centre de coûts",

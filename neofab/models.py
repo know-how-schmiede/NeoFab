@@ -171,6 +171,7 @@ class OrderImage(db.Model):
     stored_name = db.Column(db.String(255), nullable=False)
     filesize = db.Column(db.Integer)
     uploaded_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    note = db.Column(db.String(255))
 
     order = db.relationship("Order", back_populates="images")
 

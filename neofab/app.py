@@ -278,6 +278,33 @@ def ensure_order_file_columns():
         app.logger.exception("Failed to ensure order_files columns exist")
 
 
+def ensure_order_image_columns():
+    """
+    Adds missing columns for OrderImage (lightweight migration).
+    """
+    try:
+        exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='order_images'")
+        ).scalar()
+        if not exists:
+            return
+
+        cols = {
+            row[1]
+            for row in db.session.execute(text("PRAGMA table_info(order_images)"))
+        }
+        statements = []
+        if "note" not in cols:
+            statements.append("ALTER TABLE order_images ADD COLUMN note VARCHAR(255)")
+
+        for stmt in statements:
+            db.session.execute(text(stmt))
+        if statements:
+            db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure order_images columns exist")
+
+
 def ensure_training_videos_table():
     """
     Ensures the training_videos table and required columns exist.
@@ -318,6 +345,7 @@ def ensure_training_videos_table():
 
 with app.app_context():
     ensure_order_file_columns()
+    ensure_order_image_columns()
     ensure_training_videos_table()
 
 
@@ -1282,6 +1310,9 @@ def order_detail(order_id):
         # --- 5) Projektbild hochladen --------------------------------------
         elif action == "upload_image":
             file = request.files.get("image_file")
+            image_note = (request.form.get("image_note") or "").strip()
+            if image_note:
+                image_note = image_note[:255]
             if not file or not file.filename:
                 flash(trans("flash_select_image"), "warning")
                 return redirect(url_for("order_detail", order_id=order.id))
@@ -1301,6 +1332,7 @@ def order_detail(order_id):
                 order_id=order.id,
                 original_name=original_name,
                 stored_name="",
+                note=image_note or None,
             )
             db.session.add(image_entry)
             db.session.flush()
@@ -1826,6 +1858,7 @@ def build_order_context(order, translator) -> dict:
                 "name": img.original_name,
                 "filesize": img.filesize,
                 "uploaded_at": fmt_dt(img.uploaded_at),
+                "note": img.note or "",
                 "thumb_data_uri": image_thumb_data_uri(img),
             }
             for img in order.images

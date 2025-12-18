@@ -41,6 +41,7 @@ sudo bash /home/neofab/projects/neofab/script/upDateNeoFabService
 
 ## Hinweis
 
-- Beide Skripte müssen als `root`/`sudo` laufen (legen Benutzer an, installieren Pakete, schreiben systemd-Unit).
+- Alle drei Skripte müssen als `root`/`sudo` laufen (legen Benutzer an, installieren Pakete, schreiben systemd-Unit).
 - `setupNeoFab` fragt dich nach User/Installationspfad/Admin-Zugang und kann den Dev-Server direkt im Terminal starten.
 - `setupNeoFabService` setzt auf der Basisinstallation auf und erstellt den systemd-Dienst (`/etc/systemd/system/<name>.service`).
+- `upDateNeoFabService` stopt den systemd-Dienst, holt sich den aktuellen Stand auf Git von NeoFab, installiert neue Abhängigkeiten und startet den Dienst neu.

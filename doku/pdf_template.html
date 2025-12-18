@@ -222,6 +222,7 @@
             {% endif %}
             {% if img.uploaded_at %} <br> {{ img.uploaded_at }}{% endif %}
             {% if img.filesize %} – {{ (img.filesize / 1024)|round(1) }} KB{% endif %}
+            {% if img.note %} <br> {{ t("images_label_note") }}: {{ img.note }}{% endif %}
           </li>
         {% endfor %}
       </ul>

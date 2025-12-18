@@ -173,6 +173,8 @@
   "images_header": "Projektbilder",
   "images_none": "Noch keine Bilder hochgeladen.",
   "images_upload_label": "Bild hinzufügen (png, jpg, jpeg, gif, webp)",
+  "images_label_note": "Bemerkung",
+  "images_note_placeholder": "Optional: kurze Bemerkung zum Bild",
   "label_active": "Aktiv",
   "label_address": "Adresse",
   "label_cost_center": "Kostenstelle",
