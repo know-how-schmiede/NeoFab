@@ -29,11 +29,9 @@ Der Server läuft **ausschließlich im lokalen Netzwerk** und stellt eine realis
 | Netzwerk | LAN only |
 
 
-
 NeoFab / Dev-PC ──┐
 ├── SMTP / IMAP ──▶ mail.neofab.de (LXC)
 Thunderbird ─────┘
-
 
 ---
 

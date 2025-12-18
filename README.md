@@ -66,3 +66,8 @@ neofab/<br>
 ├─ tests/<br>
 ├─ README.md<br>
 └─ run.py<br>
+
+## Setup
+
+Installations-Scripte unter /script
+Zuerst /script/README.md lesen !!!

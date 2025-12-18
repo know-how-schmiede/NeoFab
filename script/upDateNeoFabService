@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+#
+# Update NeoFab when running as a systemd service (Gunicorn).
+# - Stops the service
+# - Pulls latest code
+# - Updates Python dependencies
+# - Runs DB init (non-destructive create_all)
+# - Restarts the service
+
+set -euo pipefail
+
+if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
+  echo "Please run this script as root (e.g., sudo ./upDateNeoFabService)." >&2
+  exit 1
+fi
+
+prompt() {
+  local var="$1" label="$2" default="$3" value
+  read -r -p "$label [$default]: " value || true
+  printf -v "$var" "%s" "${value:-$default}"
+}
+
+prompt APP_USER "System user running NeoFab" "neofab"
+prompt APP_HOME "Install directory" "/home/${APP_USER}/projects/neofab"
+prompt SERVICE_NAME "systemd service name" "neofab"
+prompt GIT_REMOTE "Git remote" "origin"
+prompt GIT_BRANCH "Git branch (empty = current)" ""
+prompt FLASK_ENV "Flask environment" "production"
+
+VENV_DIR="$APP_HOME/.venv"
+WORK_DIR="$APP_HOME/neofab"
+SERVICE_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
+
+if [[ ! -x "$VENV_DIR/bin/python" ]]; then
+  echo "Virtualenv not found at $VENV_DIR. Please run setupNeoFab first." >&2
+  exit 1
+fi
+
+if [[ ! -f "$WORK_DIR/app.py" ]]; then
+  echo "Could not find app.py in $WORK_DIR. Check your install path." >&2
+  exit 1
+fi
+
+if [[ ! -f "$SERVICE_PATH" ]]; then
+  echo "Warning: $SERVICE_PATH does not exist. Continuing anyway..." >&2
+fi
+
+run_as_app_user() {
+  sudo -u "$APP_USER" bash -lc "$*"
+}
+
+echo "==> Stopping service $SERVICE_NAME ..."
+if systemctl is-active "$SERVICE_NAME" --quiet; then
+  systemctl stop "$SERVICE_NAME"
+else
+  echo "Service is not active; skipping stop."
+fi
+
+echo "==> Updating repository ..."
+if [[ -n "$GIT_BRANCH" ]]; then
+  run_as_app_user "cd \"$APP_HOME\" && git fetch \"$GIT_REMOTE\" \"$GIT_BRANCH\" && git checkout \"$GIT_BRANCH\" && git pull --ff-only \"$GIT_REMOTE\" \"$GIT_BRANCH\""
+else
+  run_as_app_user "cd \"$APP_HOME\" && git pull --ff-only \"$GIT_REMOTE\""
+fi
+
+echo "==> Installing Python dependencies ..."
+run_as_app_user "cd \"$APP_HOME\" && source \"$VENV_DIR/bin/activate\" && pip install --upgrade pip setuptools wheel && pip install -r neofab/requirements.txt"
+
+ENV_EXPORT="export FLASK_APP=app FLASK_ENV=$FLASK_ENV"
+
+echo "==> Applying database schema (create_all) ..."
+run_as_app_user "cd \"$WORK_DIR\" && source \"$VENV_DIR/bin/activate\" && $ENV_EXPORT && flask --app app init-db"
+
+echo "==> Restarting service $SERVICE_NAME ..."
+systemctl daemon-reload
+systemctl restart "$SERVICE_NAME"
+
+echo
+echo "===================================================="
+echo "NeoFab service update completed"
+echo "----------------------------------------------------"
+echo "- Service name:   $SERVICE_NAME"
+echo "- User/Group:     $APP_USER"
+echo "- Working dir:    $WORK_DIR"
+echo "- Virtualenv:     $VENV_DIR"
+echo "- Git remote:     $GIT_REMOTE"
+echo "- Branch:         ${GIT_BRANCH:-current}"
+echo "- Systemd unit:   $SERVICE_PATH"
+echo "----------------------------------------------------"
+echo "Useful commands:"
+echo "  systemctl status $SERVICE_NAME"
+echo "  journalctl -u $SERVICE_NAME -f"
+echo "  systemctl restart $SERVICE_NAME"
+echo "===================================================="

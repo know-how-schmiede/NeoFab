@@ -1765,9 +1765,12 @@ def build_order_context(order, translator) -> dict:
             app.logger.warning("Could not embed thumbnail for PDF (%s): %s", chosen, exc)
             return ""
 
+    generated_at = fmt_dt(datetime.now())
+
     return {
         "app_name": "NeoFab",
         "app_version": APP_VERSION,
+        "pdf_generated_at": generated_at,
         "order": order,
         "order_dict": {
             "id": order.id,
