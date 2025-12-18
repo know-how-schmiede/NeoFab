@@ -68,3 +68,22 @@
     box-shadow: none !important;
     outline: none !important;
 }
+
+/* === Layout: Sticky Footer === */
+html, body {
+    height: 100%;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.layout-container {
+    flex: 1 0 auto;
+}
+
+.site-footer {
+    flex-shrink: 0;
+}
