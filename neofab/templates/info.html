@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t("footer_info") }} - NeoFab{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h2 class="h5 mb-0">{{ t("footer_info") }}</h2>
+  </div>
+  <div class="card-body">
+    <p class="mb-2">NeoFab ist eine leichte Auftragsverwaltung für 3D-Druckprojekte.</p>
+    <ul class="mb-0">
+      <li>Datei-Uploads (STL/3MF) und Projektbilder mit Notizen</li>
+      <li>Status-Tracking, Chat pro Auftrag und PDF-Export</li>
+      <li>Admin-Bereich mit Benutzer- und Stammdatenverwaltung</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

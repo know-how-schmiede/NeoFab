@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.5.8
+
+Footer mit Impressum und Datenschutz
+
 ## Version 0.5.7
 
 Anpassungen Felder Projektdokumentation

@@ -676,6 +676,21 @@ def landing():
     return render_template("landing.html")
 
 
+@app.route("/impressum")
+def imprint():
+    return render_template("impressum.html")
+
+
+@app.route("/datenschutz")
+def privacy():
+    return render_template("datenschutz.html")
+
+
+@app.route("/info")
+def info():
+    return render_template("info.html")
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     """Login-Formular & Login-Logik."""
