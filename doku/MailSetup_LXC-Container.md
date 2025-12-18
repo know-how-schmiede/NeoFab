@@ -1,175 +1,171 @@
-# 📧 NeoFab – Interner Test-Mailserver (LXC)
+# Interner Mailserver – Admin-Dokumentation
 
-Dieser Repository beschreibt den Aufbau eines **internen Mailservers** für **NeoFab** zur Entwicklung und zum Testen von E-Mail-Funktionen.  
-Der Server läuft **ausschließlich im lokalen Netzwerk** und stellt eine realistische Mailumgebung für **NeoFab, PrintFleet und Thunderbird** bereit.
+Diese Dokumentation beschreibt Installation, Betrieb und Wartung
+des internen Mailservers für **NeoFab**, **PrintFleet** und **Thunderbird**.
 
----
-
-## 🎯 Zielsetzung
-
-- Eigene Test-Mailadresse: `info@neofab.de`
-- Versand & Empfang **nur im LAN**
-- Nutzung mit **Thunderbird (IMAP/SMTP)**
-- Anbindung von **NeoFab** für Mailtests
-- **Kein externer Mailverkehr**
-- Kein Produktivbetrieb
+Der Server ist **ausschließlich für das lokale Netzwerk** gedacht
+und stellt eine realistische, aber bewusst einfache Mailumgebung bereit.
 
 ---
 
-## 🧱 Architektur
+## 1. Überblick
 
-| Komponente | Beschreibung |
-|-----------|-------------|
-| Virtualisierung | Proxmox LXC (unprivileged) |
-| Betriebssystem | Ubuntu 24.04 LTS |
-| SMTP | Postfix |
-| IMAP | Dovecot |
-| Mailformat | Maildir |
-| TLS | Self-signed |
-| Netzwerk | LAN only |
+**Ziel**
+- Interner SMTP- und IMAP-Mailserver
+- Kein Versand ins Internet
+- Keine TLS-/Zertifikatsverwaltung
+- Fokus: Funktionalität & Nachvollziehbarkeit
 
-
-NeoFab / Dev-PC ──┐
-├── SMTP / IMAP ──▶ mail.neofab.de (LXC)
-Thunderbird ─────┘
+**Einsatz**
+- NeoFab (Status-Mails, Benachrichtigungen)
+- PrintFleet (Systemmeldungen)
+- Thunderbird (Test- und Admin-Postfächer)
 
 ---
 
-## 🌐 Namensauflösung (intern)
+## 2. Systemumgebung
 
-Kein öffentliches DNS erforderlich.
+| Komponente | Wert |
+|-----------|------|
+| Virtualisierung | Proxmox |
+| Typ | LXC-Container |
+| Betriebssystem | Debian 12 / 13 |
+| Hostname | `mail.neofab.local` |
+| IP-Adresse | z. B. `192.168.1.50` |
+| Mail-Domain | `neofab.local` |
 
-**Hosts-Eintrag (Client & Dev-PC):**
-```text
-192.168.1.50   mail.neofab.de
+---
 
-📦 Installation (Kurzfassung)
-apt update && apt upgrade -y
-apt install postfix dovecot-core dovecot-imapd mailutils -y
+## 3. Verwendete Software
 
-Mailbenutzer anlegen
+| Dienst | Aufgabe |
+|------|--------|
+| Postfix | SMTP (Mailversand) |
+| Dovecot | IMAP (Mailabruf) |
+
+---
+
+## 4. Wichtige Ports
+
+| Port | Dienst | Zweck |
+|----|------|-----|
+| 25 | SMTP | Mailversand |
+| 143 | IMAP | Mailabruf |
+
+> **Hinweis:**  
+> Keine Verschlüsselung – ausschließlich für vertrauenswürdige LANs!
+
+---
+
+## 5. Benutzer & Mailboxen
+
+Für jede Mailadresse existiert **ein Linux-Benutzer**.
+
+### Beispiele
+
+| Benutzer | Mailadresse |
+|-------|-------------|
+| info | info@neofab.local |
+| printfleet | printfleet@neofab.local |
+
+### Benutzer anlegen
+
+```bash
 adduser info
+adduser printfleet
+```
 
+Die Mailbox (Maildir) wird automatisch erzeugt.
 
-➡️ Mailadresse: info@neofab.de
+## 6. Postfix – Kerneinstellungen
 
-✉️ Postfix (SMTP)
-myhostname = mail.neofab.de
-mydomain = neofab.de
+Datei:
+
+```swift
+/etc/postfix/main.cf
+```
+
+Zentrale Parameter:
+
+```ini
+myhostname = mail.neofab.local
+mydomain = neofab.local
 myorigin = $mydomain
 
-inet_interfaces = all
-mydestination = $myhostname, localhost.$mydomain, localhost, $mydomain
-
 mynetworks = 127.0.0.0/8, 192.168.1.0/24
-home_mailbox = Maildir/
+inet_protocols = ipv4
+relayhost =
+```
 
-smtpd_recipient_restrictions =
-    permit_mynetworks,
-    reject
+Erklärung:
 
+- Nur Clients aus dem LAN dürfen Mails versenden
+- Kein Weiterleiten ins Internet
 
-✔ Nur LAN
-✔ Kein Open Relay
+## 7. Dovecot – Kerneinstellungen
 
-📥 Dovecot (IMAP)
+Mailbox-Format:
+
+```ini
 mail_location = maildir:~/Maildir
+```
 
+Authentifizierung:
 
-Authentifizierung über Linux-User (info).
+```ini
+systemctl status postfix
+systemctl status dovecot
+```
 
-🔐 TLS (Self-Signed)
-openssl req -new -x509 -days 3650 -nodes \
-  -out /etc/ssl/certs/mail.pem \
-  -keyout /etc/ssl/private/mail.key
+Neustart:
 
+```bash
+systemctl restart postfix
+systemctl restart dovecot
+```
 
-TLS ist für SMTP & IMAP aktiv.
-⚠️ Zertifikatswarnungen in Thunderbird sind normal.
+## 9. Logs & Fehlersuche
 
-▶️ Dienste starten
-systemctl restart postfix dovecot
-systemctl enable postfix dovecot
+Wichtige Logdatei:
 
-🧪 Test
-echo "Testmail NeoFab" | mail -s "Mailtest" info@neofab.de
+```bash
+/var/log/mail.log
+```
 
+Live mitlesen:
 
-Logs:
-
+```bash
 tail -f /var/log/mail.log
-
----
-
-## 🦅 Thunderbird-Setup
-### IMAP
-```
-Server: mail.neofab.de
-Port: 993
-SSL/TLS
-Benutzer: info
 ```
 
-### SMTP
-```
-Server: mail.neofab.de
-Port: 587
-STARTTLS
-Benutzer: info
-```
+Typische Fehler:
 
----
+- falscher Benutzer / Passwort
+- falsche IP nicht in mynetworks
+- Dienst nicht gestartet
 
-## ⚙️ NeoFab SMTP-Konfiguration
-```
-SMTP_HOST = mail.neofab.de
-SMTP_PORT = 587
-SMTP_USER = info
-SMTP_PASSWORD = ********
-SMTP_TLS = true
+## 10. Backup-Hinweise
+
+Relevante Verzeichnisse:
+
+```text
+/etc/postfix/
+/etc/dovecot/
+/home/*/Maildir/
 ```
 
----
+empfohlen:
+- Regelmäßiges Backup der Maildirs
+- Snapshot des Containers vor Updates
 
-## 🔒 Sicherheit
+## 11. Sicherheitshinweis
 
-- kein Internet-Routing
-- nur LAN-Zugriff
-- kein Open Relay
-- ideal für Tests & Entwicklung
+⚠️ Nicht für den Internetbetrieb geeignet!
 
-Optional:
-```
-ufw allow from 192.168.1.0/24 to any port 25,587,993
-ufw enable
-```
+Kein:
+- TLS
+- Spamfilter
+- Virenschutz
+- DKIM / SPF / DMARC
 
----
-
-## 🚀 Erweiterungsmöglichkeiten
-
-- SMTP-Relay (z. B. Uni-Mailserver)
-- echte Domain-DNS
-- Let’s Encrypt
-- DKIM / SPF
-- Trennung Test / Produktion
-
----
-
-## ⚠️ Hinweis
-
-Dieser Mailserver ist nicht für den Produktivbetrieb gedacht.
-Er dient ausschließlich der Entwicklung, dem Testen und der Schulung.
-
----
-
-## 📄 Lizenz
-
-MIT (oder projektspezifisch anpassen)
-
----
-
-## ✨ Kontext
-
-Dieses Setup ist Teil des NeoFab / MakerSpace / Know-How-Schmiede-Ökosystems
-zur Entwicklung von digitalen Werkzeugen rund um 3D-Druck & Projektverwaltung.
+Nur für interne Entwicklungs- & Testsysteme.
