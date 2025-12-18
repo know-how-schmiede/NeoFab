@@ -228,16 +228,19 @@
                 <i class="bi bi-megaphone me-1"></i>
                 {{ t("order_public_sharing") }}
               </label>
+              {% set allow_poster_checked = order.public_allow_poster if order.public_allow_poster is not none else true %}
+              {% set allow_web_checked = order.public_allow_web if order.public_allow_web is not none else true %}
+              {% set allow_social_checked = order.public_allow_social if order.public_allow_social is not none else true %}
               <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="public_allow_poster" name="public_allow_poster" {% if order.public_allow_poster %}checked{% endif %}>
+                <input class="form-check-input" type="checkbox" id="public_allow_poster" name="public_allow_poster" {% if allow_poster_checked %}checked{% endif %}>
                 <label class="form-check-label" for="public_allow_poster">{{ t("order_allow_poster") }}</label>
               </div>
               <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="public_allow_web" name="public_allow_web" {% if order.public_allow_web %}checked{% endif %}>
+                <input class="form-check-input" type="checkbox" id="public_allow_web" name="public_allow_web" {% if allow_web_checked %}checked{% endif %}>
                 <label class="form-check-label" for="public_allow_web">{{ t("order_allow_web") }}</label>
               </div>
               <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="public_allow_social" name="public_allow_social" {% if order.public_allow_social %}checked{% endif %}>
+                <input class="form-check-input" type="checkbox" id="public_allow_social" name="public_allow_social" {% if allow_social_checked %}checked{% endif %}>
                 <label class="form-check-label" for="public_allow_social">{{ t("order_allow_social") }}</label>
               </div>
             </div>
@@ -245,47 +248,47 @@
             <!-- Anzeige-Name -->
             <div class="col-md-6">
               <label for="public_display_name" class="form-label">{{ t("order_display_name") }}</label>
-              <input type="text" class="form-control" id="public_display_name" name="public_display_name" maxlength="200" value="{{ order.public_display_name or '' }}">
+              <input type="text" class="form-control" id="public_display_name" name="public_display_name" maxlength="200" value="{{ order.public_display_name or '' }}" placeholder="{{ t('project_public_display_placeholder') }}">
             </div>
 
             <!-- Projekt-Kurzbeschreibung -->
             <div class="col-md-6">
               <label for="summary_short" class="form-label">{{ t("order_summary_short") }}</label>
-              <input type="text" class="form-control" id="summary_short" name="summary_short" maxlength="300" value="{{ order.summary_short or '' }}">
+              <input type="text" class="form-control" id="summary_short" name="summary_short" maxlength="300" value="{{ order.summary_short or '' }}" placeholder="{{ t('project_summary_short_placeholder') }}">
             </div>
 
             <!-- Projektstory -->
             <div class="col-12">
               <label for="summary_long" class="form-label">{{ t("order_summary_long") }}</label>
-              <textarea class="form-control" id="summary_long" name="summary_long" rows="3">{{ order.summary_long or '' }}</textarea>
+              <textarea class="form-control" id="summary_long" name="summary_long" rows="3" placeholder="{{ t('project_summary_long_placeholder') }}">{{ order.summary_long or '' }}</textarea>
             </div>
 
             <div class="col-md-6">
               <label for="project_purpose" class="form-label">{{ t("order_project_purpose") }}</label>
-              <textarea class="form-control" id="project_purpose" name="project_purpose" rows="2">{{ order.project_purpose or '' }}</textarea>
+              <textarea class="form-control" id="project_purpose" name="project_purpose" rows="2" placeholder="{{ t('project_purpose_placeholder') }}">{{ order.project_purpose or '' }}</textarea>
             </div>
             <div class="col-md-6">
               <label for="project_use_case" class="form-label">{{ t("order_project_use_case") }}</label>
-              <textarea class="form-control" id="project_use_case" name="project_use_case" rows="2">{{ order.project_use_case or '' }}</textarea>
+              <textarea class="form-control" id="project_use_case" name="project_use_case" rows="2" placeholder="{{ t('project_use_case_placeholder') }}">{{ order.project_use_case or '' }}</textarea>
             </div>
 
             <div class="col-md-6">
               <label for="learning_points" class="form-label">{{ t("order_learning_points") }}</label>
-              <textarea class="form-control" id="learning_points" name="learning_points" rows="2">{{ order.learning_points or '' }}</textarea>
+              <textarea class="form-control" id="learning_points" name="learning_points" rows="2" placeholder="{{ t('project_learning_points_placeholder') }}">{{ order.learning_points or '' }}</textarea>
             </div>
             <div class="col-md-6">
               <label for="background_info" class="form-label">{{ t("order_background_info") }}</label>
-              <textarea class="form-control" id="background_info" name="background_info" rows="2">{{ order.background_info or '' }}</textarea>
+              <textarea class="form-control" id="background_info" name="background_info" rows="2" placeholder="{{ t('project_background_info_placeholder') }}">{{ order.background_info or '' }}</textarea>
             </div>
 
             <div class="col-md-6">
               <label for="project_url" class="form-label">{{ t("order_project_url") }}</label>
-              <input type="url" class="form-control" id="project_url" name="project_url" maxlength="300" value="{{ order.project_url or '' }}">
+              <input type="url" class="form-control" id="project_url" name="project_url" maxlength="300" value="{{ order.project_url or '' }}" placeholder="{{ t('project_url_placeholder') }}">
             </div>
 
             <div class="col-md-6">
               <label for="tags" class="form-label">{{ t("order_tags") }}</label>
-              <input type="text" class="form-control" id="tags" name="tags" maxlength="300" value="{{ tags_value }}" placeholder="mechanics, prototype, drone">
+              <input type="text" class="form-control" id="tags" name="tags" maxlength="300" value="{{ tags_value }}" placeholder="{{ t('project_tags_placeholder') }}">
             </div>
 
           </div>

@@ -915,9 +915,15 @@ def new_order():
         cost_center_id = request.form.get("cost_center_id") or None
 
         # ├ûffentlichkeits-Felder
-        public_allow_poster = bool(request.form.get("public_allow_poster"))
-        public_allow_web = bool(request.form.get("public_allow_web"))
-        public_allow_social = bool(request.form.get("public_allow_social"))
+        def _default_public_flag(field_name: str) -> bool:
+            val = request.form.get(field_name)
+            if val is None:
+                return True
+            return bool(val)
+
+        public_allow_poster = _default_public_flag("public_allow_poster")
+        public_allow_web = _default_public_flag("public_allow_web")
+        public_allow_social = _default_public_flag("public_allow_social")
         public_display_name = request.form.get("public_display_name", "").strip() or None
 
         summary_short = request.form.get("summary_short", "").strip() or None

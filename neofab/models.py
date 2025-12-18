@@ -58,9 +58,9 @@ class Order(db.Model):
     description = db.Column(db.Text, nullable=True)
 
     # Oeffentlichkeits-/Projektfelder
-    public_allow_poster = db.Column(db.Boolean, nullable=False, default=False)
-    public_allow_web = db.Column(db.Boolean, nullable=False, default=False)
-    public_allow_social = db.Column(db.Boolean, nullable=False, default=False)
+    public_allow_poster = db.Column(db.Boolean, nullable=False, default=True)
+    public_allow_web = db.Column(db.Boolean, nullable=False, default=True)
+    public_allow_social = db.Column(db.Boolean, nullable=False, default=True)
     public_display_name = db.Column(db.String(200))
 
     summary_short = db.Column(db.String(255))

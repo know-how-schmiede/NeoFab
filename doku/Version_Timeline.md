@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.5.7
+
+Anpassungen Felder Projektdokumentation
+
 ## Version 0.5.6
 
 Ergänzung Bemerkung bei Bild-Upload

@@ -10,7 +10,7 @@
 Ausgangs-Situation:
 Neu erstellter LXC-Container mit Debain13 auf einem Proxmox-Server (8.4.14) (Stand Ende Dezember 2025)
 
-in der Konsole des Servers (Proxmox-Oberfläche)angemeldet:
+in der Konsole des Servers (Proxmox-Oberfläche) als root angemeldet:
 
 ```bash
 # Sudo installieren und weitere Vorbereitungen für Installation
@@ -43,8 +43,9 @@ sudo bash /home/neofab/projects/neofab/script/upDateNeoFabService
 
 - Alle drei Skripte müssen als `root`/`sudo` laufen (legen Benutzer an, installieren Pakete, schreiben systemd-Unit).
 - `setupNeoFab` fragt dich nach User/Installationspfad/Admin-Zugang und kann den Dev-Server direkt im Terminal starten.
+- Zu Beginn des Script`s werden einige Infos abgefragt, bei einfach Return werden die Standard-Einstellugnen übernommen.
 - `setupNeoFabService` setzt auf der Basisinstallation auf und erstellt den systemd-Dienst (`/etc/systemd/system/<name>.service`).
-- `upDateNeoFabService` stopt den systemd-Dienst, holt sich den aktuellen Stand auf Git von NeoFab, installiert neue Abhängigkeiten und startet den Dienst neu.
+- `upDateNeoFabService` stopt den systemd-Dienst, holt sich den aktuellen Stand auf Git von NeoFab, installiert neue Abhängigkeiten, migriert bei Bedarf die Datenbank und startet den Dienst neu.
 
 ## Installation auf Proxmox LXC-Container
 
