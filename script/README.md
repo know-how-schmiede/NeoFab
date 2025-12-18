@@ -45,3 +45,16 @@ sudo bash /home/neofab/projects/neofab/script/upDateNeoFabService
 - `setupNeoFab` fragt dich nach User/Installationspfad/Admin-Zugang und kann den Dev-Server direkt im Terminal starten.
 - `setupNeoFabService` setzt auf der Basisinstallation auf und erstellt den systemd-Dienst (`/etc/systemd/system/<name>.service`).
 - `upDateNeoFabService` stopt den systemd-Dienst, holt sich den aktuellen Stand auf Git von NeoFab, installiert neue Abhängigkeiten und startet den Dienst neu.
+
+## Installation auf Proxmox LXC-Container
+
+![Proxmox LXC Container - Allgemein](/NeoFab/images/Proxmox_LXC_01.png)
+![Proxmox LXC Container - Template](/NeoFab/images/Proxmox_LXC_02.png)
+![Proxmox LXC Container - Disks](/NeoFab/images/Proxmox_LXC_03.png)
+![Proxmox LXC Container - CPU](/NeoFab/images/Proxmox_LXC_04.png)
+![Proxmox LXC Container - Speicher](/NeoFab/images/Proxmox_LXC_05.png)
+![Proxmox LXC Container - Netzwerk](/NeoFab/images/Proxmox_LXC_06.png)
+![Proxmox LXC Container - DNS](/NeoFab/images/Proxmox_LXC_07.png)
+![Proxmox LXC Container - Bestätigen](/NeoFab/images/Proxmox_LXC_08.png)
+
+![Proxmox LXC Container - Konsole aufrufen](/NeoFab/images/Proxmox_LXC_Konsole.png)
