@@ -196,9 +196,13 @@
           <li>
             <strong>{{ f.name }}</strong>
             {% if f.file_type %} ({{ f.file_type }}){% endif %}
+            {% if f.thumb_data_uri %}
+              <br>
+              <img src="{{ f.thumb_data_uri }}" alt="{{ f.name }}" class="image-thumb">
+            {% endif %}
             <br> {{ t("files_label_quantity") }}: {{ f.quantity }}
             {% if f.note %} <br> {{ t("files_label_note") }}: {{ f.note }}{% endif %}
-            {% if f.uploaded_at %} — {{ f.uploaded_at }}{% endif %}
+            {% if f.uploaded_at %} – {{ f.uploaded_at }}{% endif %}
           </li>
         {% endfor %}
       </ul>

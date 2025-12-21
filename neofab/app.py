@@ -2283,6 +2283,45 @@ def build_order_context(order, translator) -> dict:
             app.logger.warning("Could not embed thumbnail for PDF (%s): %s", chosen, exc)
             return ""
 
+    def model_thumb_data_uri(file_entry: OrderFile) -> str:
+        if (file_entry.file_type or "").lower() != "stl":
+            return ""
+
+        base_folder = Path(app.config["UPLOAD_FOLDER"]) / f"order_{order.id}"
+        original_path = base_folder / file_entry.stored_name
+        thumb_folder = base_folder / "thumbnails"
+        thumb_sm_name, thumb_lg_name = _build_model_thumbnail_names(file_entry.stored_name)
+
+        candidates = []
+        if file_entry.thumb_sm_path:
+            candidates.append(thumb_folder / file_entry.thumb_sm_path)
+        if file_entry.thumb_lg_path:
+            candidates.append(thumb_folder / file_entry.thumb_lg_path)
+        candidates.append(thumb_folder / thumb_sm_name)
+        candidates.append(thumb_folder / thumb_lg_name)
+
+        chosen = next((path for path in candidates if path.exists()), None)
+
+        if not chosen and original_path.exists():
+            generate_stl_thumbnails(original_path, thumb_folder / thumb_sm_name, thumb_folder / thumb_lg_name)
+            if (thumb_folder / thumb_sm_name).exists():
+                chosen = thumb_folder / thumb_sm_name
+            elif (thumb_folder / thumb_lg_name).exists():
+                chosen = thumb_folder / thumb_lg_name
+
+        if not chosen or not chosen.exists():
+            return ""
+
+        mime, _ = mimetypes.guess_type(chosen.name)
+        if not mime:
+            mime = "image/png"
+        try:
+            data = base64.b64encode(chosen.read_bytes()).decode("ascii")
+            return f"data:{mime};base64,{data}"
+        except Exception as exc:  # noqa: BLE001
+            app.logger.warning("Could not embed model thumbnail for PDF (%s): %s", chosen, exc)
+            return ""
+
     generated_at = fmt_dt(datetime.now())
 
     return {
@@ -2336,6 +2375,7 @@ def build_order_context(order, translator) -> dict:
                 "uploaded_at": fmt_dt(f.uploaded_at),
                 "note": f.note or "",
                 "quantity": f.quantity or 1,
+                "thumb_data_uri": model_thumb_data_uri(f),
             }
             for f in order.files
         ],
