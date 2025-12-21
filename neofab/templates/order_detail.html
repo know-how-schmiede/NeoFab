@@ -367,10 +367,16 @@
                         type="button"
                         class="model-thumb-button"
                         data-model-preview="true"
+                        data-preview-file-id="{{ f.id }}"
+                        data-preview-order-id="{{ order.id }}"
                         data-preview-url="{{ url_for('order_file_preview', order_id=order.id, file_id=f.id) }}"
                         data-preview-name="{{ f.original_name }}"
+                        data-preview-note="{{ f.note or '' }}"
                         data-preview-type="{{ file_type }}"
                         data-preview-poster="{{ thumb_lg_url }}"
+                        data-preview-thumb-sm="{{ thumb_sm_url }}"
+                        data-preview-thumb-lg="{{ thumb_lg_url }}"
+                        data-preview-color-id="{{ f.color_id or '' }}"
                         aria-label="{{ preview_tooltip }}"
                         title="{{ preview_tooltip }}"
                       >
@@ -617,6 +623,28 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('btn_cancel') }}"></button>
       </div>
       <div class="modal-body">
+        <div class="model-preview-meta mb-3">
+          <div class="row g-3 align-items-start">
+            <div class="col-lg-8">
+              <div class="text-muted small">{{ t("files_preview_filename") }}</div>
+              <div class="fw-semibold" data-model-filename></div>
+              <div class="text-muted small mt-2">{{ t("files_preview_note_label") }}</div>
+              <div class="text-muted" data-model-note></div>
+            </div>
+            <div class="col-lg-4">
+              <label for="modelColorSelect" class="form-label">
+                {{ t("files_color_label") }} <span class="text-muted">({{ t("files_preview_hint") }})</span>
+              </label>
+              <select id="modelColorSelect" class="form-select" data-model-color-select>
+                <option value="">{{ t("files_color_none") }}</option>
+                {% for c in colors %}
+                  <option value="{{ c.id }}" data-hex="{{ c.hex_code or '' }}">{{ c.name }}</option>
+                {% endfor %}
+              </select>
+              <div class="small text-muted mt-1" data-model-feedback></div>
+            </div>
+          </div>
+        </div>
         <div class="model-preview-wrap">
           <img class="model-preview-poster d-none" data-model-poster alt="{{ t('files_preview_title') }}">
           <div class="model-preview-canvas" data-model-canvas></div>
@@ -762,19 +790,39 @@ if (modalEl && previewButtons.length) {
   const posterEl = modalEl.querySelector("[data-model-poster]");
   const statusEl = modalEl.querySelector("[data-model-status]");
   const canvasWrap = modalEl.querySelector("[data-model-canvas]");
+  const filenameEl = modalEl.querySelector("[data-model-filename]");
+  const noteEl = modalEl.querySelector("[data-model-note]");
+  const colorSelect = modalEl.querySelector("[data-model-color-select]");
+  const feedbackEl = modalEl.querySelector("[data-model-feedback]");
   const baseTitle = titleEl ? titleEl.textContent : "";
 
   const labels = {
     loading: "{{ t('files_preview_loading') }}",
     failed: "{{ t('files_preview_failed') }}",
-    unavailable: "{{ t('files_preview_unavailable') }}"
+    unavailable: "{{ t('files_preview_unavailable') }}",
+    noteEmpty: "{{ t('files_preview_note_empty') }}",
+    saving: "{{ t('files_color_saving') }}",
+    saved: "{{ t('files_color_saved') }}",
+    saveFailed: "{{ t('files_color_save_failed') }}",
+    thumbnailUpdated: "{{ t('files_thumbnail_updated') }}",
+    thumbnailFailed: "{{ t('files_thumbnail_failed') }}"
   };
 
+  const defaultColorHex = "#6fa8dc";
+  const thumbnailZoom = 2;
   let renderer = null;
   let scene = null;
   let camera = null;
   let controls = null;
   let currentObject = null;
+  let currentButton = null;
+  let currentFileId = null;
+  let currentOrderId = null;
+  let currentThumbSmUrl = "";
+  let currentThumbLgUrl = "";
+  let currentColorHex = defaultColorHex;
+  let colorSaveTimer = null;
+  let modelReady = false;
   let animationId = null;
   let resizeObserver = null;
 
@@ -797,6 +845,151 @@ if (modalEl && previewButtons.length) {
       posterEl.classList.add("d-none");
       posterEl.removeAttribute("src");
     }
+  }
+
+  function setFeedback(text) {
+    if (!feedbackEl) return;
+    feedbackEl.textContent = text || "";
+  }
+
+  function getSelectedColorHex() {
+    if (!colorSelect) return "";
+    const selected = colorSelect.options[colorSelect.selectedIndex];
+    if (!selected) return "";
+    const hex = selected.getAttribute("data-hex") || "";
+    if (/^#([0-9A-Fa-f]{6})$/.test(hex)) {
+      return hex;
+    }
+    return "";
+  }
+
+  function applyColorToObject(hexColor) {
+    if (!currentObject) return;
+    const color = new THREE.Color(hexColor || defaultColorHex);
+    currentObject.traverse((child) => {
+      if (!child.isMesh || !child.material) return;
+      if (Array.isArray(child.material)) {
+        child.material.forEach((mat) => {
+          if (mat.color) {
+            mat.color.set(color);
+            mat.needsUpdate = true;
+          }
+        });
+      } else if (child.material.color) {
+        child.material.color.set(color);
+        child.material.needsUpdate = true;
+      }
+    });
+  }
+
+  function bustUrl(url) {
+    if (!url) return "";
+    const sep = url.includes("?") ? "&" : "?";
+    return `${url}${sep}v=${Date.now()}`;
+  }
+
+  function updateThumbnailImages() {
+    if (!currentButton) return;
+    const img = currentButton.querySelector(".model-thumb-img");
+    if (img && currentThumbSmUrl) {
+      img.classList.remove("d-none");
+      const placeholder = currentButton.querySelector(".model-thumb-placeholder");
+      if (placeholder) {
+        placeholder.classList.add("d-none");
+      }
+      img.src = bustUrl(currentThumbSmUrl);
+    }
+    if (currentThumbLgUrl) {
+      const posterUrl = bustUrl(currentThumbLgUrl);
+      currentButton.setAttribute("data-preview-poster", posterUrl);
+      setPoster(posterUrl);
+    }
+  }
+
+  async function uploadThumbnail() {
+    if (!renderer || !scene || !camera || !currentOrderId || !currentFileId || !modelReady) {
+      return null;
+    }
+    const originalZoom = camera.zoom;
+    try {
+      camera.zoom = thumbnailZoom;
+      camera.updateProjectionMatrix();
+      if (controls) {
+        controls.update();
+      }
+      renderer.render(scene, camera);
+      const dataUrl = renderer.domElement.toDataURL("image/png");
+      const resp = await fetch(`/orders/${currentOrderId}/files/${currentFileId}/thumbnail/lg`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Requested-With": "Fetch"
+        },
+        body: JSON.stringify({ data_url: dataUrl })
+      });
+      if (!resp.ok) {
+        return false;
+      }
+      const payload = await resp.json();
+      if (!payload || !payload.ok) {
+        return false;
+      }
+      updateThumbnailImages();
+      return true;
+    } catch (err) {
+      return false;
+    } finally {
+      camera.zoom = originalZoom;
+      camera.updateProjectionMatrix();
+      if (controls) {
+        controls.update();
+      }
+    }
+  }
+
+  async function saveColorSelection() {
+    if (!currentFileId) return;
+    const colorId = colorSelect ? colorSelect.value : "";
+    try {
+      const resp = await fetch(`/files/${currentFileId}/set-color`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Requested-With": "Fetch"
+        },
+        body: JSON.stringify({ color_id: colorId || null })
+      });
+      if (!resp.ok) {
+        throw new Error("save failed");
+      }
+      const payload = await resp.json();
+      if (!payload || !payload.ok) {
+        throw new Error("save failed");
+      }
+      if (currentButton) {
+        currentButton.setAttribute("data-preview-color-id", colorId || "");
+      }
+      setFeedback(labels.saved);
+      const thumbOk = await uploadThumbnail();
+      if (thumbOk === true) {
+        setFeedback(`${labels.saved} · ${labels.thumbnailUpdated}`);
+      } else if (thumbOk === false) {
+        setFeedback(`${labels.saved} · ${labels.thumbnailFailed}`);
+      } else {
+        setFeedback(labels.saved);
+      }
+    } catch (err) {
+      setFeedback(labels.saveFailed);
+    }
+  }
+
+  function scheduleColorSave() {
+    if (!currentFileId) return;
+    setFeedback(labels.saving);
+    if (colorSaveTimer) {
+      clearTimeout(colorSaveTimer);
+    }
+    colorSaveTimer = setTimeout(saveColorSelection, 450);
   }
 
   function disposeObject(obj) {
@@ -892,7 +1085,9 @@ if (modalEl && previewButtons.length) {
 
     const maxDim = Math.max(size.x, size.y, size.z);
     if (maxDim <= 0) return;
-    const distance = maxDim * 1.6;
+    const fov = (camera.fov * Math.PI) / 180;
+    const fitDistance = (maxDim / 2) / Math.tan(fov / 2);
+    const distance = fitDistance * 1.1;
     camera.position.set(distance, distance, distance);
     camera.near = Math.max(distance / 100, 0.01);
     camera.far = distance * 100;
@@ -913,6 +1108,7 @@ if (modalEl && previewButtons.length) {
       return;
     }
     clearScene();
+    modelReady = false;
     setStatus(labels.loading);
 
     const fileType = (type || "stl").toLowerCase();
@@ -924,8 +1120,10 @@ if (modalEl && previewButtons.length) {
           currentObject = object;
           scene.add(object);
           frameObject(object);
+          applyColorToObject(currentColorHex);
           setStatus("");
           setPoster("");
+          modelReady = true;
           startRender();
         },
         undefined,
@@ -942,7 +1140,7 @@ if (modalEl && previewButtons.length) {
       (geometry) => {
         geometry.computeVertexNormals();
         const material = new THREE.MeshStandardMaterial({
-          color: 0x6fa8dc,
+          color: currentColorHex || defaultColorHex,
           metalness: 0.1,
           roughness: 0.6
         });
@@ -950,8 +1148,10 @@ if (modalEl && previewButtons.length) {
         currentObject = mesh;
         scene.add(mesh);
         frameObject(mesh);
+        applyColorToObject(currentColorHex);
         setStatus("");
         setPoster("");
+        modelReady = true;
         startRender();
       },
       undefined,
@@ -963,14 +1163,34 @@ if (modalEl && previewButtons.length) {
 
   previewButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
+      currentButton = btn;
       const url = btn.getAttribute("data-preview-url") || "";
       const name = btn.getAttribute("data-preview-name") || "";
       const type = btn.getAttribute("data-preview-type") || "stl";
       const poster = btn.getAttribute("data-preview-poster") || "";
+      const note = btn.getAttribute("data-preview-note") || "";
+      const colorId = btn.getAttribute("data-preview-color-id") || "";
+      currentFileId = btn.getAttribute("data-preview-file-id") || "";
+      currentOrderId = btn.getAttribute("data-preview-order-id") || "";
+      currentThumbSmUrl = btn.getAttribute("data-preview-thumb-sm") || "";
+      currentThumbLgUrl = btn.getAttribute("data-preview-thumb-lg") || "";
 
       if (titleEl) {
         titleEl.textContent = name ? name : baseTitle;
       }
+      if (filenameEl) {
+        filenameEl.textContent = name ? name : baseTitle;
+      }
+      if (noteEl) {
+        noteEl.textContent = note ? note : labels.noteEmpty;
+      }
+      if (colorSelect) {
+        colorSelect.value = colorId;
+        currentColorHex = getSelectedColorHex() || defaultColorHex;
+      } else {
+        currentColorHex = defaultColorHex;
+      }
+      setFeedback("");
       setPoster(poster);
       setStatus(labels.loading);
 
@@ -981,11 +1201,40 @@ if (modalEl && previewButtons.length) {
     });
   });
 
+  if (colorSelect) {
+    colorSelect.addEventListener("change", () => {
+      currentColorHex = getSelectedColorHex() || defaultColorHex;
+      applyColorToObject(currentColorHex);
+      scheduleColorSave();
+    });
+  }
+
   modalEl.addEventListener("hidden.bs.modal", () => {
     stopRender();
     clearScene();
     setPoster("");
     setStatus("");
+    setFeedback("");
+    modelReady = false;
+    currentButton = null;
+    currentFileId = null;
+    currentOrderId = null;
+    currentThumbSmUrl = "";
+    currentThumbLgUrl = "";
+    currentColorHex = defaultColorHex;
+    if (colorSelect) {
+      colorSelect.value = "";
+    }
+    if (noteEl) {
+      noteEl.textContent = "";
+    }
+    if (filenameEl) {
+      filenameEl.textContent = "";
+    }
+    if (colorSaveTimer) {
+      clearTimeout(colorSaveTimer);
+      colorSaveTimer = null;
+    }
     if (titleEl) {
       titleEl.textContent = baseTitle;
     }

@@ -13,6 +13,7 @@ from version import APP_VERSION
 from datetime import datetime
 from pathlib import Path
 import base64
+import binascii
 import mimetypes
 import os
 import logging
@@ -36,6 +37,7 @@ from flask import (
     request,
     flash,
     session,
+    jsonify,
     send_from_directory,
     abort,
 )
@@ -133,6 +135,7 @@ THUMBNAIL_MAX_WIDTH = 200
 MODEL_THUMB_SMALL_SIZE = (240, 240)
 MODEL_THUMB_LARGE_SIZE = (1024, 768)
 MODEL_THUMB_PADDING = 12
+MODEL_THUMB_ZOOM = 2.0
 MODEL_THUMB_MAX_TRIANGLES = 12000
 MODEL_THUMB_SMALL_TRIANGLES = 3000
 MODEL_THUMB_LARGE_TRIANGLES = 8000
@@ -279,6 +282,8 @@ def ensure_order_file_columns():
             statements.append("ALTER TABLE order_files ADD COLUMN note VARCHAR(255)")
         if "quantity" not in cols:
             statements.append("ALTER TABLE order_files ADD COLUMN quantity INTEGER NOT NULL DEFAULT 1")
+        if "color_id" not in cols:
+            statements.append("ALTER TABLE order_files ADD COLUMN color_id INTEGER")
         if "thumb_sm_path" not in cols:
             statements.append("ALTER TABLE order_files ADD COLUMN thumb_sm_path VARCHAR(255)")
         if "thumb_lg_path" not in cols:
@@ -549,6 +554,7 @@ def _render_stl_thumbnail(triangles: list, target_path: Path, size: Tuple[int, i
         return False
 
     scale = min((width - 2 * pad) / span_x, (height - 2 * pad) / span_y)
+    scale *= MODEL_THUMB_ZOOM
     if scale <= 0:
         return False
 
@@ -559,9 +565,11 @@ def _render_stl_thumbnail(triangles: list, target_path: Path, size: Tuple[int, i
     draw_tris = []
     for normal, verts in rotated:
         pts = []
+        center_x = (min_x + max_x) / 2.0
+        center_y = (min_y + max_y) / 2.0
         for vx, vy, vz in verts:
-            px = (vx - min_x) * scale + pad
-            py = (max_y - vy) * scale + pad
+            px = (vx - center_x) * scale + (width / 2.0)
+            py = (center_y - vy) * scale + (height / 2.0)
             pts.append((px, py))
         depth = sum(v[2] for v in verts) / 3.0
         nrm = _normalize_vec(normal)
@@ -600,6 +608,51 @@ def generate_stl_thumbnails(source_path: Path, thumb_sm_path: Path, thumb_lg_pat
     except Exception as exc:  # noqa: BLE001
         app.logger.warning("STL thumbnail generation failed for %s: %s", source_path, exc)
         return False, False
+
+
+def _fit_image_to_size(image: Image.Image, size: Tuple[int, int]) -> Image.Image:
+    background = (248, 249, 250)
+    canvas = Image.new("RGB", size, background)
+    img = image.convert("RGB")
+    img.thumbnail(size, Image.LANCZOS)
+    offset = ((size[0] - img.width) // 2, (size[1] - img.height) // 2)
+    canvas.paste(img, offset)
+    return canvas
+
+
+def _image_from_data_url(data_url: str) -> Optional[Image.Image]:
+    if not data_url or not data_url.startswith("data:image/"):
+        return None
+    try:
+        header, encoded = data_url.split(",", 1)
+    except ValueError:
+        return None
+    if ";base64" not in header:
+        return None
+    try:
+        raw = base64.b64decode(encoded)
+    except (ValueError, binascii.Error):
+        return None
+    try:
+        return Image.open(BytesIO(raw))
+    except Exception:
+        return None
+
+
+def save_model_thumbnail_from_image(image: Image.Image, thumb_sm_path: Path, thumb_lg_path: Path) -> Tuple[bool, bool]:
+    thumb_sm_path.parent.mkdir(parents=True, exist_ok=True)
+    small_ok = False
+    large_ok = False
+    try:
+        large = _fit_image_to_size(image, MODEL_THUMB_LARGE_SIZE)
+        large.save(thumb_lg_path, format="PNG")
+        large_ok = True
+        small = _fit_image_to_size(image, MODEL_THUMB_SMALL_SIZE)
+        small.save(thumb_sm_path, format="PNG")
+        small_ok = True
+    except Exception as exc:  # noqa: BLE001
+        app.logger.warning("Could not save uploaded model thumbnails: %s", exc)
+    return small_ok, large_ok
 
 
 def update_order_file_preview(order_file: OrderFile, source_path: Path) -> None:
@@ -1854,7 +1907,7 @@ def order_image_thumbnail(order_id, image_id):
     abort(404)
 
 
-@app.route("/orders/<int:order_id>/files/<int:file_id>/thumbnail/<size>")
+@app.route("/orders/<int:order_id>/files/<int:file_id>/thumbnail/<size>", methods=["GET", "POST"])
 @login_required
 def order_file_thumbnail(order_id, file_id, size):
     order = Order.query.get_or_404(order_id)
@@ -1873,6 +1926,34 @@ def order_file_thumbnail(order_id, file_id, size):
     thumb_name = order_file.thumb_sm_path or thumb_sm_name
     if size == "lg":
         thumb_name = order_file.thumb_lg_path or thumb_lg_name
+
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        data_url = data.get("data_url") or request.form.get("data_url")
+        image = None
+        if "thumbnail" in request.files:
+            try:
+                image = Image.open(request.files["thumbnail"].stream)
+            except Exception:
+                image = None
+        if image is None and data_url:
+            image = _image_from_data_url(data_url)
+        if image is None:
+            return jsonify({"ok": False, "error": "invalid_image"}), 400
+
+        thumb_sm_path = thumb_folder / thumb_sm_name
+        thumb_lg_path = thumb_folder / thumb_lg_name
+        small_ok, large_ok = save_model_thumbnail_from_image(image, thumb_sm_path, thumb_lg_path)
+        order_file.thumb_sm_path = thumb_sm_name if small_ok else None
+        order_file.thumb_lg_path = thumb_lg_name if large_ok else None
+        order_file.has_3d_preview = True
+        order_file.preview_status = "ok" if (small_ok or large_ok) else "failed"
+        db.session.commit()
+
+        if not (small_ok or large_ok):
+            return jsonify({"ok": False, "error": "save_failed"}), 500
+
+        return jsonify({"ok": True})
 
     thumb_path = thumb_folder / thumb_name
     if not thumb_path.exists():
@@ -1989,6 +2070,35 @@ def download_order_file(order_id, file_id):
         as_attachment=True,
         download_name=order_file.original_name,  # Name, den der User sieht
     )
+
+
+@app.route("/files/<int:file_id>/set-color", methods=["POST"])
+@login_required
+def set_file_color(file_id):
+    order_file = OrderFile.query.get_or_404(file_id)
+    order = Order.query.get_or_404(order_file.order_id)
+
+    if current_user.role != "admin" and order.user_id != current_user.id:
+        abort(403)
+
+    payload = request.get_json(silent=True) or request.form
+    color_id_raw = payload.get("color_id") if payload else None
+
+    if color_id_raw in (None, "", "null"):
+        order_file.color_id = None
+    else:
+        try:
+            color_id = int(color_id_raw)
+        except (TypeError, ValueError):
+            return jsonify({"ok": False, "error": "invalid_color_id"}), 400
+
+        color = Color.query.get(color_id)
+        if not color:
+            return jsonify({"ok": False, "error": "color_not_found"}), 404
+        order_file.color_id = color_id
+
+    db.session.commit()
+    return jsonify({"ok": True, "color_id": order_file.color_id})
 
 
 # ============================================================

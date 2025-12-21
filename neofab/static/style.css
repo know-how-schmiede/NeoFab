@@ -196,6 +196,14 @@ body {
     font-size: 0.85rem;
 }
 
+.model-preview-meta [data-model-filename] {
+    font-size: 1rem;
+}
+
+.model-preview-hint {
+    font-style: italic;
+}
+
 @media (max-width: 576px) {
     .model-preview-wrap {
         height: 50vh;
