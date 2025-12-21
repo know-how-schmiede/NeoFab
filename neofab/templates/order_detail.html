@@ -2,6 +2,18 @@
 
 {% block title %}Order #{{ order.id }} - NeoFab{% endblock %}
 
+{% block extra_head %}
+{{ super() }}
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"
+  }
+}
+</script>
+{% endblock %}
+
 {% block content %}
 
 <!-- ORDER FORMULAR / DETAILS -->
@@ -333,56 +345,113 @@
         {% if order.files %}
           <ul class="list-group mb-3">
             {% for f in order.files %}
-             <li class="list-group-item d-flex justify-content-between align-items-center">
-              <div>
-                <div>
-                  <strong>{{ f.original_name }}</strong>
-                  {% if f.file_type %}
-                    <span class="badge 
-                          {% if f.file_type.lower() == 'stl' %}bg-info
-                          {% elif f.file_type.lower() == '3mf' %}bg-success
-                          {% else %}bg-secondary
-                          {% endif %}
-                          ms-2">
-                      {{ f.file_type|upper }}
-                    </span>
-                  {% endif %}
-                  {% set qty = f.quantity or 1 %}
-                  {% if qty %}
-                    <span class="badge bg-secondary ms-1">&times;{{ qty }}</span>
-                  {% endif %}
+             {% set file_type = (f.file_type or '').lower() %}
+             {% set can_preview = file_type == 'stl' %}
+             {% if file_type == 'stl' %}
+               {% set thumb_sm_url = url_for('order_file_thumbnail', order_id=order.id, file_id=f.id, size='sm') %}
+               {% set thumb_lg_url = url_for('order_file_thumbnail', order_id=order.id, file_id=f.id, size='lg') %}
+             {% else %}
+               {% set thumb_sm_url = '' %}
+               {% set thumb_lg_url = '' %}
+             {% endif %}
+             {% set preview_tooltip = t('files_preview_open') %}
+             {% if file_type == '3mf' %}
+               {% set preview_tooltip = t('files_preview_3mf_unavailable') %}
+             {% endif %}
+             <li class="list-group-item">
+              <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+                <div class="d-flex gap-3 align-items-start">
+                  <div class="flex-shrink-0">
+                    {% if can_preview %}
+                      <button
+                        type="button"
+                        class="model-thumb-button"
+                        data-model-preview="true"
+                        data-preview-url="{{ url_for('order_file_preview', order_id=order.id, file_id=f.id) }}"
+                        data-preview-name="{{ f.original_name }}"
+                        data-preview-type="{{ file_type }}"
+                        data-preview-poster="{{ thumb_lg_url }}"
+                        aria-label="{{ preview_tooltip }}"
+                        title="{{ preview_tooltip }}"
+                      >
+                        {% if thumb_sm_url %}
+                          <img
+                            src="{{ thumb_sm_url }}"
+                            alt="{{ f.original_name }}"
+                            class="model-thumb-img"
+                            loading="lazy"
+                            onerror="this.classList.add('d-none'); this.nextElementSibling.classList.remove('d-none');"
+                          >
+                          <span class="model-thumb-placeholder d-none">
+                            <span class="model-thumb-label">{{ (file_type or '3D')|upper }}</span>
+                          </span>
+                        {% else %}
+                          <span class="model-thumb-placeholder">
+                            <span class="model-thumb-label">{{ (file_type or '3D')|upper }}</span>
+                          </span>
+                        {% endif %}
+                      </button>
+                    {% elif file_type == '3mf' %}
+                      <span class="model-thumb-placeholder" title="{{ preview_tooltip }}">
+                        <span class="model-thumb-label">{{ (file_type or '3D')|upper }}</span>
+                      </span>
+                    {% else %}
+                      <div class="model-thumb-placeholder">
+                        <i class="bi bi-box"></i>
+                      </div>
+                    {% endif %}
+                  </div>
+                  <div>
+                    <div>
+                      <strong>{{ f.original_name }}</strong>
+                      {% if f.file_type %}
+                        <span class="badge 
+                              {% if f.file_type.lower() == 'stl' %}bg-info
+                              {% elif f.file_type.lower() == '3mf' %}bg-success
+                              {% else %}bg-secondary
+                              {% endif %}
+                              ms-2">
+                          {{ f.file_type|upper }}
+                        </span>
+                      {% endif %}
+                      {% set qty = f.quantity or 1 %}
+                      {% if qty %}
+                        <span class="badge bg-secondary ms-1">&times;{{ qty }}</span>
+                      {% endif %}
+                    </div>
+                    <small class="text-muted">
+                      {% set parts = [] %}
+                      {% if f.filesize %}
+                        {% set _ = parts.append(((f.filesize / 1024)|round(1)) ~ " KB") %}
+                      {% endif %}
+                      {% if f.uploaded_at %}
+                        {% set _ = parts.append("uploaded " ~ f.uploaded_at.strftime("%Y-%m-%d %H:%M")) %}
+                      {% endif %}
+                      {% if f.note %}
+                        {% set _ = parts.append(f.note) %}
+                      {% endif %}
+                      {{ " | ".join(parts) }}
+                    </small>
+                  </div>
                 </div>
-                <small class="text-muted">
-                  {% set parts = [] %}
-                  {% if f.filesize %}
-                    {% set _ = parts.append(((f.filesize / 1024)|round(1)) ~ " KB") %}
-                  {% endif %}
-                  {% if f.uploaded_at %}
-                    {% set _ = parts.append("uploaded " ~ f.uploaded_at.strftime("%Y-%m-%d %H:%M")) %}
-                  {% endif %}
-                  {% if f.note %}
-                    {% set _ = parts.append(f.note) %}
-                  {% endif %}
-                  {{ " | ".join(parts) }}
-                </small>
-              </div>
 
-              <div class="d-flex gap-2">
-                <a class="btn btn-sm btn-outline-primary"
-                  href="{{ url_for('download_order_file', order_id=order.id, file_id=f.id) }}">
-                  <i class="bi bi-download me-1"></i>
-                  {{ t("btn_download") }}
-                </a>
+                <div class="d-flex gap-2">
+                  <a class="btn btn-sm btn-outline-primary"
+                    href="{{ url_for('download_order_file', order_id=order.id, file_id=f.id) }}">
+                    <i class="bi bi-download me-1"></i>
+                    {{ t("btn_download") }}
+                  </a>
 
-                <form method="post"
-                      onsubmit="return confirm('{{ t('confirm_delete_file') }}');">
-                  <input type="hidden" name="action" value="delete_file">
-                  <input type="hidden" name="file_id" value="{{ f.id }}">
-                  <button type="submit" class="btn btn-sm btn-outline-danger">
-                    <i class="bi bi-trash me-1"></i>
-                    {{ t("btn_delete") }}
-                  </button>
-                </form>
+                  <form method="post"
+                        onsubmit="return confirm('{{ t('confirm_delete_file') }}');">
+                    <input type="hidden" name="action" value="delete_file">
+                    <input type="hidden" name="file_id" value="{{ f.id }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                      <i class="bi bi-trash me-1"></i>
+                      {{ t("btn_delete") }}
+                    </button>
+                  </form>
+                </div>
               </div>
             </li>
           {% endfor %}
@@ -539,6 +608,25 @@
   </div>
 </div>
 
+<!-- 3D Preview Modal -->
+<div class="modal fade" id="modelPreviewModal" tabindex="-1" aria-labelledby="modelPreviewLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modelPreviewLabel" data-model-title>{{ t("files_preview_title") }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('btn_cancel') }}"></button>
+      </div>
+      <div class="modal-body">
+        <div class="model-preview-wrap">
+          <img class="model-preview-poster d-none" data-model-poster alt="{{ t('files_preview_title') }}">
+          <div class="model-preview-canvas" data-model-canvas></div>
+          <div class="model-preview-status" data-model-status>{{ t("files_preview_loading") }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- NACHRICHTEN / KOMMUNIKATION -->
 <div class="card mb-3">
   <div class="card-header">
@@ -659,5 +747,249 @@ function updateColorPreview() {
   refreshMessages();
   setInterval(refreshMessages, 5000);
 })();
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { STLLoader } from "three/addons/loaders/STLLoader.js";
+import { ThreeMFLoader } from "three/addons/loaders/3MFLoader.js";
+
+const modalEl = document.getElementById("modelPreviewModal");
+const previewButtons = document.querySelectorAll("[data-model-preview='true']");
+
+if (modalEl && previewButtons.length) {
+  const titleEl = modalEl.querySelector("[data-model-title]");
+  const posterEl = modalEl.querySelector("[data-model-poster]");
+  const statusEl = modalEl.querySelector("[data-model-status]");
+  const canvasWrap = modalEl.querySelector("[data-model-canvas]");
+  const baseTitle = titleEl ? titleEl.textContent : "";
+
+  const labels = {
+    loading: "{{ t('files_preview_loading') }}",
+    failed: "{{ t('files_preview_failed') }}",
+    unavailable: "{{ t('files_preview_unavailable') }}"
+  };
+
+  let renderer = null;
+  let scene = null;
+  let camera = null;
+  let controls = null;
+  let currentObject = null;
+  let animationId = null;
+  let resizeObserver = null;
+
+  function setStatus(text) {
+    if (!statusEl) return;
+    if (text) {
+      statusEl.textContent = text;
+      statusEl.classList.remove("d-none");
+    } else {
+      statusEl.classList.add("d-none");
+    }
+  }
+
+  function setPoster(url) {
+    if (!posterEl) return;
+    if (url) {
+      posterEl.src = url;
+      posterEl.classList.remove("d-none");
+    } else {
+      posterEl.classList.add("d-none");
+      posterEl.removeAttribute("src");
+    }
+  }
+
+  function disposeObject(obj) {
+    obj.traverse((child) => {
+      if (child.geometry) {
+        child.geometry.dispose();
+      }
+      if (child.material) {
+        if (Array.isArray(child.material)) {
+          child.material.forEach((mat) => mat.dispose && mat.dispose());
+        } else if (child.material.dispose) {
+          child.material.dispose();
+        }
+      }
+    });
+  }
+
+  function clearScene() {
+    if (scene && currentObject) {
+      scene.remove(currentObject);
+      disposeObject(currentObject);
+      currentObject = null;
+    }
+  }
+
+  function updateRendererSize() {
+    if (!renderer || !camera || !canvasWrap) return;
+    const width = canvasWrap.clientWidth || 0;
+    const height = canvasWrap.clientHeight || 0;
+    if (!width || !height) return;
+    renderer.setSize(width, height, false);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+  }
+
+  function startRender() {
+    if (animationId || !renderer || !scene || !camera) return;
+    const renderLoop = () => {
+      animationId = requestAnimationFrame(renderLoop);
+      if (controls) {
+        controls.update();
+      }
+      renderer.render(scene, camera);
+    };
+    renderLoop();
+  }
+
+  function stopRender() {
+    if (animationId) {
+      cancelAnimationFrame(animationId);
+      animationId = null;
+    }
+  }
+
+  function initViewer() {
+    if (!canvasWrap || renderer) return;
+    scene = new THREE.Scene();
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+    } catch (err) {
+      setStatus(labels.unavailable);
+      return;
+    }
+    renderer.setPixelRatio(window.devicePixelRatio || 1);
+    renderer.setClearColor(0xf8f9fa, 1);
+    canvasWrap.appendChild(renderer.domElement);
+
+    camera = new THREE.PerspectiveCamera(45, 1, 0.1, 10000);
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x7a7a7a, 1.0);
+    const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+    dir.position.set(2, 2, 2);
+    scene.add(hemi, dir);
+
+    if ("ResizeObserver" in window) {
+      resizeObserver = new ResizeObserver(updateRendererSize);
+      resizeObserver.observe(canvasWrap);
+    } else {
+      window.addEventListener("resize", updateRendererSize);
+    }
+    updateRendererSize();
+  }
+
+  function frameObject(object) {
+    if (!camera || !controls) return;
+    const box = new THREE.Box3().setFromObject(object);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    object.position.sub(center);
+
+    const maxDim = Math.max(size.x, size.y, size.z);
+    if (maxDim <= 0) return;
+    const distance = maxDim * 1.6;
+    camera.position.set(distance, distance, distance);
+    camera.near = Math.max(distance / 100, 0.01);
+    camera.far = distance * 100;
+    camera.updateProjectionMatrix();
+    controls.target.set(0, 0, 0);
+    controls.update();
+  }
+
+  function loadModel(url, type) {
+    if (!url) {
+      setStatus(labels.unavailable);
+      return;
+    }
+
+    initViewer();
+    if (!renderer || !scene || !camera) {
+      setStatus(labels.unavailable);
+      return;
+    }
+    clearScene();
+    setStatus(labels.loading);
+
+    const fileType = (type || "stl").toLowerCase();
+    if (fileType === "3mf") {
+      const loader = new ThreeMFLoader();
+      loader.load(
+        url,
+        (object) => {
+          currentObject = object;
+          scene.add(object);
+          frameObject(object);
+          setStatus("");
+          setPoster("");
+          startRender();
+        },
+        undefined,
+        () => {
+          setStatus(labels.failed);
+        }
+      );
+      return;
+    }
+
+    const loader = new STLLoader();
+    loader.load(
+      url,
+      (geometry) => {
+        geometry.computeVertexNormals();
+        const material = new THREE.MeshStandardMaterial({
+          color: 0x6fa8dc,
+          metalness: 0.1,
+          roughness: 0.6
+        });
+        const mesh = new THREE.Mesh(geometry, material);
+        currentObject = mesh;
+        scene.add(mesh);
+        frameObject(mesh);
+        setStatus("");
+        setPoster("");
+        startRender();
+      },
+      undefined,
+      () => {
+        setStatus(labels.failed);
+      }
+    );
+  }
+
+  previewButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const url = btn.getAttribute("data-preview-url") || "";
+      const name = btn.getAttribute("data-preview-name") || "";
+      const type = btn.getAttribute("data-preview-type") || "stl";
+      const poster = btn.getAttribute("data-preview-poster") || "";
+
+      if (titleEl) {
+        titleEl.textContent = name ? name : baseTitle;
+      }
+      setPoster(poster);
+      setStatus(labels.loading);
+
+      const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+      modal.show();
+
+      loadModel(url, type);
+    });
+  });
+
+  modalEl.addEventListener("hidden.bs.modal", () => {
+    stopRender();
+    clearScene();
+    setPoster("");
+    setStatus("");
+    if (titleEl) {
+      titleEl.textContent = baseTitle;
+    }
+  });
+}
 </script>
 {% endblock %}
