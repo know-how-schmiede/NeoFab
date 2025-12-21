@@ -11,7 +11,7 @@
 
 <div class="card">
     <div class="card-body">
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
             <div class="mb-3">
                 <label for="title" class="form-label">{{ t("admin_training_label_title") }}</label>
                 <input type="text"
@@ -37,9 +37,29 @@
                        class="form-control"
                        id="youtube_url"
                        name="youtube_url"
-                       required
                        value="{{ video.youtube_url if video else '' }}">
                 <div class="form-text">{{ t("admin_training_url_hint") }}</div>
+            </div>
+
+            <div class="mb-3">
+                <label for="pdf_file" class="form-label">{{ t("admin_training_label_pdf") }}</label>
+                <input type="file"
+                       class="form-control"
+                       id="pdf_file"
+                       name="pdf_file"
+                       accept="application/pdf,.pdf">
+                <div class="form-text">{{ t("admin_training_pdf_hint") }}</div>
+                {% if video and video.pdf_filename %}
+                    <div class="mt-2 small">
+                        <a href="{{ url_for('tutorial_pdf', video_id=video.id) }}">
+                            <i class="bi bi-download me-1"></i>{{ video.pdf_original_name or video.pdf_filename }}
+                        </a>
+                    </div>
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" id="remove_pdf" name="remove_pdf">
+                        <label class="form-check-label" for="remove_pdf">{{ t("admin_training_pdf_remove") }}</label>
+                    </div>
+                {% endif %}
             </div>
 
             <button type="submit" class="btn btn-primary">{{ t("btn_save") }}</button>

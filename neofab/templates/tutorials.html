@@ -19,42 +19,65 @@
           <div class="card-body d-flex flex-column">
             <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
               <h2 class="h5 mb-0">{{ video.title }}</h2>
-              <span class="badge bg-light text-dark">{{ t("tutorials_badge_youtube") }}</span>
-            </div>
-            <div class="ratio ratio-16x9 mb-3 tutorial-player"
-                 data-embed="{{ entry.embed_url }}"
-                 data-thumb="{{ entry.thumb_url or '' }}">
-              <div class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center text-light tutorial-placeholder"
-                   role="button"
-                   tabindex="0"
-                   style="
-                     {% if entry.thumb_url %}
-                       background-image: url('{{ entry.thumb_url }}');
-                       background-size: cover;
-                       background-position: center;
-                     {% else %}
-                       background: linear-gradient(135deg, #1b1f3b, #2c3e50);
-                     {% endif %}
-                   ">
-                <div class="d-flex flex-column justify-content-center align-items-center px-3 py-2 rounded-pill"
-                     style="background: rgba(0,0,0,0.35); backdrop-filter: blur(2px);">
-                  <i class="bi bi-play-circle-fill fs-1"></i>
-                  <span class="small mt-1">{{ t("tutorials_open") }}</span>
-                </div>
+              <div class="d-flex flex-wrap gap-1">
+                {% if entry.has_video %}
+                  <span class="badge bg-light text-dark">{{ t("tutorials_badge_youtube") }}</span>
+                {% endif %}
+                {% if entry.has_pdf %}
+                  <span class="badge bg-light text-dark">{{ t("tutorials_badge_pdf") }}</span>
+                {% endif %}
               </div>
-              <iframe class="w-100 h-100 border-0 d-none"
-                      title="{{ video.title }}"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowfullscreen
-                      loading="lazy"></iframe>
             </div>
+            {% if entry.has_video %}
+              <div class="ratio ratio-16x9 mb-3 tutorial-player"
+                   data-embed="{{ entry.embed_url }}"
+                   data-thumb="{{ entry.thumb_url or '' }}">
+                <div class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center text-light tutorial-placeholder"
+                     role="button"
+                     tabindex="0"
+                     style="
+                       {% if entry.thumb_url %}
+                         background-image: url('{{ entry.thumb_url }}');
+                         background-size: cover;
+                         background-position: center;
+                       {% else %}
+                         background: linear-gradient(135deg, #1b1f3b, #2c3e50);
+                       {% endif %}
+                     ">
+                  <div class="d-flex flex-column justify-content-center align-items-center px-3 py-2 rounded-pill"
+                       style="background: rgba(0,0,0,0.35); backdrop-filter: blur(2px);">
+                    <i class="bi bi-play-circle-fill fs-1"></i>
+                    <span class="small mt-1">{{ t("tutorials_open") }}</span>
+                  </div>
+                </div>
+                <iframe class="w-100 h-100 border-0 d-none"
+                        title="{{ video.title }}"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowfullscreen
+                        loading="lazy"></iframe>
+              </div>
+            {% elif entry.has_pdf %}
+              <div class="d-inline-flex align-items-center gap-2 mb-3 px-3 py-2 bg-light border rounded text-muted">
+                <i class="bi bi-file-earmark-pdf fs-2"></i>
+                {% if entry.pdf_name %}
+                  <div class="small">{{ entry.pdf_name }}</div>
+                {% endif %}
+              </div>
+            {% endif %}
             {% if video.description %}
               <p class="text-muted">{{ video.description }}</p>
             {% endif %}
             <div class="mt-auto">
-              <a href="{{ video.youtube_url }}" target="_blank" rel="noopener" class="btn btn-outline-primary">
-                <i class="bi bi-box-arrow-up-right me-1"></i>{{ t("tutorials_open") }}
-              </a>
+              {% if entry.has_video %}
+                <a href="{{ video.youtube_url }}" target="_blank" rel="noopener" class="btn btn-outline-primary">
+                  <i class="bi bi-box-arrow-up-right me-1"></i>{{ t("tutorials_open") }}
+                </a>
+              {% endif %}
+              {% if entry.has_pdf %}
+                <a href="{{ entry.pdf_url }}" class="btn btn-outline-primary{% if entry.has_video %} ms-2{% endif %}">
+                  <i class="bi bi-download me-1"></i>{{ t("tutorials_download_pdf") }}
+                </a>
+              {% endif %}
             </div>
           </div>
         </div>

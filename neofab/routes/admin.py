@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 import secrets
 import json
 from typing import Callable, Optional
@@ -18,6 +19,7 @@ from flask import (
     url_for,
 )
 from sqlalchemy import func
+from werkzeug.utils import secure_filename
 
 from auth_utils import roles_required
 from config import SETTINGS_FILE, coerce_positive_int, load_app_settings, save_app_settings
@@ -67,6 +69,53 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         neighbor = videos[neighbor_idx]
         current.sort_order, neighbor.sort_order = neighbor.sort_order, current.sort_order
         db.session.commit()
+
+    def _training_pdf_folder() -> Path:
+        return Path(current_app.config["TRAINING_UPLOAD_FOLDER"])
+
+    def _delete_training_pdf(video: TrainingVideo) -> None:
+        if not video.pdf_filename:
+            return
+        try:
+            pdf_path = _training_pdf_folder() / video.pdf_filename
+            if pdf_path.exists():
+                pdf_path.unlink()
+        except OSError:
+            current_app.logger.warning("Could not delete training PDF: %s", video.pdf_filename)
+
+    def _save_training_pdf(video: TrainingVideo, file) -> tuple[bool, str | None]:
+        if not file or not file.filename:
+            return False, None
+        safe_name = secure_filename(file.filename)
+        if not safe_name.lower().endswith(".pdf"):
+            return False, "invalid_pdf"
+
+        folder = _training_pdf_folder()
+        folder.mkdir(parents=True, exist_ok=True)
+        stored_name = f"{video.id}_{safe_name}"
+        full_path = folder / stored_name
+        try:
+            file.save(str(full_path))
+        except Exception:
+            return False, "save_failed"
+
+        video.pdf_filename = stored_name
+        video.pdf_original_name = file.filename
+        try:
+            video.pdf_filesize = full_path.stat().st_size
+        except OSError:
+            video.pdf_filesize = None
+        return True, None
+
+    def _delete_training_pdf_by_name(filename: str | None) -> None:
+        if not filename:
+            return
+        try:
+            pdf_path = _training_pdf_folder() / filename
+            if pdf_path.exists():
+                pdf_path.unlink()
+        except OSError:
+            current_app.logger.warning("Could not delete training PDF: %s", filename)
 
     def normalize_youtube_url(raw_url: str) -> tuple[bool, str]:
         """
@@ -814,28 +863,57 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             title = request.form.get("title", "").strip()
             description = request.form.get("description", "").strip() or None
             youtube_url = request.form.get("youtube_url", "").strip()
+            pdf_file = request.files.get("pdf_file")
+            has_pdf_upload = bool(pdf_file and pdf_file.filename)
+            has_youtube = bool(youtube_url)
+            normalized_url = ""
+            has_errors = False
 
-            is_valid, normalized_url = normalize_youtube_url(youtube_url)
             if not title:
                 flash(trans("flash_training_title_required"), "danger")
-            elif not youtube_url:
-                flash(trans("flash_training_url_required"), "danger")
-            elif not is_valid:
-                flash(trans("flash_training_url_invalid"), "danger")
-            else:
+                has_errors = True
+
+            if has_youtube:
+                is_valid, normalized_url = normalize_youtube_url(youtube_url)
+                if not is_valid:
+                    flash(trans("flash_training_url_invalid"), "danger")
+                    has_errors = True
+
+            if has_pdf_upload:
+                safe_name = secure_filename(pdf_file.filename)
+                if not safe_name.lower().endswith(".pdf"):
+                    flash(trans("flash_training_pdf_invalid"), "danger")
+                    has_errors = True
+
+            if not has_youtube and not has_pdf_upload:
+                flash(trans("flash_training_source_required"), "danger")
+                has_errors = True
+
+            if not has_errors:
                 max_order = db.session.query(func.max(TrainingVideo.sort_order)).scalar()
                 next_order = (max_order or 0) + 1
                 video = TrainingVideo(
                     title=title,
                     description=description,
-                    youtube_url=normalized_url or youtube_url,
+                    youtube_url=normalized_url or youtube_url if has_youtube else "",
                     sort_order=next_order,
                 )
                 db.session.add(video)
-                db.session.commit()
-                flash(trans("flash_training_created"), "success")
-                return redirect(url_for(".admin_training_video_list"))
+                db.session.flush()
+                if has_pdf_upload:
+                    ok, err = _save_training_pdf(video, pdf_file)
+                    if not ok:
+                        db.session.rollback()
+                        if err == "invalid_pdf":
+                            flash(trans("flash_training_pdf_invalid"), "danger")
+                        else:
+                            flash(trans("flash_training_pdf_failed"), "danger")
+                        has_errors = True
 
+                if not has_errors:
+                    db.session.commit()
+                    flash(trans("flash_training_created"), "success")
+                    return redirect(url_for(".admin_training_video_list"))
         return render_template("admin_training_video_edit.html", video=None)
 
     @bp.route("/training-videos/<int:video_id>/edit", methods=["GET", "POST"], endpoint="admin_training_video_edit")
@@ -848,23 +926,63 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             title = request.form.get("title", "").strip()
             description = request.form.get("description", "").strip() or None
             youtube_url = request.form.get("youtube_url", "").strip()
+            pdf_file = request.files.get("pdf_file")
+            remove_pdf = bool(request.form.get("remove_pdf"))
+            has_pdf_upload = bool(pdf_file and pdf_file.filename)
+            has_existing_pdf = bool(video.pdf_filename)
+            has_youtube = bool(youtube_url)
+            normalized_url = ""
+            has_errors = False
 
-            is_valid, normalized_url = normalize_youtube_url(youtube_url)
             if not title:
                 flash(trans("flash_training_title_required"), "danger")
-            elif not youtube_url:
-                flash(trans("flash_training_url_required"), "danger")
-            elif not is_valid:
-                flash(trans("flash_training_url_invalid"), "danger")
-            else:
+                has_errors = True
+
+            if has_youtube:
+                is_valid, normalized_url = normalize_youtube_url(youtube_url)
+                if not is_valid:
+                    flash(trans("flash_training_url_invalid"), "danger")
+                    has_errors = True
+
+            if has_pdf_upload:
+                safe_name = secure_filename(pdf_file.filename)
+                if not safe_name.lower().endswith(".pdf"):
+                    flash(trans("flash_training_pdf_invalid"), "danger")
+                    has_errors = True
+
+            if not has_youtube and not has_pdf_upload and not (has_existing_pdf and not remove_pdf):
+                flash(trans("flash_training_source_required"), "danger")
+                has_errors = True
+
+            if not has_errors:
                 video.title = title
                 video.description = description
-                video.youtube_url = normalized_url or youtube_url
-                video.updated_at = datetime.utcnow()
-                db.session.commit()
-                flash(trans("flash_training_updated"), "success")
-                return redirect(url_for(".admin_training_video_list"))
+                video.youtube_url = normalized_url or youtube_url if has_youtube else ""
 
+                if remove_pdf and has_existing_pdf and not has_pdf_upload:
+                    _delete_training_pdf(video)
+                    video.pdf_filename = None
+                    video.pdf_original_name = None
+                    video.pdf_filesize = None
+
+                if has_pdf_upload:
+                    old_pdf = video.pdf_filename
+                    ok, err = _save_training_pdf(video, pdf_file)
+                    if not ok:
+                        if err == "invalid_pdf":
+                            flash(trans("flash_training_pdf_invalid"), "danger")
+                        else:
+                            flash(trans("flash_training_pdf_failed"), "danger")
+                        has_errors = True
+                    else:
+                        if old_pdf and old_pdf != video.pdf_filename:
+                            _delete_training_pdf_by_name(old_pdf)
+
+                if not has_errors:
+                    video.updated_at = datetime.utcnow()
+                    db.session.commit()
+                    flash(trans("flash_training_updated"), "success")
+                    return redirect(url_for(".admin_training_video_list"))
         return render_template("admin_training_video_edit.html", video=video)
 
     @bp.route("/training-videos/<int:video_id>/delete", methods=["POST"], endpoint="admin_training_video_delete")
@@ -872,6 +990,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
     def admin_training_video_delete(video_id):
         trans = t
         video = TrainingVideo.query.get_or_404(video_id)
+        _delete_training_pdf(video)
         db.session.delete(video)
         db.session.commit()
         normalize_training_video_order()

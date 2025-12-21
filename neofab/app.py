@@ -128,6 +128,10 @@ IMAGE_UPLOAD_FOLDER = BASE_DIR / "uploads" / "images"
 os.makedirs(IMAGE_UPLOAD_FOLDER, exist_ok=True)
 app.config["IMAGE_UPLOAD_FOLDER"] = str(IMAGE_UPLOAD_FOLDER)
 
+TRAINING_UPLOAD_FOLDER = BASE_DIR / "uploads" / "tutorials"
+os.makedirs(TRAINING_UPLOAD_FOLDER, exist_ok=True)
+app.config["TRAINING_UPLOAD_FOLDER"] = str(TRAINING_UPLOAD_FOLDER)
+
 # Max width for generated thumbnails (px)
 THUMBNAIL_MAX_WIDTH = 200
 
@@ -345,6 +349,9 @@ def ensure_training_videos_table():
                         title VARCHAR(200) NOT NULL,
                         description TEXT,
                         youtube_url VARCHAR(500) NOT NULL,
+                        pdf_filename VARCHAR(255),
+                        pdf_original_name VARCHAR(255),
+                        pdf_filesize INTEGER,
                         sort_order INTEGER NOT NULL DEFAULT 0,
                         created_at DATETIME NOT NULL,
                         updated_at DATETIME NOT NULL
@@ -359,8 +366,19 @@ def ensure_training_videos_table():
             row[1]
             for row in db.session.execute(text("PRAGMA table_info(training_videos)"))
         }
+        statements = []
         if "sort_order" not in cols:
-            db.session.execute(text("ALTER TABLE training_videos ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0"))
+            statements.append("ALTER TABLE training_videos ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0")
+        if "pdf_filename" not in cols:
+            statements.append("ALTER TABLE training_videos ADD COLUMN pdf_filename VARCHAR(255)")
+        if "pdf_original_name" not in cols:
+            statements.append("ALTER TABLE training_videos ADD COLUMN pdf_original_name VARCHAR(255)")
+        if "pdf_filesize" not in cols:
+            statements.append("ALTER TABLE training_videos ADD COLUMN pdf_filesize INTEGER")
+
+        for stmt in statements:
+            db.session.execute(text(stmt))
+        if statements:
             db.session.commit()
     except Exception:
         app.logger.exception("Failed to ensure training_videos table exists")
@@ -1188,21 +1206,63 @@ def tutorials():
     videos = TrainingVideo.query.order_by(TrainingVideo.sort_order.asc(), TrainingVideo.created_at.desc()).all()
 
     def build_video_entry(video: TrainingVideo) -> dict:
-        vid = extract_youtube_id(video.youtube_url)
-        embed_url = (
-            f"https://www.youtube-nocookie.com/embed/{vid}"
-            if vid
-            else video.youtube_url
-        )
-        thumb_url = f"https://img.youtube.com/vi/{vid}/hqdefault.jpg" if vid else None
+        pdf_url = None
+        pdf_name = None
+        has_pdf = False
+        if video.pdf_filename:
+            pdf_path = Path(app.config["TRAINING_UPLOAD_FOLDER"]) / video.pdf_filename
+            if pdf_path.exists():
+                pdf_url = url_for("tutorial_pdf", video_id=video.id)
+                pdf_name = video.pdf_original_name or video.pdf_filename
+                has_pdf = True
+
+        youtube_url = (video.youtube_url or "").strip()
+        embed_url = ""
+        thumb_url = None
+        has_video = False
+        if youtube_url:
+            vid = extract_youtube_id(youtube_url)
+            embed_url = (
+                f"https://www.youtube-nocookie.com/embed/{vid}"
+                if vid
+                else youtube_url
+            )
+            thumb_url = f"https://img.youtube.com/vi/{vid}/hqdefault.jpg" if vid else None
+            has_video = True
+
         return {
             "video": video,
             "embed_url": embed_url,
             "thumb_url": thumb_url,
+            "has_pdf": has_pdf,
+            "has_video": has_video,
+            "pdf_url": pdf_url,
+            "pdf_name": pdf_name,
         }
 
     video_entries = [build_video_entry(v) for v in videos]
     return render_template("tutorials.html", videos=video_entries)
+
+
+@app.route("/tutorials/<int:video_id>/pdf")
+@login_required
+def tutorial_pdf(video_id):
+    video = TrainingVideo.query.get_or_404(video_id)
+    if not video.pdf_filename:
+        abort(404)
+
+    folder = Path(app.config["TRAINING_UPLOAD_FOLDER"])
+    pdf_path = folder / video.pdf_filename
+    if not pdf_path.exists():
+        abort(404)
+
+    download_name = video.pdf_original_name or pdf_path.name
+    return send_from_directory(
+        directory=str(folder),
+        path=video.pdf_filename,
+        as_attachment=True,
+        download_name=download_name,
+    )
 
 
 # ============================================================

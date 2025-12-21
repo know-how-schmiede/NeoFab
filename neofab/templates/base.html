@@ -136,15 +136,7 @@
   <!-- Hauptinhalt -->
   <div class="{% block container_class %}container{% endblock %} my-3 layout-container">
 
-    {% block app_header %}
-    <!-- App-Header wie bei PrintFleet -->
-    <header class="mb-3">
-      <h1 class="h3 mb-1">NeoFab v{{ app_version }}</h1>
-      <p class="text-muted small">
-        3D printing job management
-      </p>
-    </header>
-    {% endblock %}
+    {% block app_header %}{% endblock %}
 
     <!-- Flash-Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
