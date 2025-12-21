@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.6.0
+
+STL-Viewer
+
 ## Version 0.5.9
 
 CSS Anpassungen

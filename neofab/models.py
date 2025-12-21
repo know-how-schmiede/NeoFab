@@ -153,6 +153,10 @@ class OrderFile(db.Model):
     filesize = db.Column(db.Integer)       # in Bytes
     note = db.Column(db.String(255))       # Bemerkung zum Modell
     quantity = db.Column(db.Integer, nullable=False, default=1)  # benötigte Anzahl
+    thumb_sm_path = db.Column(db.String(255))
+    thumb_lg_path = db.Column(db.String(255))
+    has_3d_preview = db.Column(db.Boolean, nullable=False, default=False)
+    preview_status = db.Column(db.String(50))
     uploaded_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     # Beziehung zurück zum Order

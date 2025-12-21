@@ -19,6 +19,8 @@ import logging
 import json
 import re
 import smtplib
+import math
+import struct
 from urllib.parse import parse_qs, urlparse
 from email.message import EmailMessage
 
@@ -48,10 +50,10 @@ from flask_login import (
 
 from werkzeug.utils import secure_filename
 
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from io import BytesIO
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape, Template
 from config import (
@@ -126,6 +128,14 @@ app.config["IMAGE_UPLOAD_FOLDER"] = str(IMAGE_UPLOAD_FOLDER)
 
 # Max width for generated thumbnails (px)
 THUMBNAIL_MAX_WIDTH = 200
+
+# Thumbnail sizes for STL previews
+MODEL_THUMB_SMALL_SIZE = (240, 240)
+MODEL_THUMB_LARGE_SIZE = (1024, 768)
+MODEL_THUMB_PADDING = 12
+MODEL_THUMB_MAX_TRIANGLES = 12000
+MODEL_THUMB_SMALL_TRIANGLES = 3000
+MODEL_THUMB_LARGE_TRIANGLES = 8000
 
 # ├£bersetzungen aus externer Struktur laden (Ordner i18n im Projekt-Root)
 I18N_DIR = BASE_DIR.parent / "i18n"
@@ -269,6 +279,14 @@ def ensure_order_file_columns():
             statements.append("ALTER TABLE order_files ADD COLUMN note VARCHAR(255)")
         if "quantity" not in cols:
             statements.append("ALTER TABLE order_files ADD COLUMN quantity INTEGER NOT NULL DEFAULT 1")
+        if "thumb_sm_path" not in cols:
+            statements.append("ALTER TABLE order_files ADD COLUMN thumb_sm_path VARCHAR(255)")
+        if "thumb_lg_path" not in cols:
+            statements.append("ALTER TABLE order_files ADD COLUMN thumb_lg_path VARCHAR(255)")
+        if "has_3d_preview" not in cols:
+            statements.append("ALTER TABLE order_files ADD COLUMN has_3d_preview BOOLEAN NOT NULL DEFAULT 0")
+        if "preview_status" not in cols:
+            statements.append("ALTER TABLE order_files ADD COLUMN preview_status VARCHAR(50)")
 
         for stmt in statements:
             db.session.execute(text(stmt))
@@ -374,6 +392,248 @@ def save_image_thumbnail(source_path: Path, target_path: Path, max_width: int = 
     except Exception as exc:  # noqa: BLE001 - log and continue without blocking the upload
         app.logger.warning("Could not create thumbnail for %s: %s", source_path, exc)
         return False
+
+
+def _normalize_vec(vec):
+    length = math.sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2])
+    if length <= 0:
+        return (0.0, 0.0, 1.0)
+    return (vec[0] / length, vec[1] / length, vec[2] / length)
+
+
+def _calc_normal(v1, v2, v3):
+    ax = v2[0] - v1[0]
+    ay = v2[1] - v1[1]
+    az = v2[2] - v1[2]
+    bx = v3[0] - v1[0]
+    by = v3[1] - v1[1]
+    bz = v3[2] - v1[2]
+    return _normalize_vec((ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx))
+
+
+def _is_probably_binary_stl(source_path: Path) -> bool:
+    try:
+        size = source_path.stat().st_size
+    except OSError:
+        return False
+    if size < 84:
+        return False
+    try:
+        with source_path.open("rb") as handle:
+            handle.seek(80)
+            count_raw = handle.read(4)
+            if len(count_raw) != 4:
+                return False
+            tri_count = struct.unpack("<I", count_raw)[0]
+            expected = 84 + tri_count * 50
+            return expected == size
+    except OSError:
+        return False
+
+
+def _load_binary_stl_triangles(source_path: Path, max_triangles: Optional[int]) -> list:
+    triangles = []
+    try:
+        with source_path.open("rb") as handle:
+            handle.seek(80)
+            count_raw = handle.read(4)
+            if len(count_raw) != 4:
+                return []
+            tri_count = struct.unpack("<I", count_raw)[0]
+            step = 1
+            if max_triangles and tri_count > max_triangles:
+                step = max(1, tri_count // max_triangles)
+            for idx in range(tri_count):
+                data = handle.read(50)
+                if len(data) < 50:
+                    break
+                if step > 1 and idx % step != 0:
+                    continue
+                unpacked = struct.unpack("<12fH", data)
+                normal = (unpacked[0], unpacked[1], unpacked[2])
+                v1 = (unpacked[3], unpacked[4], unpacked[5])
+                v2 = (unpacked[6], unpacked[7], unpacked[8])
+                v3 = (unpacked[9], unpacked[10], unpacked[11])
+                if normal == (0.0, 0.0, 0.0):
+                    normal = _calc_normal(v1, v2, v3)
+                triangles.append((normal, (v1, v2, v3)))
+    except OSError:
+        return []
+    return triangles
+
+
+def _load_ascii_stl_triangles(source_path: Path, max_triangles: Optional[int]) -> list:
+    triangles = []
+    vertices = []
+    try:
+        with source_path.open("r", errors="ignore") as handle:
+            for line in handle:
+                line = line.strip()
+                if not line:
+                    continue
+                if line.lower().startswith("vertex"):
+                    parts = line.split()
+                    if len(parts) < 4:
+                        continue
+                    try:
+                        vertex = (float(parts[1]), float(parts[2]), float(parts[3]))
+                    except ValueError:
+                        continue
+                    vertices.append(vertex)
+                    if len(vertices) == 3:
+                        v1, v2, v3 = vertices
+                        vertices = []
+                        normal = _calc_normal(v1, v2, v3)
+                        triangles.append((normal, (v1, v2, v3)))
+                        if max_triangles and len(triangles) >= max_triangles:
+                            break
+    except OSError:
+        return []
+    return triangles
+
+
+def _load_stl_triangles(source_path: Path, max_triangles: Optional[int]) -> list:
+    if _is_probably_binary_stl(source_path):
+        return _load_binary_stl_triangles(source_path, max_triangles)
+    return _load_ascii_stl_triangles(source_path, max_triangles)
+
+
+def _sample_triangles(triangles: list, max_triangles: Optional[int]) -> list:
+    if not max_triangles or len(triangles) <= max_triangles:
+        return triangles
+    step = max(1, len(triangles) // max_triangles)
+    return triangles[::step]
+
+
+def _render_stl_thumbnail(triangles: list, target_path: Path, size: Tuple[int, int]) -> bool:
+    if not triangles:
+        return False
+
+    width, height = size
+    pad = MODEL_THUMB_PADDING
+    pitch = math.radians(35.0)
+    yaw = math.radians(45.0)
+
+    cx = math.cos(pitch)
+    sx = math.sin(pitch)
+    cz = math.cos(yaw)
+    sz = math.sin(yaw)
+
+    def rotate(vec):
+        x, y, z = vec
+        y2 = y * cx - z * sx
+        z2 = y * sx + z * cx
+        x3 = x * cz - y2 * sz
+        y3 = x * sz + y2 * cz
+        return (x3, y3, z2)
+
+    rotated = []
+    min_x = min_y = min_z = float("inf")
+    max_x = max_y = max_z = float("-inf")
+
+    for normal, verts in triangles:
+        rv = tuple(rotate(v) for v in verts)
+        rn = rotate(normal)
+        rotated.append((rn, rv))
+        for vx, vy, vz in rv:
+            min_x = min(min_x, vx)
+            min_y = min(min_y, vy)
+            min_z = min(min_z, vz)
+            max_x = max(max_x, vx)
+            max_y = max(max_y, vy)
+            max_z = max(max_z, vz)
+
+    span_x = max_x - min_x
+    span_y = max_y - min_y
+    if span_x <= 0 or span_y <= 0:
+        return False
+
+    scale = min((width - 2 * pad) / span_x, (height - 2 * pad) / span_y)
+    if scale <= 0:
+        return False
+
+    light_dir = _normalize_vec((0.4, 0.6, 0.7))
+    base_color = (80, 140, 200)
+    background = (248, 249, 250)
+
+    draw_tris = []
+    for normal, verts in rotated:
+        pts = []
+        for vx, vy, vz in verts:
+            px = (vx - min_x) * scale + pad
+            py = (max_y - vy) * scale + pad
+            pts.append((px, py))
+        depth = sum(v[2] for v in verts) / 3.0
+        nrm = _normalize_vec(normal)
+        dot = max(0.0, nrm[0] * light_dir[0] + nrm[1] * light_dir[1] + nrm[2] * light_dir[2])
+        shade = 0.35 + 0.65 * dot
+        color = (int(base_color[0] * shade), int(base_color[1] * shade), int(base_color[2] * shade))
+        draw_tris.append((depth, pts, color))
+
+    draw_tris.sort(key=lambda item: item[0])
+
+    image = Image.new("RGB", (width, height), background)
+    draw = ImageDraw.Draw(image)
+    for _, pts, color in draw_tris:
+        draw.polygon(pts, fill=color)
+
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    image.save(target_path, format="PNG")
+    return True
+
+
+def _build_model_thumbnail_names(stored_name: str) -> Tuple[str, str]:
+    stem = Path(stored_name).stem or stored_name
+    return (f"{stem}_thumb_sm.png", f"{stem}_thumb_lg.png")
+
+
+def generate_stl_thumbnails(source_path: Path, thumb_sm_path: Path, thumb_lg_path: Path) -> Tuple[bool, bool]:
+    try:
+        triangles = _load_stl_triangles(source_path, MODEL_THUMB_MAX_TRIANGLES)
+        if not triangles:
+            return False, False
+        small_tris = _sample_triangles(triangles, MODEL_THUMB_SMALL_TRIANGLES)
+        large_tris = _sample_triangles(triangles, MODEL_THUMB_LARGE_TRIANGLES)
+        small_ok = _render_stl_thumbnail(small_tris, thumb_sm_path, MODEL_THUMB_SMALL_SIZE)
+        large_ok = _render_stl_thumbnail(large_tris, thumb_lg_path, MODEL_THUMB_LARGE_SIZE)
+        return small_ok, large_ok
+    except Exception as exc:  # noqa: BLE001
+        app.logger.warning("STL thumbnail generation failed for %s: %s", source_path, exc)
+        return False, False
+
+
+def update_order_file_preview(order_file: OrderFile, source_path: Path) -> None:
+    file_type = (order_file.file_type or "").lower()
+    if file_type not in {"stl", "3mf"}:
+        order_file.has_3d_preview = False
+        order_file.preview_status = "unsupported"
+        return
+
+    order_file.has_3d_preview = True
+
+    if file_type != "stl":
+        order_file.preview_status = "unsupported"
+        return
+
+    if not source_path.exists():
+        order_file.preview_status = "missing"
+        return
+
+    thumb_sm_name, thumb_lg_name = _build_model_thumbnail_names(order_file.stored_name)
+    thumb_folder = source_path.parent / "thumbnails"
+    thumb_sm_path = thumb_folder / thumb_sm_name
+    thumb_lg_path = thumb_folder / thumb_lg_name
+
+    small_ok = thumb_sm_path.exists()
+    large_ok = thumb_lg_path.exists()
+    if not small_ok or not large_ok:
+        gen_small, gen_large = generate_stl_thumbnails(source_path, thumb_sm_path, thumb_lg_path)
+        small_ok = small_ok or gen_small
+        large_ok = large_ok or gen_large
+
+    order_file.thumb_sm_path = thumb_sm_name if small_ok else None
+    order_file.thumb_lg_path = thumb_lg_name if large_ok else None
+    order_file.preview_status = "ok" if (small_ok or large_ok) else "failed"
 
 
 def _collect_order_recipients(order: Order, include_owner: bool = False) -> list[str]:
@@ -1051,6 +1311,7 @@ def new_order():
                     order_file.filesize = None
 
                 order_file.uploaded_at = datetime.utcnow()
+                update_order_file_preview(order_file, full_path)
 
                 db.session.commit()
 
@@ -1317,6 +1578,7 @@ def order_detail(order_id):
 
             order_file.stored_name = stored_name
             order_file.uploaded_at = datetime.utcnow()
+            update_order_file_preview(order_file, full_path)
 
             db.session.commit()
 
@@ -1414,6 +1676,27 @@ def order_detail(order_id):
                     app.logger.warning(
                         f"[order_detail] Could not delete file on disk: {full_path}"
                     )
+
+            thumb_folder = order_folder / "thumbnails"
+            thumb_names = set()
+            if order_file.thumb_sm_path:
+                thumb_names.add(order_file.thumb_sm_path)
+            if order_file.thumb_lg_path:
+                thumb_names.add(order_file.thumb_lg_path)
+            if order_file.file_type and order_file.file_type.lower() == "stl":
+                default_sm, default_lg = _build_model_thumbnail_names(order_file.stored_name)
+                thumb_names.add(default_sm)
+                thumb_names.add(default_lg)
+
+            for name in thumb_names:
+                thumb_path = thumb_folder / name
+                if thumb_path.exists():
+                    try:
+                        thumb_path.unlink()
+                    except OSError:
+                        app.logger.warning(
+                            f"[order_detail] Could not delete thumbnail on disk: {thumb_path}"
+                        )
 
             # DB-Eintrag l├Âschen
             db.session.delete(order_file)
@@ -1569,6 +1852,78 @@ def order_image_thumbnail(order_id, image_id):
         )
 
     abort(404)
+
+
+@app.route("/orders/<int:order_id>/files/<int:file_id>/thumbnail/<size>")
+@login_required
+def order_file_thumbnail(order_id, file_id, size):
+    order = Order.query.get_or_404(order_id)
+    if current_user.role != "admin" and order.user_id != current_user.id:
+        abort(403)
+
+    order_file = OrderFile.query.filter_by(id=file_id, order_id=order.id).first_or_404()
+    if (order_file.file_type or "").lower() != "stl":
+        abort(404)
+    if size not in {"sm", "lg"}:
+        abort(404)
+
+    order_folder = Path(app.config["UPLOAD_FOLDER"]) / f"order_{order.id}"
+    thumb_folder = order_folder / "thumbnails"
+    thumb_sm_name, thumb_lg_name = _build_model_thumbnail_names(order_file.stored_name)
+    thumb_name = order_file.thumb_sm_path or thumb_sm_name
+    if size == "lg":
+        thumb_name = order_file.thumb_lg_path or thumb_lg_name
+
+    thumb_path = thumb_folder / thumb_name
+    if not thumb_path.exists():
+        source_path = order_folder / order_file.stored_name
+        if source_path.exists():
+            update_order_file_preview(order_file, source_path)
+            db.session.commit()
+            thumb_name = order_file.thumb_sm_path or thumb_sm_name
+            if size == "lg":
+                thumb_name = order_file.thumb_lg_path or thumb_lg_name
+            thumb_path = thumb_folder / thumb_name
+
+    if thumb_path.exists():
+        return send_from_directory(
+            directory=str(thumb_folder),
+            path=thumb_name,
+            as_attachment=False,
+        )
+
+    abort(404)
+
+
+@app.route("/orders/<int:order_id>/files/<int:file_id>/preview")
+@login_required
+def order_file_preview(order_id, file_id):
+    order = Order.query.get_or_404(order_id)
+    if current_user.role != "admin" and order.user_id != current_user.id:
+        abort(403)
+
+    order_file = OrderFile.query.filter_by(id=file_id, order_id=order.id).first_or_404()
+    order_folder = Path(app.config["UPLOAD_FOLDER"]) / f"order_{order.id}"
+    full_path = order_folder / order_file.stored_name
+
+    if not full_path.exists():
+        abort(404)
+
+    mime = mimetypes.guess_type(order_file.original_name or order_file.stored_name)[0]
+    if not mime:
+        if (order_file.file_type or "").lower() == "stl":
+            mime = "model/stl"
+        elif (order_file.file_type or "").lower() == "3mf":
+            mime = "model/3mf"
+        else:
+            mime = "application/octet-stream"
+
+    return send_from_directory(
+        directory=str(order_folder),
+        path=order_file.stored_name,
+        as_attachment=False,
+        mimetype=mime,
+    )
 
 
 @app.route("/orders/<int:order_id>/images/<int:image_id>/download")
