@@ -50,6 +50,11 @@
             {{ t("tab_files") }}
           </button>
         </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="print-jobs-tab" data-bs-toggle="tab" data-bs-target="#print-jobs-tab-pane" type="button" role="tab" aria-controls="print-jobs-tab-pane" aria-selected="false">
+            {{ t("tab_print_jobs") }}
+          </button>
+        </li>
       </ul>
 
       <div class="tab-content">
@@ -123,48 +128,6 @@
               <option value="{{ m.id }}"
                       {% if order.material_id == m.id %}selected{% endif %}>
                 {{ m.name }}
-              </option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <!-- Printer Profile -->
-        <div class="col-md-6">
-          <label for="printer_profile_id" class="form-label">
-            <i class="bi bi-printer me-1"></i>
-            {{ t("order_printer_profile_label") }}
-          </label>
-          <select
-            id="printer_profile_id"
-            name="printer_profile_id"
-            class="form-select"
-          >
-            <option value="">{{ t("select_placeholder") }}</option>
-            {% for p in printer_profiles %}
-              <option value="{{ p.id }}"
-                      {% if order.printer_profile_id == p.id %}selected{% endif %}>
-                {{ p.name }}
-              </option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <!-- Filament Material -->
-        <div class="col-md-6">
-          <label for="filament_material_id" class="form-label">
-            <i class="bi bi-droplet me-1"></i>
-            {{ t("order_filament_material_label") }}
-          </label>
-          <select
-            id="filament_material_id"
-            name="filament_material_id"
-            class="form-select"
-          >
-            <option value="">{{ t("select_placeholder") }}</option>
-            {% for f in filament_materials %}
-              <option value="{{ f.id }}"
-                      {% if order.filament_material_id == f.id %}selected{% endif %}>
-                {{ f.name }}
               </option>
             {% endfor %}
           </select>
@@ -654,7 +617,330 @@
     </div>
 
   </div>
+
+  <div class="tab-pane fade" id="print-jobs-tab-pane" role="tabpanel" aria-labelledby="print-jobs-tab">
+    <div class="card mb-3">
+      <div class="card-header">
+        <h3 class="h6 mb-0 d-flex align-items-center">
+          <i class="bi bi-printer me-2"></i>
+          {{ t("print_jobs_header") }}
+        </h3>
+      </div>
+      <div class="card-body">
+        {% if print_jobs %}
+          <div class="table-responsive">
+            <table class="table table-striped align-middle">
+              <thead>
+                <tr>
+                  <th style="width: 24%;">{{ t("print_jobs_table_file") }}</th>
+                  <th style="width: 12%;">{{ t("print_jobs_table_status") }}</th>
+                  <th style="width: 16%;">{{ t("print_jobs_table_started_at") }}</th>
+                  <th style="width: 12%;">{{ t("print_jobs_table_duration") }}</th>
+                  <th style="width: 14%;">{{ t("print_jobs_table_filament") }}</th>
+                  <th>{{ t("print_jobs_table_note") }}</th>
+                  <th class="text-end" style="width: 16%;">{{ t("table_actions") }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for job in print_jobs %}
+                  {% set status_value = job.status or '' %}
+                  {% set status_label_key = print_job_status_labels.get(status_value, status_value) %}
+                  <tr>
+                    <td>
+                      <div class="fw-semibold">{{ job.original_name }}</div>
+                      <div class="text-muted small">
+                        {% set parts = [] %}
+                        {% if job.filesize %}{% set _ = parts.append(((job.filesize / 1024)|round(1)) ~ " KB") %}{% endif %}
+                        {% if job.uploaded_at %}{% set _ = parts.append(job.uploaded_at.strftime("%Y-%m-%d %H:%M")) %}{% endif %}
+                        {{ " | ".join(parts) }}
+                      </div>
+                    </td>
+                    <td>
+                      <span class="badge
+                            {% if status_value == 'finished' %}bg-success
+                            {% elif status_value == 'error' %}bg-danger
+                            {% elif status_value == 'started' %}bg-primary
+                            {% elif status_value == 'preparation' %}bg-info text-dark
+                            {% else %}bg-secondary
+                            {% endif %}">
+                        {{ status_label_key and t(status_label_key) or status_value }}
+                      </span>
+                    </td>
+                    <td>
+                      {{ job.started_at.strftime("%Y-%m-%d %H:%M") if job.started_at else "-" }}
+                    </td>
+                    <td>
+                      {% if job.duration_min is not none %}
+                        {{ job.duration_min }} {{ t("print_jobs_unit_minutes") }}
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td>
+                      <div>
+                        {% if job.filament_m is not none %}
+                          {{ "%.2f"|format(job.filament_m) }} m
+                        {% else %}
+                          -
+                        {% endif %}
+                      </div>
+                      <div class="text-muted small">
+                        {% if job.filament_g is not none %}
+                          {{ "%.2f"|format(job.filament_g) }} g
+                        {% else %}
+                          -
+                        {% endif %}
+                      </div>
+                      <div class="text-muted small">
+                        {{ t("order_filament_material_label") }}:
+                        {% if order.filament_material %}
+                          {{ order.filament_material.name }}
+                        {% else %}
+                          -
+                        {% endif %}
+                      </div>
+                    </td>
+                    <td>{{ job.note or "" }}</td>
+                    <td class="text-end">
+                      {% if current_user.role == 'admin' %}
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary"
+                                data-bs-toggle="modal"
+                                data-bs-target="#printJobEditModal"
+                                data-job-id="{{ job.id }}"
+                                data-job-status="{{ status_value }}"
+                                data-job-started-at="{{ job.started_at.strftime('%Y-%m-%dT%H:%M') if job.started_at else '' }}"
+                                data-job-duration="{{ job.duration_min if job.duration_min is not none else '' }}"
+                                data-job-filament-m="{{ job.filament_m if job.filament_m is not none else '' }}"
+                                data-job-filament-g="{{ job.filament_g if job.filament_g is not none else '' }}"
+                                data-job-note="{{ job.note or '' }}"
+                                data-job-filename="{{ job.original_name }}">
+                          <i class="bi bi-pencil me-1"></i>{{ t("btn_edit") }}
+                        </button>
+                      {% endif %}
+                      <a class="btn btn-sm btn-outline-primary"
+                         href="{{ url_for('download_print_job', order_id=order.id, job_id=job.id) }}">
+                        <i class="bi bi-download me-1"></i>{{ t("btn_download") }}
+                      </a>
+                      {% if current_user.role == 'admin' %}
+                        <form method="post" class="d-inline"
+                              onsubmit="return confirm('{{ t('confirm_delete_print_job') }}');">
+                          <input type="hidden" name="action" value="delete_print_job">
+                          <input type="hidden" name="print_job_id" value="{{ job.id }}">
+                          <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-trash me-1"></i>{{ t("btn_delete") }}
+                          </button>
+                        </form>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="text-muted">{{ t("print_jobs_none") }}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if current_user.role == 'admin' %}
+      <div class="card">
+        <div class="card-header">
+          <h4 class="h6 mb-0 d-flex align-items-center">
+            <i class="bi bi-upload me-2"></i>
+            {{ t("print_jobs_upload_title") }}
+          </h4>
+        </div>
+        <div class="card-body">
+          <form method="post" enctype="multipart/form-data">
+            <input type="hidden" name="action" value="upload_print_job">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="gcode_file" class="form-label">{{ t("print_jobs_label_file") }}</label>
+                <input class="form-control"
+                       type="file"
+                       id="gcode_file"
+                       name="gcode_file"
+                       accept=".gcode,.gco,.gc"
+                       required>
+                <div class="form-text">{{ t("print_jobs_hint_file") }}</div>
+              </div>
+              <div class="col-md-6">
+                <label for="print_status" class="form-label">{{ t("print_jobs_label_status") }}</label>
+                <select id="print_status" name="print_status" class="form-select">
+                  {% for value, label_key in print_job_statuses %}
+                    <option value="{{ value }}" {% if value == 'upload' %}selected{% endif %}>
+                      {{ t(label_key) }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="printer_profile_id" class="form-label">{{ t("order_printer_profile_label") }}</label>
+                <select id="printer_profile_id" name="printer_profile_id" class="form-select">
+                  <option value="">{{ t("select_placeholder") }}</option>
+                  {% for profile in printer_profiles %}
+                    <option value="{{ profile.id }}"
+                            {% if order.printer_profile_id == profile.id %}selected{% endif %}>
+                      {{ profile.name }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="filament_material_id" class="form-label">{{ t("order_filament_material_label") }}</label>
+                <select id="filament_material_id" name="filament_material_id" class="form-select">
+                  <option value="">{{ t("select_placeholder") }}</option>
+                  {% for material in filament_materials %}
+                    <option value="{{ material.id }}"
+                            {% if order.filament_material_id == material.id %}selected{% endif %}>
+                      {{ material.name }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="print_started_at" class="form-label">{{ t("print_jobs_label_started_at") }}</label>
+                <input class="form-control"
+                       type="datetime-local"
+                       id="print_started_at"
+                       name="print_started_at">
+              </div>
+              <div class="col-md-6">
+                <label for="print_duration_min" class="form-label">{{ t("print_jobs_label_duration") }}</label>
+                <input class="form-control"
+                       type="number"
+                       min="0"
+                       step="1"
+                       id="print_duration_min"
+                       name="print_duration_min">
+                <div class="form-text">{{ t("print_jobs_hint_auto") }}</div>
+              </div>
+              <div class="col-md-6">
+                <label for="print_filament_m" class="form-label">{{ t("print_jobs_label_filament_m") }}</label>
+                <input class="form-control"
+                       type="number"
+                       min="0"
+                       step="0.01"
+                       id="print_filament_m"
+                       name="print_filament_m">
+              </div>
+              <div class="col-md-6">
+                <label for="print_filament_g" class="form-label">{{ t("print_jobs_label_filament_g") }}</label>
+                <input class="form-control"
+                       type="number"
+                       min="0"
+                       step="0.01"
+                       id="print_filament_g"
+                       name="print_filament_g">
+              </div>
+              <div class="col-12">
+                <label for="gcode_note" class="form-label">{{ t("print_jobs_label_note") }}</label>
+                <input class="form-control"
+                       type="text"
+                       id="gcode_note"
+                       name="gcode_note"
+                       maxlength="255"
+                       placeholder="{{ t('print_jobs_note_placeholder') }}">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary mt-3">
+              <i class="bi bi-plus-circle me-1"></i>
+              {{ t("btn_upload_file") }}
+            </button>
+          </form>
+        </div>
+      </div>
+    {% else %}
+      <p class="text-muted">{{ t("print_jobs_admin_only") }}</p>
+    {% endif %}
+  </div>
 </div>
+
+{% if current_user.role == 'admin' %}
+  <div class="modal fade" id="printJobEditModal" tabindex="-1" aria-labelledby="printJobEditLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="printJobEditLabel">{{ t("print_jobs_edit_title") }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('btn_cancel') }}"></button>
+        </div>
+        <div class="modal-body">
+          <form method="post">
+            <input type="hidden" name="action" value="update_print_job">
+            <input type="hidden" name="print_job_id" id="edit_print_job_id" value="">
+            <div class="row g-3">
+              <div class="col-12">
+                <label for="edit_print_job_file" class="form-label">{{ t("print_jobs_label_file") }}</label>
+                <input class="form-control" type="text" id="edit_print_job_file" value="" readonly>
+              </div>
+              <div class="col-md-6">
+                <label for="edit_print_status" class="form-label">{{ t("print_jobs_label_status") }}</label>
+                <select id="edit_print_status" name="edit_print_status" class="form-select">
+                  {% for value, label_key in print_job_statuses %}
+                    <option value="{{ value }}">{{ t(label_key) }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="edit_print_started_at" class="form-label">{{ t("print_jobs_label_started_at") }}</label>
+                <input class="form-control"
+                       type="datetime-local"
+                       id="edit_print_started_at"
+                       name="edit_print_started_at">
+              </div>
+              <div class="col-md-6">
+                <label for="edit_print_duration_min" class="form-label">{{ t("print_jobs_label_duration") }}</label>
+                <input class="form-control"
+                       type="number"
+                       min="0"
+                       step="1"
+                       id="edit_print_duration_min"
+                       name="edit_print_duration_min">
+                <div class="form-text">{{ t("print_jobs_hint_auto") }}</div>
+              </div>
+              <div class="col-md-6">
+                <label for="edit_print_filament_m" class="form-label">{{ t("print_jobs_label_filament_m") }}</label>
+                <input class="form-control"
+                       type="number"
+                       min="0"
+                       step="0.01"
+                       id="edit_print_filament_m"
+                       name="edit_print_filament_m">
+              </div>
+              <div class="col-md-6">
+                <label for="edit_print_filament_g" class="form-label">{{ t("print_jobs_label_filament_g") }}</label>
+                <input class="form-control"
+                       type="number"
+                       min="0"
+                       step="0.01"
+                       id="edit_print_filament_g"
+                       name="edit_print_filament_g">
+              </div>
+              <div class="col-12">
+                <label for="edit_print_note" class="form-label">{{ t("print_jobs_label_note") }}</label>
+                <input class="form-control"
+                       type="text"
+                       id="edit_print_note"
+                       name="edit_print_note"
+                       maxlength="255">
+              </div>
+            </div>
+            <div class="d-flex justify-content-end gap-2 mt-3">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                {{ t("btn_cancel") }}
+              </button>
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save me-1"></i>{{ t("btn_save_changes") }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endif %}
 
 <!-- 3D Preview Modal -->
 <div class="modal fade" id="modelPreviewModal" tabindex="-1" aria-labelledby="modelPreviewLabel" aria-hidden="true">
@@ -816,6 +1102,43 @@ function updateColorPreview() {
 
   refreshMessages();
   setInterval(refreshMessages, 5000);
+})();
+
+(function() {
+  const editModal = document.getElementById("printJobEditModal");
+  if (!editModal) return;
+
+  editModal.addEventListener("show.bs.modal", (event) => {
+    const button = event.relatedTarget;
+    if (!button) return;
+
+    const jobId = button.getAttribute("data-job-id") || "";
+    const status = button.getAttribute("data-job-status") || "upload";
+    const startedAt = button.getAttribute("data-job-started-at") || "";
+    const duration = button.getAttribute("data-job-duration") || "";
+    const filamentM = button.getAttribute("data-job-filament-m") || "";
+    const filamentG = button.getAttribute("data-job-filament-g") || "";
+    const note = button.getAttribute("data-job-note") || "";
+    const filename = button.getAttribute("data-job-filename") || "";
+
+    const idInput = editModal.querySelector("#edit_print_job_id");
+    const statusSelect = editModal.querySelector("#edit_print_status");
+    const startedInput = editModal.querySelector("#edit_print_started_at");
+    const durationInput = editModal.querySelector("#edit_print_duration_min");
+    const filamentMInput = editModal.querySelector("#edit_print_filament_m");
+    const filamentGInput = editModal.querySelector("#edit_print_filament_g");
+    const noteInput = editModal.querySelector("#edit_print_note");
+    const fileInput = editModal.querySelector("#edit_print_job_file");
+
+    if (idInput) idInput.value = jobId;
+    if (statusSelect) statusSelect.value = status;
+    if (startedInput) startedInput.value = startedAt;
+    if (durationInput) durationInput.value = duration;
+    if (filamentMInput) filamentMInput.value = filamentM;
+    if (filamentGInput) filamentGInput.value = filamentG;
+    if (noteInput) noteInput.value = note;
+    if (fileInput) fileInput.value = filename;
+  });
 })();
 </script>
 <script type="module">

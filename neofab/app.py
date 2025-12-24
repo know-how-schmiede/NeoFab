@@ -78,6 +78,7 @@ from models import (
     OrderMessage,
     OrderReadStatus,
     OrderFile,
+    OrderPrintJob,
     OrderImage,
     OrderTag,
     Material,
@@ -129,6 +130,10 @@ app.config["UPLOAD_FOLDER"] = str(UPLOAD_FOLDER)
 IMAGE_UPLOAD_FOLDER = BASE_DIR / "uploads" / "images"
 os.makedirs(IMAGE_UPLOAD_FOLDER, exist_ok=True)
 app.config["IMAGE_UPLOAD_FOLDER"] = str(IMAGE_UPLOAD_FOLDER)
+
+GCODE_UPLOAD_FOLDER = BASE_DIR / "uploads" / "gcode"
+os.makedirs(GCODE_UPLOAD_FOLDER, exist_ok=True)
+app.config["GCODE_UPLOAD_FOLDER"] = str(GCODE_UPLOAD_FOLDER)
 
 TRAINING_UPLOAD_FOLDER = BASE_DIR / "uploads" / "tutorials"
 os.makedirs(TRAINING_UPLOAD_FOLDER, exist_ok=True)
@@ -210,6 +215,16 @@ STATUS_LABELS = {value: label for value, label in ORDER_STATUSES}
 STATUS_LABELS.setdefault("neu", "New")
 STATUS_LABELS.setdefault("in_bearbeitung", "In progress")
 STATUS_LABELS.setdefault("abgeschlossen", "Completed")
+
+PRINT_JOB_STATUSES = [
+    ("upload", "print_job_status_upload"),
+    ("preparation", "print_job_status_preparation"),
+    ("started", "print_job_status_started"),
+    ("error", "print_job_status_error"),
+    ("finished", "print_job_status_finished"),
+    ("cancelled", "print_job_status_cancelled"),
+]
+PRINT_JOB_STATUS_LABELS = {value: label for value, label in PRINT_JOB_STATUSES}
 
 # Secret Key & Datenbank-Config
 app.config["SECRET_KEY"] = os.environ.get("NEOFAB_SECRET_KEY", "dev-secret-change-me")
@@ -543,6 +558,70 @@ def ensure_order_estimation_columns():
         app.logger.exception("Failed to ensure orders estimation columns exist")
 
 
+def ensure_order_print_jobs_table():
+    """
+    Ensures the order_print_jobs table and required columns exist.
+    """
+    try:
+        exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='order_print_jobs'")
+        ).scalar()
+        if not exists:
+            db.session.execute(
+                text(
+                    """
+                    CREATE TABLE order_print_jobs (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        order_id INTEGER NOT NULL,
+                        original_name VARCHAR(255) NOT NULL,
+                        stored_name VARCHAR(255) NOT NULL,
+                        note VARCHAR(255),
+                        status VARCHAR(50) NOT NULL DEFAULT 'upload',
+                        started_at DATETIME,
+                        duration_min INTEGER,
+                        filament_m FLOAT,
+                        filament_g FLOAT,
+                        filesize INTEGER,
+                        uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+            )
+            db.session.commit()
+            return
+
+        cols = {
+            row[1]
+            for row in db.session.execute(text("PRAGMA table_info(order_print_jobs)"))
+        }
+        statements = []
+        if "note" not in cols:
+            statements.append("ALTER TABLE order_print_jobs ADD COLUMN note VARCHAR(255)")
+        if "status" not in cols:
+            statements.append("ALTER TABLE order_print_jobs ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'upload'")
+        if "started_at" not in cols:
+            statements.append("ALTER TABLE order_print_jobs ADD COLUMN started_at DATETIME")
+        if "duration_min" not in cols:
+            statements.append("ALTER TABLE order_print_jobs ADD COLUMN duration_min INTEGER")
+        if "filament_m" not in cols:
+            statements.append("ALTER TABLE order_print_jobs ADD COLUMN filament_m FLOAT")
+        if "filament_g" not in cols:
+            statements.append("ALTER TABLE order_print_jobs ADD COLUMN filament_g FLOAT")
+        if "filesize" not in cols:
+            statements.append("ALTER TABLE order_print_jobs ADD COLUMN filesize INTEGER")
+        if "uploaded_at" not in cols:
+            statements.append(
+                "ALTER TABLE order_print_jobs ADD COLUMN uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            )
+
+        for stmt in statements:
+            db.session.execute(text(stmt))
+        if statements:
+            db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure order_print_jobs table exists")
+
+
 with app.app_context():
     ensure_order_file_columns()
     ensure_order_image_columns()
@@ -550,6 +629,7 @@ with app.app_context():
     ensure_printer_profiles_table()
     ensure_filament_materials_table()
     ensure_order_estimation_columns()
+    ensure_order_print_jobs_table()
 
 
 def save_image_thumbnail(source_path: Path, target_path: Path, max_width: int = THUMBNAIL_MAX_WIDTH) -> bool:
@@ -1701,8 +1781,6 @@ def order_detail(order_id):
                 material_id = request.form.get("material_id") or None
                 color_id = request.form.get("color_id") or None
                 cost_center_id = request.form.get("cost_center_id") or None
-                printer_profile_id = request.form.get("printer_profile_id") or None
-                filament_material_id = request.form.get("filament_material_id") or None
                 current_printer_profile_id = order.printer_profile_id
                 current_filament_material_id = order.filament_material_id
 
@@ -1744,16 +1822,20 @@ def order_detail(order_id):
                         return current_id
                     return entry.id
 
-                order.printer_profile_id = _select_profile_id(
-                    PrinterProfile,
-                    printer_profile_id,
-                    current_printer_profile_id,
-                )
-                order.filament_material_id = _select_profile_id(
-                    FilamentMaterial,
-                    filament_material_id,
-                    current_filament_material_id,
-                )
+                if "printer_profile_id" in request.form:
+                    printer_profile_id = request.form.get("printer_profile_id") or None
+                    order.printer_profile_id = _select_profile_id(
+                        PrinterProfile,
+                        printer_profile_id,
+                        current_printer_profile_id,
+                    )
+                if "filament_material_id" in request.form:
+                    filament_material_id = request.form.get("filament_material_id") or None
+                    order.filament_material_id = _select_profile_id(
+                        FilamentMaterial,
+                        filament_material_id,
+                        current_filament_material_id,
+                    )
 
                 # ├ûffentlichkeits-Felder ├╝bernehmen
                 order.public_allow_poster = public_allow_poster
@@ -1970,7 +2052,267 @@ def order_detail(order_id):
             flash(trans("flash_image_uploaded"), "success")
             return redirect(url_for("order_detail", order_id=order.id))
 
-        # --- 6) Datei l├Âschen ----------------------------------------------
+        # --- 6) G-Code hochladen (nur Admin) -------------------------------
+        elif action == "upload_print_job":
+            if current_user.role != "admin":
+                abort(403)
+
+            file = request.files.get("gcode_file")
+            note = (request.form.get("gcode_note") or "").strip()
+            if note:
+                note = note[:255]
+
+            started_at_raw = (request.form.get("print_started_at") or "").strip()
+            duration_raw = (request.form.get("print_duration_min") or "").strip()
+            filament_m_raw = (request.form.get("print_filament_m") or "").strip()
+            filament_g_raw = (request.form.get("print_filament_g") or "").strip()
+            status_raw = (request.form.get("print_status") or "").strip() or "upload"
+
+            if not file or not file.filename:
+                flash(trans("flash_print_job_select_file"), "warning")
+                return redirect(url_for("order_detail", order_id=order.id))
+
+            original_name = file.filename
+            safe_name = secure_filename(original_name)
+
+            _, ext = os.path.splitext(safe_name)
+            ext = ext.lower().lstrip(".")
+            allowed_ext = {"gcode", "gco", "gc"}
+            if ext not in allowed_ext:
+                flash(trans("flash_print_job_invalid_file"), "warning")
+                return redirect(url_for("order_detail", order_id=order.id))
+
+            started_at = None
+            if started_at_raw:
+                try:
+                    started_at = datetime.fromisoformat(started_at_raw)
+                except ValueError:
+                    flash(trans("flash_print_job_invalid_start"), "danger")
+                    return redirect(url_for("order_detail", order_id=order.id))
+
+            duration_min = None
+            if duration_raw:
+                try:
+                    duration_min = int(duration_raw)
+                except ValueError:
+                    flash(trans("flash_print_job_invalid_duration"), "danger")
+                    return redirect(url_for("order_detail", order_id=order.id))
+                if duration_min < 0:
+                    flash(trans("flash_print_job_invalid_duration"), "danger")
+                    return redirect(url_for("order_detail", order_id=order.id))
+
+            filament_m = None
+            if filament_m_raw:
+                try:
+                    filament_m = float(filament_m_raw)
+                except ValueError:
+                    flash(trans("flash_print_job_invalid_filament"), "danger")
+                    return redirect(url_for("order_detail", order_id=order.id))
+                if filament_m < 0:
+                    flash(trans("flash_print_job_invalid_filament"), "danger")
+                    return redirect(url_for("order_detail", order_id=order.id))
+
+            filament_g = None
+            if filament_g_raw:
+                try:
+                    filament_g = float(filament_g_raw)
+                except ValueError:
+                    flash(trans("flash_print_job_invalid_filament"), "danger")
+                    return redirect(url_for("order_detail", order_id=order.id))
+                if filament_g < 0:
+                    flash(trans("flash_print_job_invalid_filament"), "danger")
+                    return redirect(url_for("order_detail", order_id=order.id))
+
+            valid_statuses = {value for value, _ in PRINT_JOB_STATUSES}
+            status = status_raw if status_raw in valid_statuses else "upload"
+
+            printer_profile_id = request.form.get("printer_profile_id") or None
+            filament_material_id = request.form.get("filament_material_id") or None
+            current_printer_profile_id = order.printer_profile_id
+            current_filament_material_id = order.filament_material_id
+
+            def _select_profile_id(model, raw_id, current_id):
+                if raw_id in (None, "", "null"):
+                    return None
+                try:
+                    raw_int = int(raw_id)
+                except ValueError:
+                    return current_id
+                entry = model.query.filter_by(id=raw_int).first()
+                if not entry:
+                    return current_id
+                if not entry.active and raw_int != current_id:
+                    return current_id
+                return entry.id
+
+            order.printer_profile_id = _select_profile_id(
+                PrinterProfile,
+                printer_profile_id,
+                current_printer_profile_id,
+            )
+            order.filament_material_id = _select_profile_id(
+                FilamentMaterial,
+                filament_material_id,
+                current_filament_material_id,
+            )
+
+            job = OrderPrintJob(
+                order_id=order.id,
+                original_name=original_name,
+                stored_name="",
+                note=note or None,
+                status=status,
+                started_at=started_at,
+                duration_min=duration_min,
+                filament_m=filament_m,
+                filament_g=filament_g,
+            )
+            db.session.add(job)
+            db.session.flush()
+
+            stored_name = f"{job.id}_{safe_name}"
+            order_folder = Path(app.config["GCODE_UPLOAD_FOLDER"]) / f"order_{order.id}"
+            order_folder.mkdir(parents=True, exist_ok=True)
+            full_path = order_folder / stored_name
+            file.save(str(full_path))
+
+            job.stored_name = stored_name
+            try:
+                job.filesize = full_path.stat().st_size
+            except OSError:
+                job.filesize = None
+            job.uploaded_at = datetime.utcnow()
+
+            db.session.commit()
+            flash(trans("flash_print_job_uploaded"), "success")
+            return redirect(url_for("order_detail", order_id=order.id))
+
+        # --- 7) G-Code l├Âschen (nur Admin) ---------------------------------
+        elif action == "update_print_job":
+            if current_user.role != "admin":
+                abort(403)
+
+            try:
+                job_id = int(request.form.get("print_job_id", "0"))
+            except ValueError:
+                job_id = 0
+
+            if not job_id:
+                flash(trans("flash_print_job_invalid_id"), "danger")
+                return redirect(url_for("order_detail", order_id=order.id))
+
+            job = OrderPrintJob.query.filter_by(
+                id=job_id,
+                order_id=order.id,
+            ).first()
+
+            if not job:
+                flash(trans("flash_print_job_not_found"), "warning")
+                return redirect(url_for("order_detail", order_id=order.id))
+
+            note = (request.form.get("edit_print_note") or "").strip()
+            if note:
+                note = note[:255]
+
+            started_at_raw = (request.form.get("edit_print_started_at") or "").strip()
+            duration_raw = (request.form.get("edit_print_duration_min") or "").strip()
+            filament_m_raw = (request.form.get("edit_print_filament_m") or "").strip()
+            filament_g_raw = (request.form.get("edit_print_filament_g") or "").strip()
+            status_raw = (request.form.get("edit_print_status") or "").strip()
+
+            started_at = None
+            if started_at_raw:
+                try:
+                    started_at = datetime.fromisoformat(started_at_raw)
+                except ValueError:
+                    flash(trans("flash_print_job_invalid_start"), "danger")
+                    return redirect(url_for("order_detail", order_id=order.id))
+
+            duration_min = None
+            if duration_raw:
+                try:
+                    duration_min = int(duration_raw)
+                except ValueError:
+                    flash(trans("flash_print_job_invalid_duration"), "danger")
+                    return redirect(url_for("order_detail", order_id=order.id))
+                if duration_min < 0:
+                    flash(trans("flash_print_job_invalid_duration"), "danger")
+                    return redirect(url_for("order_detail", order_id=order.id))
+
+            filament_m = None
+            if filament_m_raw:
+                try:
+                    filament_m = float(filament_m_raw)
+                except ValueError:
+                    flash(trans("flash_print_job_invalid_filament"), "danger")
+                    return redirect(url_for("order_detail", order_id=order.id))
+                if filament_m < 0:
+                    flash(trans("flash_print_job_invalid_filament"), "danger")
+                    return redirect(url_for("order_detail", order_id=order.id))
+
+            filament_g = None
+            if filament_g_raw:
+                try:
+                    filament_g = float(filament_g_raw)
+                except ValueError:
+                    flash(trans("flash_print_job_invalid_filament"), "danger")
+                    return redirect(url_for("order_detail", order_id=order.id))
+                if filament_g < 0:
+                    flash(trans("flash_print_job_invalid_filament"), "danger")
+                    return redirect(url_for("order_detail", order_id=order.id))
+
+            valid_statuses = {value for value, _ in PRINT_JOB_STATUSES}
+            status = status_raw if status_raw in valid_statuses else (job.status or "upload")
+
+            job.note = note or None
+            job.status = status
+            job.started_at = started_at
+            job.duration_min = duration_min
+            job.filament_m = filament_m
+            job.filament_g = filament_g
+
+            db.session.commit()
+            flash(trans("flash_print_job_updated"), "success")
+            return redirect(url_for("order_detail", order_id=order.id))
+
+        elif action == "delete_print_job":
+            if current_user.role != "admin":
+                abort(403)
+
+            try:
+                job_id = int(request.form.get("print_job_id", "0"))
+            except ValueError:
+                job_id = 0
+
+            if not job_id:
+                flash(trans("flash_print_job_invalid_id"), "danger")
+                return redirect(url_for("order_detail", order_id=order.id))
+
+            job = OrderPrintJob.query.filter_by(
+                id=job_id,
+                order_id=order.id,
+            ).first()
+
+            if not job:
+                flash(trans("flash_print_job_not_found"), "warning")
+                return redirect(url_for("order_detail", order_id=order.id))
+
+            order_folder = Path(app.config["GCODE_UPLOAD_FOLDER"]) / f"order_{order.id}"
+            full_path = order_folder / job.stored_name
+            if full_path.exists():
+                try:
+                    full_path.unlink()
+                except OSError:
+                    app.logger.warning(
+                        f"[order_detail] Could not delete gcode file on disk: {full_path}"
+                    )
+
+            db.session.delete(job)
+            db.session.commit()
+            flash(trans("flash_print_job_deleted"), "info")
+            return redirect(url_for("order_detail", order_id=order.id))
+
+        # --- 8) Datei l├Âschen ----------------------------------------------
         elif action == "delete_file":
             try:
                 file_id = int(request.form.get("file_id", "0"))
@@ -2133,6 +2475,13 @@ def order_detail(order_id):
             filament_materials.append(selected_material)
             filament_materials.sort(key=lambda material: (material.name or "").lower())
 
+    print_jobs = (
+        OrderPrintJob.query
+        .filter_by(order_id=order.id)
+        .order_by(OrderPrintJob.uploaded_at.desc())
+        .all()
+    )
+
     app.logger.debug(
         f"[order_detail] Render detail for order {order.id}: status={order.status!r}, "
         f"messages_count={len(messages)}, material_id={order.material_id}, color_id={order.color_id}"
@@ -2147,6 +2496,9 @@ def order_detail(order_id):
         cost_centers=cost_centers,
         printer_profiles=printer_profiles,
         filament_materials=filament_materials,
+        print_jobs=print_jobs,
+        print_job_statuses=PRINT_JOB_STATUSES,
+        print_job_status_labels=PRINT_JOB_STATUS_LABELS,
         tags_value=order.tags_entry.tags if order.tags_entry else "",
     )
 
@@ -2361,6 +2713,35 @@ def download_order_file(order_id, file_id):
         path=order_file.stored_name,
         as_attachment=True,
         download_name=order_file.original_name,  # Name, den der User sieht
+    )
+
+
+@app.route("/orders/<int:order_id>/print-jobs/<int:job_id>/download")
+@login_required
+def download_print_job(order_id, job_id):
+    trans = inject_globals().get("t")
+    order = Order.query.get_or_404(order_id)
+
+    if current_user.role != "admin" and order.user_id != current_user.id:
+        abort(403)
+
+    job = OrderPrintJob.query.filter_by(
+        id=job_id,
+        order_id=order.id,
+    ).first_or_404()
+
+    order_folder = Path(app.config["GCODE_UPLOAD_FOLDER"]) / f"order_{order.id}"
+    full_path = order_folder / job.stored_name
+
+    if not full_path.exists():
+        flash(trans("flash_file_missing_server"), "danger")
+        return redirect(url_for("order_detail", order_id=order.id))
+
+    return send_from_directory(
+        directory=str(order_folder),
+        path=job.stored_name,
+        as_attachment=True,
+        download_name=job.original_name,
     )
 
 

@@ -102,6 +102,7 @@ class Order(db.Model):
     cost_center = db.relationship("CostCenter")
     printer_profile = db.relationship("PrinterProfile")
     filament_material = db.relationship("FilamentMaterial")
+    print_jobs = db.relationship("OrderPrintJob", back_populates="order", lazy=True)
     messages = db.relationship("OrderMessage", back_populates="order", lazy=True)
     files = db.relationship("OrderFile", back_populates="order", lazy=True)
     images = db.relationship("OrderImage", back_populates="order", lazy=True)
@@ -174,6 +175,28 @@ class OrderFile(db.Model):
     # Beziehung zurück zum Order
     order = db.relationship("Order", back_populates="files")
     color = db.relationship("Color")
+
+
+# --- OrderPrintJob (G-Code) --------------------------------------------------
+
+
+class OrderPrintJob(db.Model):
+    __tablename__ = "order_print_jobs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
+    original_name = db.Column(db.String(255), nullable=False)
+    stored_name = db.Column(db.String(255), nullable=False)
+    note = db.Column(db.String(255))
+    status = db.Column(db.String(50), nullable=False, default="upload")
+    started_at = db.Column(db.DateTime)
+    duration_min = db.Column(db.Integer)
+    filament_m = db.Column(db.Float)
+    filament_g = db.Column(db.Float)
+    filesize = db.Column(db.Integer)
+    uploaded_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    order = db.relationship("Order", back_populates="print_jobs")
 
 
 # --- OrderImage ---------------------------------------------------------------
@@ -314,6 +337,7 @@ __all__ = [
     "OrderMessage",
     "OrderReadStatus",
     "OrderFile",
+    "OrderPrintJob",
     "OrderImage",
     "OrderTag",
     "Material",
