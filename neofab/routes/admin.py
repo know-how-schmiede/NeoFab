@@ -23,7 +23,16 @@ from werkzeug.utils import secure_filename
 
 from auth_utils import roles_required
 from config import SETTINGS_FILE, coerce_positive_int, load_app_settings, save_app_settings
-from models import Color, CostCenter, Material, TrainingVideo, User, db
+from models import (
+    Color,
+    CostCenter,
+    Material,
+    TrainingVideo,
+    User,
+    PrinterProfile,
+    FilamentMaterial,
+    db,
+)
 from version import APP_VERSION
 
 
@@ -592,6 +601,264 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         db.session.commit()
         flash(trans("flash_material_deleted"), "info")
         return redirect(url_for(".admin_material_list"))
+
+    # Printer Profiles -----------------------------------------------------
+
+    @bp.route("/printer-profiles", endpoint="admin_printer_profile_list")
+    @roles_required("admin")
+    def admin_printer_profile_list():
+        profiles = PrinterProfile.query.order_by(PrinterProfile.name.asc()).all()
+        return render_template("admin_printer_profiles.html", profiles=profiles)
+
+    @bp.route("/printer-profiles/new", methods=["GET", "POST"], endpoint="admin_printer_profile_new")
+    @roles_required("admin")
+    def admin_printer_profile_new():
+        trans = t
+        if request.method == "POST":
+            name = request.form.get("name", "").strip()
+            description = request.form.get("description", "").strip() or None
+            time_factor_raw = request.form.get("time_factor", "").strip()
+            time_offset_raw = request.form.get("time_offset_min", "").strip()
+            is_active = bool(request.form.get("is_active"))
+
+            has_errors = False
+
+            if not name:
+                flash(trans("flash_printer_profile_required"), "danger")
+                has_errors = True
+            else:
+                existing = PrinterProfile.query.filter(
+                    func.lower(PrinterProfile.name) == name.lower()
+                ).first()
+                if existing:
+                    flash(trans("flash_printer_profile_exists"), "danger")
+                    has_errors = True
+
+            try:
+                time_factor = float(time_factor_raw)
+            except ValueError:
+                time_factor = None
+            if time_factor is None or time_factor < 1.0:
+                flash(trans("flash_printer_profile_factor_invalid"), "danger")
+                has_errors = True
+
+            try:
+                time_offset_min = int(time_offset_raw)
+            except ValueError:
+                time_offset_min = None
+            if time_offset_min is None or time_offset_min < 0:
+                flash(trans("flash_printer_profile_offset_invalid"), "danger")
+                has_errors = True
+
+            if not has_errors:
+                profile = PrinterProfile(
+                    name=name,
+                    description=description,
+                    time_factor=time_factor,
+                    time_offset_min=time_offset_min,
+                    active=is_active,
+                )
+                db.session.add(profile)
+                db.session.commit()
+                flash(trans("flash_printer_profile_created"), "success")
+                return redirect(url_for(".admin_printer_profile_list"))
+
+        return render_template("admin_printer_profile_edit.html", profile=None)
+
+    @bp.route("/printer-profiles/<int:profile_id>/edit", methods=["GET", "POST"], endpoint="admin_printer_profile_edit")
+    @roles_required("admin")
+    def admin_printer_profile_edit(profile_id):
+        trans = t
+        profile = PrinterProfile.query.get_or_404(profile_id)
+
+        if request.method == "POST":
+            name = request.form.get("name", "").strip()
+            description = request.form.get("description", "").strip() or None
+            time_factor_raw = request.form.get("time_factor", "").strip()
+            time_offset_raw = request.form.get("time_offset_min", "").strip()
+            is_active = bool(request.form.get("is_active"))
+
+            has_errors = False
+
+            if not name:
+                flash(trans("flash_printer_profile_required"), "danger")
+                has_errors = True
+            else:
+                existing = PrinterProfile.query.filter(
+                    func.lower(PrinterProfile.name) == name.lower()
+                ).first()
+                if existing and existing.id != profile.id:
+                    flash(trans("flash_printer_profile_exists"), "danger")
+                    has_errors = True
+
+            try:
+                time_factor = float(time_factor_raw)
+            except ValueError:
+                time_factor = None
+            if time_factor is None or time_factor < 1.0:
+                flash(trans("flash_printer_profile_factor_invalid"), "danger")
+                has_errors = True
+
+            try:
+                time_offset_min = int(time_offset_raw)
+            except ValueError:
+                time_offset_min = None
+            if time_offset_min is None or time_offset_min < 0:
+                flash(trans("flash_printer_profile_offset_invalid"), "danger")
+                has_errors = True
+
+            if not has_errors:
+                profile.name = name
+                profile.description = description
+                profile.time_factor = time_factor
+                profile.time_offset_min = time_offset_min
+                profile.active = is_active
+                db.session.commit()
+                flash(trans("flash_printer_profile_updated"), "success")
+                return redirect(url_for(".admin_printer_profile_list"))
+
+        return render_template("admin_printer_profile_edit.html", profile=profile)
+
+    @bp.route("/printer-profiles/<int:profile_id>/delete", methods=["POST"], endpoint="admin_printer_profile_delete")
+    @roles_required("admin")
+    def admin_printer_profile_delete(profile_id):
+        trans = t
+        profile = PrinterProfile.query.get_or_404(profile_id)
+        db.session.delete(profile)
+        db.session.commit()
+        flash(trans("flash_printer_profile_deleted"), "info")
+        return redirect(url_for(".admin_printer_profile_list"))
+
+    # Filament Materials ---------------------------------------------------
+
+    @bp.route("/filament-materials", endpoint="admin_filament_material_list")
+    @roles_required("admin")
+    def admin_filament_material_list():
+        materials = FilamentMaterial.query.order_by(FilamentMaterial.name.asc()).all()
+        return render_template("admin_filament_materials.html", materials=materials)
+
+    @bp.route("/filament-materials/new", methods=["GET", "POST"], endpoint="admin_filament_material_new")
+    @roles_required("admin")
+    def admin_filament_material_new():
+        trans = t
+        if request.method == "POST":
+            name = request.form.get("name", "").strip()
+            description = request.form.get("description", "").strip() or None
+            diameter_raw = request.form.get("filament_diameter_mm", "").strip()
+            density_raw = request.form.get("density_g_cm3", "").strip()
+            is_active = bool(request.form.get("is_active"))
+
+            has_errors = False
+
+            if not name:
+                flash(trans("flash_filament_material_required"), "danger")
+                has_errors = True
+            else:
+                existing = FilamentMaterial.query.filter(
+                    func.lower(FilamentMaterial.name) == name.lower()
+                ).first()
+                if existing:
+                    flash(trans("flash_filament_material_exists"), "danger")
+                    has_errors = True
+
+            try:
+                filament_diameter_mm = float(diameter_raw)
+            except ValueError:
+                filament_diameter_mm = None
+            if filament_diameter_mm is None or filament_diameter_mm <= 0:
+                flash(trans("flash_filament_material_diameter_invalid"), "danger")
+                has_errors = True
+
+            try:
+                density_g_cm3 = float(density_raw)
+            except ValueError:
+                density_g_cm3 = None
+            if density_g_cm3 is None or density_g_cm3 <= 0:
+                flash(trans("flash_filament_material_density_invalid"), "danger")
+                has_errors = True
+
+            if not has_errors:
+                material = FilamentMaterial(
+                    name=name,
+                    description=description,
+                    filament_diameter_mm=filament_diameter_mm,
+                    density_g_cm3=density_g_cm3,
+                    active=is_active,
+                )
+                db.session.add(material)
+                db.session.commit()
+                flash(trans("flash_filament_material_created"), "success")
+                return redirect(url_for(".admin_filament_material_list"))
+
+        return render_template("admin_filament_material_edit.html", material=None)
+
+    @bp.route(
+        "/filament-materials/<int:material_id>/edit",
+        methods=["GET", "POST"],
+        endpoint="admin_filament_material_edit",
+    )
+    @roles_required("admin")
+    def admin_filament_material_edit(material_id):
+        trans = t
+        material = FilamentMaterial.query.get_or_404(material_id)
+
+        if request.method == "POST":
+            name = request.form.get("name", "").strip()
+            description = request.form.get("description", "").strip() or None
+            diameter_raw = request.form.get("filament_diameter_mm", "").strip()
+            density_raw = request.form.get("density_g_cm3", "").strip()
+            is_active = bool(request.form.get("is_active"))
+
+            has_errors = False
+
+            if not name:
+                flash(trans("flash_filament_material_required"), "danger")
+                has_errors = True
+            else:
+                existing = FilamentMaterial.query.filter(
+                    func.lower(FilamentMaterial.name) == name.lower()
+                ).first()
+                if existing and existing.id != material.id:
+                    flash(trans("flash_filament_material_exists"), "danger")
+                    has_errors = True
+
+            try:
+                filament_diameter_mm = float(diameter_raw)
+            except ValueError:
+                filament_diameter_mm = None
+            if filament_diameter_mm is None or filament_diameter_mm <= 0:
+                flash(trans("flash_filament_material_diameter_invalid"), "danger")
+                has_errors = True
+
+            try:
+                density_g_cm3 = float(density_raw)
+            except ValueError:
+                density_g_cm3 = None
+            if density_g_cm3 is None or density_g_cm3 <= 0:
+                flash(trans("flash_filament_material_density_invalid"), "danger")
+                has_errors = True
+
+            if not has_errors:
+                material.name = name
+                material.description = description
+                material.filament_diameter_mm = filament_diameter_mm
+                material.density_g_cm3 = density_g_cm3
+                material.active = is_active
+                db.session.commit()
+                flash(trans("flash_filament_material_updated"), "success")
+                return redirect(url_for(".admin_filament_material_list"))
+
+        return render_template("admin_filament_material_edit.html", material=material)
+
+    @bp.route("/filament-materials/<int:material_id>/delete", methods=["POST"], endpoint="admin_filament_material_delete")
+    @roles_required("admin")
+    def admin_filament_material_delete(material_id):
+        trans = t
+        material = FilamentMaterial.query.get_or_404(material_id)
+        db.session.delete(material)
+        db.session.commit()
+        flash(trans("flash_filament_material_deleted"), "info")
+        return redirect(url_for(".admin_filament_material_list"))
 
     # Color Master Data -----------------------------------------------------
 

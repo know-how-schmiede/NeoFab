@@ -78,6 +78,15 @@ class Order(db.Model):
     material_id = db.Column(db.Integer, db.ForeignKey("materials.id"), nullable=True)
     color_id = db.Column(db.Integer, db.ForeignKey("colors.id"), nullable=True)
     cost_center_id = db.Column(db.Integer, db.ForeignKey("cost_centers.id"), nullable=True)
+    printer_profile_id = db.Column(db.Integer, db.ForeignKey("printer_profiles.id"), nullable=True)
+    filament_material_id = db.Column(db.Integer, db.ForeignKey("filament_materials.id"), nullable=True)
+
+    # Druckschätzung (vorbereitet, noch ohne Logik)
+    est_filament_m = db.Column(db.Float, nullable=True)
+    est_filament_g = db.Column(db.Float, nullable=True)
+    est_time_s = db.Column(db.Integer, nullable=True)
+    est_time_s_with_margin = db.Column(db.Integer, nullable=True)
+    est_method = db.Column(db.String(50), nullable=True)
 
     # Besitzer (User)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
@@ -91,6 +100,8 @@ class Order(db.Model):
     material = db.relationship("Material")
     color = db.relationship("Color")
     cost_center = db.relationship("CostCenter")
+    printer_profile = db.relationship("PrinterProfile")
+    filament_material = db.relationship("FilamentMaterial")
     messages = db.relationship("OrderMessage", back_populates="order", lazy=True)
     files = db.relationship("OrderFile", back_populates="order", lazy=True)
     images = db.relationship("OrderImage", back_populates="order", lazy=True)
@@ -237,6 +248,44 @@ class CostCenter(db.Model):
         return f"<CostCenter {self.name}>"
 
 
+# --- Stammdaten: Printer Profile --------------------------------------------
+
+
+class PrinterProfile(db.Model):
+    __tablename__ = "printer_profiles"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    description = db.Column(db.Text)
+    time_factor = db.Column(db.Float, nullable=False, default=1.0)
+    time_offset_min = db.Column(db.Integer, nullable=False, default=0)
+    active = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<PrinterProfile {self.name}>"
+
+
+# --- Stammdaten: Filament Material ------------------------------------------
+
+
+class FilamentMaterial(db.Model):
+    __tablename__ = "filament_materials"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+    filament_diameter_mm = db.Column(db.Float, nullable=False, default=1.75)
+    density_g_cm3 = db.Column(db.Float, nullable=False)
+    description = db.Column(db.Text)
+    active = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<FilamentMaterial {self.name}>"
+
+
 # --- Training Videos (Tutorials) ---------------------------------------------
 
 
@@ -270,5 +319,7 @@ __all__ = [
     "Material",
     "Color",
     "CostCenter",
+    "PrinterProfile",
+    "FilamentMaterial",
     "TrainingVideo",
 ]

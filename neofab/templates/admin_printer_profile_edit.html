@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {{ profile and t("admin_printer_profile_form_title_edit") or t("admin_printer_profile_form_title_new") }} - NeoFab
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">
+    {{ profile and t("admin_printer_profile_form_title_edit") or t("admin_printer_profile_form_title_new") }}
+</h1>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            <div class="mb-3">
+                <label for="name" class="form-label">{{ t("admin_printer_profile_label_name") }}</label>
+                <input type="text"
+                       class="form-control"
+                       id="name"
+                       name="name"
+                       required
+                       value="{{ profile.name if profile else '' }}">
+            </div>
+
+            <div class="mb-3">
+                <label for="description" class="form-label">{{ t("admin_printer_profile_label_description") }}</label>
+                <input type="text"
+                       class="form-control"
+                       id="description"
+                       name="description"
+                       value="{{ profile.description if profile else '' }}">
+            </div>
+
+            <div class="mb-3">
+                <label for="time_factor" class="form-label">{{ t("admin_printer_profile_label_time_factor") }}</label>
+                <input type="number"
+                       class="form-control"
+                       id="time_factor"
+                       name="time_factor"
+                       min="1"
+                       step="0.01"
+                       required
+                       value="{{ profile.time_factor if profile else '1.0' }}">
+            </div>
+
+            <div class="mb-3">
+                <label for="time_offset_min" class="form-label">{{ t("admin_printer_profile_label_time_offset") }}</label>
+                <input type="number"
+                       class="form-control"
+                       id="time_offset_min"
+                       name="time_offset_min"
+                       min="0"
+                       step="1"
+                       required
+                       value="{{ profile.time_offset_min if profile else '0' }}">
+            </div>
+
+            <div class="form-check mb-3">
+                <input class="form-check-input"
+                       type="checkbox"
+                       id="is_active"
+                       name="is_active"
+                       {% if profile is none or profile.active %}checked{% endif %}>
+                <label class="form-check-label" for="is_active">{{ t("label_active") }}</label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">{{ t("btn_save") }}</button>
+            <a href="{{ url_for('admin.admin_printer_profile_list') }}" class="btn btn-secondary">
+                {{ t("btn_cancel") }}
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}

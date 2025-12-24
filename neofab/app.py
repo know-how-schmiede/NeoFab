@@ -83,6 +83,8 @@ from models import (
     Material,
     Color,
     CostCenter,
+    PrinterProfile,
+    FilamentMaterial,
     TrainingVideo,
 )
 
@@ -384,10 +386,170 @@ def ensure_training_videos_table():
         app.logger.exception("Failed to ensure training_videos table exists")
 
 
+def ensure_printer_profiles_table():
+    """
+    Ensures the printer_profiles table and required columns exist.
+    """
+    try:
+        exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='printer_profiles'")
+        ).scalar()
+        if not exists:
+            db.session.execute(
+                text(
+                    """
+                    CREATE TABLE printer_profiles (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name VARCHAR(100) NOT NULL UNIQUE,
+                        description TEXT,
+                        time_factor FLOAT NOT NULL DEFAULT 1.0,
+                        time_offset_min INTEGER NOT NULL DEFAULT 0,
+                        active BOOLEAN NOT NULL DEFAULT 1,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+            )
+            db.session.commit()
+            return
+
+        cols = {
+            row[1]
+            for row in db.session.execute(text("PRAGMA table_info(printer_profiles)"))
+        }
+        statements = []
+        if "description" not in cols:
+            statements.append("ALTER TABLE printer_profiles ADD COLUMN description TEXT")
+        if "time_factor" not in cols:
+            statements.append("ALTER TABLE printer_profiles ADD COLUMN time_factor FLOAT NOT NULL DEFAULT 1.0")
+        if "time_offset_min" not in cols:
+            statements.append("ALTER TABLE printer_profiles ADD COLUMN time_offset_min INTEGER NOT NULL DEFAULT 0")
+        if "active" not in cols:
+            statements.append("ALTER TABLE printer_profiles ADD COLUMN active BOOLEAN NOT NULL DEFAULT 1")
+        if "created_at" not in cols:
+            statements.append(
+                "ALTER TABLE printer_profiles ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            )
+        if "updated_at" not in cols:
+            statements.append(
+                "ALTER TABLE printer_profiles ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            )
+
+        for stmt in statements:
+            db.session.execute(text(stmt))
+        if statements:
+            db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure printer_profiles table exists")
+
+
+def ensure_filament_materials_table():
+    """
+    Ensures the filament_materials table and required columns exist.
+    """
+    try:
+        exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='filament_materials'")
+        ).scalar()
+        if not exists:
+            db.session.execute(
+                text(
+                    """
+                    CREATE TABLE filament_materials (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name VARCHAR(50) NOT NULL UNIQUE,
+                        filament_diameter_mm FLOAT NOT NULL DEFAULT 1.75,
+                        density_g_cm3 FLOAT NOT NULL DEFAULT 1.0,
+                        description TEXT,
+                        active BOOLEAN NOT NULL DEFAULT 1,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+            )
+            db.session.commit()
+            return
+
+        cols = {
+            row[1]
+            for row in db.session.execute(text("PRAGMA table_info(filament_materials)"))
+        }
+        statements = []
+        if "filament_diameter_mm" not in cols:
+            statements.append(
+                "ALTER TABLE filament_materials ADD COLUMN filament_diameter_mm FLOAT NOT NULL DEFAULT 1.75"
+            )
+        if "density_g_cm3" not in cols:
+            statements.append("ALTER TABLE filament_materials ADD COLUMN density_g_cm3 FLOAT NOT NULL DEFAULT 1.0")
+        if "description" not in cols:
+            statements.append("ALTER TABLE filament_materials ADD COLUMN description TEXT")
+        if "active" not in cols:
+            statements.append("ALTER TABLE filament_materials ADD COLUMN active BOOLEAN NOT NULL DEFAULT 1")
+        if "created_at" not in cols:
+            statements.append(
+                "ALTER TABLE filament_materials ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            )
+        if "updated_at" not in cols:
+            statements.append(
+                "ALTER TABLE filament_materials ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            )
+
+        for stmt in statements:
+            db.session.execute(text(stmt))
+        if statements:
+            db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure filament_materials table exists")
+
+
+def ensure_order_estimation_columns():
+    """
+    Adds missing estimation-related columns on orders (lightweight migration).
+    """
+    try:
+        exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='orders'")
+        ).scalar()
+        if not exists:
+            return
+
+        cols = {
+            row[1]
+            for row in db.session.execute(text("PRAGMA table_info(orders)"))
+        }
+        statements = []
+        if "printer_profile_id" not in cols:
+            statements.append("ALTER TABLE orders ADD COLUMN printer_profile_id INTEGER")
+        if "filament_material_id" not in cols:
+            statements.append("ALTER TABLE orders ADD COLUMN filament_material_id INTEGER")
+        if "est_filament_m" not in cols:
+            statements.append("ALTER TABLE orders ADD COLUMN est_filament_m FLOAT")
+        if "est_filament_g" not in cols:
+            statements.append("ALTER TABLE orders ADD COLUMN est_filament_g FLOAT")
+        if "est_time_s" not in cols:
+            statements.append("ALTER TABLE orders ADD COLUMN est_time_s INTEGER")
+        if "est_time_s_with_margin" not in cols:
+            statements.append("ALTER TABLE orders ADD COLUMN est_time_s_with_margin INTEGER")
+        if "est_method" not in cols:
+            statements.append("ALTER TABLE orders ADD COLUMN est_method VARCHAR(50)")
+
+        for stmt in statements:
+            db.session.execute(text(stmt))
+        if statements:
+            db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure orders estimation columns exist")
+
+
 with app.app_context():
     ensure_order_file_columns()
     ensure_order_image_columns()
     ensure_training_videos_table()
+    ensure_printer_profiles_table()
+    ensure_filament_materials_table()
+    ensure_order_estimation_columns()
 
 
 def save_image_thumbnail(source_path: Path, target_path: Path, max_width: int = THUMBNAIL_MAX_WIDTH) -> bool:
@@ -1280,6 +1442,8 @@ def new_order():
     materials = Material.query.order_by(Material.name.asc()).all()
     colors = Color.query.order_by(Color.name.asc()).all()
     cost_centers = CostCenter.query.order_by(CostCenter.name.asc()).all()
+    printer_profiles = PrinterProfile.query.filter_by(active=True).order_by(PrinterProfile.name.asc()).all()
+    filament_materials = FilamentMaterial.query.filter_by(active=True).order_by(FilamentMaterial.name.asc()).all()
 
     if request.method == "POST":
         title = request.form.get("title", "").strip()
@@ -1297,10 +1461,12 @@ def new_order():
             status = "new"
         # ------------------------
 
-        # Material / Farbe / Kostenstelle (optional)
+        # Material / Farbe / Kostenstelle / Druckerprofil / Filament (optional)
         material_id = request.form.get("material_id") or None
         color_id = request.form.get("color_id") or None
         cost_center_id = request.form.get("cost_center_id") or None
+        printer_profile_id = request.form.get("printer_profile_id") or None
+        filament_material_id = request.form.get("filament_material_id") or None
 
         # ├ûffentlichkeits-Felder
         def _default_public_flag(field_name: str) -> bool:
@@ -1336,6 +1502,8 @@ def new_order():
                 materials=materials,
                 colors=colors,
                 cost_centers=cost_centers,
+                printer_profiles=printer_profiles,
+                filament_materials=filament_materials,
             )
 
         order = Order(
@@ -1356,6 +1524,16 @@ def new_order():
             project_url=project_url,
         )
 
+        def _select_active_id(model, raw_id):
+            if not raw_id:
+                return None
+            try:
+                raw_int = int(raw_id)
+            except ValueError:
+                return None
+            entry = model.query.filter_by(id=raw_int, active=True).first()
+            return entry.id if entry else None
+
         # Nur sinnvolle IDs setzen
         if material_id:
             try:
@@ -1373,6 +1551,8 @@ def new_order():
                 order.cost_center_id = int(cost_center_id)
             except ValueError:
                 pass
+        order.printer_profile_id = _select_active_id(PrinterProfile, printer_profile_id)
+        order.filament_material_id = _select_active_id(FilamentMaterial, filament_material_id)
 
         db.session.add(order)
         db.session.commit()
@@ -1437,7 +1617,8 @@ def new_order():
         app.logger.debug(
             f"[new_order] Created order id={order.id}, title={order.title!r}, "
             f"status={order.status!r}, user={current_user.email}, "
-            f"material_id={order.material_id}, color_id={order.color_id}"
+            f"material_id={order.material_id}, color_id={order.color_id}, "
+            f"printer_profile_id={order.printer_profile_id}, filament_material_id={order.filament_material_id}"
         )
 
         send_admin_order_notification(order)
@@ -1452,6 +1633,8 @@ def new_order():
         materials=materials,
         colors=colors,
         cost_centers=cost_centers,
+        printer_profiles=printer_profiles,
+        filament_materials=filament_materials,
     )
 
 
@@ -1518,6 +1701,10 @@ def order_detail(order_id):
                 material_id = request.form.get("material_id") or None
                 color_id = request.form.get("color_id") or None
                 cost_center_id = request.form.get("cost_center_id") or None
+                printer_profile_id = request.form.get("printer_profile_id") or None
+                filament_material_id = request.form.get("filament_material_id") or None
+                current_printer_profile_id = order.printer_profile_id
+                current_filament_material_id = order.filament_material_id
 
                 if material_id:
                     try:
@@ -1542,6 +1729,31 @@ def order_detail(order_id):
                         order.cost_center_id = None
                 else:
                     order.cost_center_id = None
+
+                def _select_profile_id(model, raw_id, current_id):
+                    if raw_id in (None, "", "null"):
+                        return None
+                    try:
+                        raw_int = int(raw_id)
+                    except ValueError:
+                        return current_id
+                    entry = model.query.filter_by(id=raw_int).first()
+                    if not entry:
+                        return current_id
+                    if not entry.active and raw_int != current_id:
+                        return current_id
+                    return entry.id
+
+                order.printer_profile_id = _select_profile_id(
+                    PrinterProfile,
+                    printer_profile_id,
+                    current_printer_profile_id,
+                )
+                order.filament_material_id = _select_profile_id(
+                    FilamentMaterial,
+                    filament_material_id,
+                    current_filament_material_id,
+                )
 
                 # ├ûffentlichkeits-Felder ├╝bernehmen
                 order.public_allow_poster = public_allow_poster
@@ -1902,6 +2114,24 @@ def order_detail(order_id):
     materials = Material.query.order_by(Material.name.asc()).all()
     colors = Color.query.order_by(Color.name.asc()).all()
     cost_centers = CostCenter.query.order_by(CostCenter.name.asc()).all()
+    printer_profiles = PrinterProfile.query.filter_by(active=True).order_by(PrinterProfile.name.asc()).all()
+    filament_materials = FilamentMaterial.query.filter_by(active=True).order_by(FilamentMaterial.name.asc()).all()
+
+    if order.printer_profile_id and not any(
+        profile.id == order.printer_profile_id for profile in printer_profiles
+    ):
+        selected_profile = PrinterProfile.query.get(order.printer_profile_id)
+        if selected_profile:
+            printer_profiles.append(selected_profile)
+            printer_profiles.sort(key=lambda profile: (profile.name or "").lower())
+
+    if order.filament_material_id and not any(
+        material.id == order.filament_material_id for material in filament_materials
+    ):
+        selected_material = FilamentMaterial.query.get(order.filament_material_id)
+        if selected_material:
+            filament_materials.append(selected_material)
+            filament_materials.sort(key=lambda material: (material.name or "").lower())
 
     app.logger.debug(
         f"[order_detail] Render detail for order {order.id}: status={order.status!r}, "
@@ -1915,6 +2145,8 @@ def order_detail(order_id):
         materials=materials,
         colors=colors,
         cost_centers=cost_centers,
+        printer_profiles=printer_profiles,
+        filament_materials=filament_materials,
         tags_value=order.tags_entry.tags if order.tags_entry else "",
     )
 

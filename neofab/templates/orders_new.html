@@ -82,6 +82,42 @@
           </select>
         </div>
 
+        <!-- Printer Profile -->
+        <div class="col-md-6">
+          <label for="printer_profile_id" class="form-label">
+            <i class="bi bi-printer me-1"></i>
+            {{ t("new_order_printer_profile_label") }}
+          </label>
+          <select
+            id="printer_profile_id"
+            name="printer_profile_id"
+            class="form-select"
+          >
+            <option value="">{{ t("select_placeholder") }}</option>
+            {% for p in printer_profiles %}
+              <option value="{{ p.id }}">{{ p.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Filament Material -->
+        <div class="col-md-6">
+          <label for="filament_material_id" class="form-label">
+            <i class="bi bi-droplet me-1"></i>
+            {{ t("new_order_filament_material_label") }}
+          </label>
+          <select
+            id="filament_material_id"
+            name="filament_material_id"
+            class="form-select"
+          >
+            <option value="">{{ t("select_placeholder") }}</option>
+            {% for f in filament_materials %}
+              <option value="{{ f.id }}">{{ f.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
         <!-- Color mit Vorschau -->
         <div class="col-md-6">
           <label for="color_id" class="form-label">

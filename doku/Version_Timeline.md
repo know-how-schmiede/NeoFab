@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.6.4
+
+Erweiterung Datenmodell Drucker, Filament, Vorbereitung für G-Code Analyse
+
 ## Version 0.6.3
 
 PDF-Tutorial unter Tutorials
