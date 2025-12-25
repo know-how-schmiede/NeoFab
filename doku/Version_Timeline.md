@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.6.12
+
+Erstellung PlayListe für Tutorials
+
 ## Version 0.6.11
 
 APP.py verkleinern, Funktionen in externe Module auslagern

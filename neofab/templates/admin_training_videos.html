@@ -9,6 +9,12 @@
     <a href="{{ url_for('admin.admin_training_video_new') }}" class="btn btn-success">
         {{ t("admin_training_videos_add") }}
     </a>
+    <a href="{{ url_for('admin.admin_training_playlist_new') }}" class="btn btn-outline-primary">
+        {{ t("admin_training_playlist_add") }}
+    </a>
+    <a href="{{ url_for('admin.admin_training_playlist_list') }}" class="btn btn-outline-secondary">
+        {{ t("admin_training_playlist_manage") }}
+    </a>
     <a href="{{ url_for('admin.admin_panel') }}" class="btn btn-secondary">
         {{ t("btn_back_admin") }}
     </a>

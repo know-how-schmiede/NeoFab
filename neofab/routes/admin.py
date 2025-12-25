@@ -19,10 +19,12 @@ from flask import (
     url_for,
 )
 from sqlalchemy import func
+from sqlalchemy.exc import OperationalError
 from werkzeug.utils import secure_filename
 
 from auth_utils import roles_required
 from config import SETTINGS_FILE, coerce_positive_int, load_app_settings, save_app_settings
+from schema_utils import ensure_training_playlist_schema
 from status_messages import (
     STATUS_GROUP_DEFS,
     STATUS_STYLE_OPTIONS,
@@ -34,6 +36,7 @@ from models import (
     Color,
     CostCenter,
     Material,
+    TrainingPlaylist,
     TrainingVideo,
     User,
     PrinterProfile,
@@ -55,6 +58,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
 
     def normalize_training_video_order() -> None:
         """Ensure sequential sort_order without gaps."""
+        ensure_training_playlist_schema()
         videos = TrainingVideo.query.order_by(
             TrainingVideo.sort_order.asc(), TrainingVideo.created_at.asc(), TrainingVideo.id.asc()
         ).all()
@@ -1184,11 +1188,90 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
     @bp.route("/training-videos", endpoint="admin_training_video_list")
     @roles_required("admin")
     def admin_training_video_list():
+        ensure_training_playlist_schema()
         normalize_training_video_order()
         videos = TrainingVideo.query.order_by(
             TrainingVideo.sort_order.asc(), TrainingVideo.created_at.desc()
         ).all()
         return render_template("admin_training_videos.html", videos=videos)
+
+    @bp.route("/training-playlists", endpoint="admin_training_playlist_list")
+    @roles_required("admin")
+    def admin_training_playlist_list():
+        ensure_training_playlist_schema()
+        playlists = TrainingPlaylist.query.order_by(TrainingPlaylist.title.asc()).all()
+        return render_template("admin_training_playlists.html", playlists=playlists)
+
+    @bp.route("/training-playlists/new", methods=["GET", "POST"], endpoint="admin_training_playlist_new")
+    @roles_required("admin")
+    def admin_training_playlist_new():
+        trans = t
+        ensure_training_playlist_schema()
+        if request.method == "POST":
+            title = request.form.get("title", "").strip()
+            description = request.form.get("description", "").strip() or None
+            is_active = bool(request.form.get("active"))
+
+            if not title:
+                flash(trans("flash_training_playlist_title_required"), "danger")
+            else:
+                playlist = TrainingPlaylist(
+                    title=title,
+                    short_description=description,
+                    active=is_active,
+                )
+                db.session.add(playlist)
+                try:
+                    db.session.commit()
+                except OperationalError as exc:
+                    db.session.rollback()
+                    if "no such table: training_playlists" in str(exc).lower():
+                        db.create_all()
+                        db.session.add(playlist)
+                        db.session.commit()
+                    else:
+                        raise
+                flash(trans("flash_training_playlist_created"), "success")
+                return redirect(url_for(".admin_training_playlist_list"))
+
+        return render_template("admin_training_playlist_edit.html", playlist=None)
+
+    @bp.route("/training-playlists/<int:playlist_id>/edit", methods=["GET", "POST"], endpoint="admin_training_playlist_edit")
+    @roles_required("admin")
+    def admin_training_playlist_edit(playlist_id):
+        trans = t
+        ensure_training_playlist_schema()
+        playlist = TrainingPlaylist.query.get_or_404(playlist_id)
+
+        if request.method == "POST":
+            title = request.form.get("title", "").strip()
+            description = request.form.get("description", "").strip() or None
+            is_active = bool(request.form.get("active"))
+
+            if not title:
+                flash(trans("flash_training_playlist_title_required"), "danger")
+            else:
+                playlist.title = title
+                playlist.short_description = description
+                playlist.active = is_active
+                playlist.updated_at = datetime.utcnow()
+                db.session.commit()
+                flash(trans("flash_training_playlist_updated"), "success")
+                return redirect(url_for(".admin_training_playlist_list"))
+
+        return render_template("admin_training_playlist_edit.html", playlist=playlist)
+
+    @bp.route("/training-playlists/<int:playlist_id>/delete", methods=["POST"], endpoint="admin_training_playlist_delete")
+    @roles_required("admin")
+    def admin_training_playlist_delete(playlist_id):
+        trans = t
+        ensure_training_playlist_schema()
+        playlist = TrainingPlaylist.query.get_or_404(playlist_id)
+        TrainingVideo.query.filter_by(playlist_id=playlist.id).update({"playlist_id": None})
+        db.session.delete(playlist)
+        db.session.commit()
+        flash(trans("flash_training_playlist_deleted"), "info")
+        return redirect(url_for(".admin_training_playlist_list"))
 
     @bp.route("/training-videos/export", endpoint="admin_training_video_export")
     @roles_required("admin")
@@ -1196,6 +1279,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         """
         Exportiert alle Trainingsvideos als JSON mit Versionsinfo.
         """
+        ensure_training_playlist_schema()
         videos = TrainingVideo.query.order_by(
             TrainingVideo.sort_order.asc(), TrainingVideo.created_at.asc()
         ).all()
@@ -1233,6 +1317,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         Bestehende Einträge werden vorher entfernt.
         """
         trans = t
+        ensure_training_playlist_schema()
         file = request.files.get("file")
         if not file or not file.filename:
             flash(trans("flash_json_choose_file"), "warning")
@@ -1305,10 +1390,17 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
     @roles_required("admin")
     def admin_training_video_new():
         trans = t
+        ensure_training_playlist_schema()
+        playlists = TrainingPlaylist.query.order_by(TrainingPlaylist.title.asc()).all()
+        selected_playlist_id = None
         if request.method == "POST":
             title = request.form.get("title", "").strip()
             description = request.form.get("description", "").strip() or None
             youtube_url = request.form.get("youtube_url", "").strip()
+            playlist_id_raw = request.form.get("playlist_id") or ""
+            playlist_id = int(playlist_id_raw) if playlist_id_raw.isdigit() else None
+            playlist = TrainingPlaylist.query.get(playlist_id) if playlist_id else None
+            selected_playlist_id = playlist.id if playlist else None
             pdf_file = request.files.get("pdf_file")
             has_pdf_upload = bool(pdf_file and pdf_file.filename)
             has_youtube = bool(youtube_url)
@@ -1343,6 +1435,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     description=description,
                     youtube_url=normalized_url or youtube_url if has_youtube else "",
                     sort_order=next_order,
+                    playlist_id=playlist.id if playlist else None,
                 )
                 db.session.add(video)
                 db.session.flush()
@@ -1360,18 +1453,30 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     db.session.commit()
                     flash(trans("flash_training_created"), "success")
                     return redirect(url_for(".admin_training_video_list"))
-        return render_template("admin_training_video_edit.html", video=None)
+        return render_template(
+            "admin_training_video_edit.html",
+            video=None,
+            playlists=playlists,
+            selected_playlist_id=selected_playlist_id,
+        )
 
     @bp.route("/training-videos/<int:video_id>/edit", methods=["GET", "POST"], endpoint="admin_training_video_edit")
     @roles_required("admin")
     def admin_training_video_edit(video_id):
         trans = t
+        ensure_training_playlist_schema()
         video = TrainingVideo.query.get_or_404(video_id)
+        playlists = TrainingPlaylist.query.order_by(TrainingPlaylist.title.asc()).all()
+        selected_playlist_id = video.playlist_id
 
         if request.method == "POST":
             title = request.form.get("title", "").strip()
             description = request.form.get("description", "").strip() or None
             youtube_url = request.form.get("youtube_url", "").strip()
+            playlist_id_raw = request.form.get("playlist_id") or ""
+            playlist_id = int(playlist_id_raw) if playlist_id_raw.isdigit() else None
+            playlist = TrainingPlaylist.query.get(playlist_id) if playlist_id else None
+            selected_playlist_id = playlist.id if playlist else None
             pdf_file = request.files.get("pdf_file")
             remove_pdf = bool(request.form.get("remove_pdf"))
             has_pdf_upload = bool(pdf_file and pdf_file.filename)
@@ -1404,6 +1509,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 video.title = title
                 video.description = description
                 video.youtube_url = normalized_url or youtube_url if has_youtube else ""
+                video.playlist_id = playlist.id if playlist else None
 
                 if remove_pdf and has_existing_pdf and not has_pdf_upload:
                     _delete_training_pdf(video)
@@ -1429,12 +1535,18 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     db.session.commit()
                     flash(trans("flash_training_updated"), "success")
                     return redirect(url_for(".admin_training_video_list"))
-        return render_template("admin_training_video_edit.html", video=video)
+        return render_template(
+            "admin_training_video_edit.html",
+            video=video,
+            playlists=playlists,
+            selected_playlist_id=selected_playlist_id,
+        )
 
     @bp.route("/training-videos/<int:video_id>/delete", methods=["POST"], endpoint="admin_training_video_delete")
     @roles_required("admin")
     def admin_training_video_delete(video_id):
         trans = t
+        ensure_training_playlist_schema()
         video = TrainingVideo.query.get_or_404(video_id)
         _delete_training_pdf(video)
         db.session.delete(video)

@@ -319,6 +319,7 @@ class TrainingVideo(db.Model):
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
     youtube_url = db.Column(db.String(500), nullable=False)
+    playlist_id = db.Column(db.Integer, db.ForeignKey("training_playlists.id"))
     pdf_filename = db.Column(db.String(255))
     pdf_original_name = db.Column(db.String(255))
     pdf_filesize = db.Column(db.Integer)
@@ -326,8 +327,24 @@ class TrainingVideo(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    playlist = db.relationship("TrainingPlaylist", backref="videos")
+
     def __repr__(self):
         return f"<TrainingVideo {self.title}>"
+
+
+class TrainingPlaylist(db.Model):
+    __tablename__ = "training_playlists"
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    short_description = db.Column(db.Text)
+    active = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<TrainingPlaylist {self.title}>"
 
 
 __all__ = [
@@ -346,4 +363,5 @@ __all__ = [
     "PrinterProfile",
     "FilamentMaterial",
     "TrainingVideo",
+    "TrainingPlaylist",
 ]

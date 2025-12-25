@@ -68,6 +68,7 @@ from notifications import (
     send_admin_order_notification,
     send_order_status_change_notification,
 )
+from schema_utils import ensure_training_playlist_schema
 from status_messages import (
     ORDER_STATUS_DEFS,
     PRINT_JOB_STATUS_DEFS,
@@ -94,6 +95,7 @@ from models import (
     CostCenter,
     PrinterProfile,
     FilamentMaterial,
+    TrainingPlaylist,
     TrainingVideo,
 )
 
@@ -1243,7 +1245,10 @@ def tutorials():
     """
     Zeigt verfuegbare Trainingsvideos fuer Anwender.
     """
+    ensure_training_playlist_schema()
     videos = TrainingVideo.query.order_by(TrainingVideo.sort_order.asc(), TrainingVideo.created_at.desc()).all()
+    playlists = TrainingPlaylist.query.order_by(TrainingPlaylist.title.asc()).all()
+    playlist_lookup = {playlist.id: playlist for playlist in playlists}
 
     def build_video_entry(video: TrainingVideo) -> dict:
         pdf_url = None
@@ -1280,13 +1285,40 @@ def tutorials():
             "pdf_name": pdf_name,
         }
 
-    video_entries = [build_video_entry(v) for v in videos]
-    return render_template("tutorials.html", videos=video_entries)
+    grouped = {}
+    for video in videos:
+        playlist = playlist_lookup.get(video.playlist_id)
+        key = playlist.id if playlist else None
+        if key not in grouped:
+            grouped[key] = {
+                "playlist": playlist,
+                "entries": [],
+            }
+        grouped[key]["entries"].append(build_video_entry(video))
+
+    ordered_keys = [p.id for p in playlists if p.id in grouped]
+    if None in grouped:
+        ordered_keys.append(None)
+
+    video_groups = []
+    for key in ordered_keys:
+        playlist = grouped[key]["playlist"]
+        video_groups.append(
+            {
+                "title": playlist.title if playlist else None,
+                "description": playlist.short_description if playlist else None,
+                "is_ungrouped": playlist is None,
+                "entries": grouped[key]["entries"],
+            }
+        )
+
+    return render_template("tutorials.html", video_groups=video_groups)
 
 
 @app.route("/tutorials/<int:video_id>/pdf")
 @login_required
 def tutorial_pdf(video_id):
+    ensure_training_playlist_schema()
     video = TrainingVideo.query.get_or_404(video_id)
     if not video.pdf_filename:
         abort(404)

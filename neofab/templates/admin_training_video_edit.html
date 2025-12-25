@@ -23,6 +23,19 @@
             </div>
 
             <div class="mb-3">
+                <label for="playlist_id" class="form-label">{{ t("admin_training_label_playlist") }}</label>
+                <select id="playlist_id" name="playlist_id" class="form-select">
+                    <option value="">{{ t("admin_training_playlist_none") }}</option>
+                    {% for playlist in playlists %}
+                        <option value="{{ playlist.id }}"
+                                {% if playlist.id == selected_playlist_id %}selected{% endif %}>
+                            {{ playlist.title }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3">
                 <label for="description" class="form-label">{{ t("admin_training_label_description") }}</label>
                 <textarea class="form-control"
                           id="description"
