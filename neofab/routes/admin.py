@@ -374,22 +374,34 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             status_style_options=status_style_options,
         )
 
-    @bp.route("/settings/status-messages/export", endpoint="admin_status_messages_export")
+    @bp.route("/settings/export", endpoint="admin_settings_export")
     @roles_required("admin")
-    def admin_status_messages_export():
+    def admin_settings_export():
         settings = load_app_settings(current_app, force_reload=True)
         resolved = resolve_status_messages(settings, t)
         payload = {
             "version": APP_VERSION,
-            "status_messages": {
-                "order": {
-                    item["key"]: {"label": item["label"], "style": item["style"]}
-                    for item in resolved.get("order", [])
+            "settings": {
+                "session_timeout_minutes": settings.get("session_timeout_minutes"),
+                "smtp_host": settings.get("smtp_host", ""),
+                "smtp_port": settings.get("smtp_port", 0),
+                "smtp_use_tls": bool(settings.get("smtp_use_tls")),
+                "smtp_use_ssl": bool(settings.get("smtp_use_ssl")),
+                "smtp_user": settings.get("smtp_user", ""),
+                "smtp_password": settings.get("smtp_password", ""),
+                "smtp_from_address": settings.get("smtp_from_address", ""),
+                "status_messages": {
+                    "order": {
+                        item["key"]: {"label": item["label"], "style": item["style"]}
+                        for item in resolved.get("order", [])
+                    },
+                    "print_job": {
+                        item["key"]: {"label": item["label"], "style": item["style"]}
+                        for item in resolved.get("print_job", [])
+                    },
                 },
-                "print_job": {
-                    item["key"]: {"label": item["label"], "style": item["style"]}
-                    for item in resolved.get("print_job", [])
-                },
+                "imprint_markdown": settings.get("imprint_markdown", ""),
+                "privacy_markdown": settings.get("privacy_markdown", ""),
             },
         }
         output = json.dumps(payload, ensure_ascii=False, indent=2)
@@ -397,12 +409,12 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         return current_app.response_class(
             output,
             mimetype="application/json",
-            headers={"Content-Disposition": "attachment; filename=NeoFab_status_messages.json"},
+            headers={"Content-Disposition": "attachment; filename=NeoFab_settings.json"},
         )
 
-    @bp.route("/settings/status-messages/import", methods=["POST"], endpoint="admin_status_messages_import")
+    @bp.route("/settings/import", methods=["POST"], endpoint="admin_settings_import")
     @roles_required("admin")
-    def admin_status_messages_import():
+    def admin_settings_import():
         trans = t
         file = request.files.get("file")
         if not file or not file.filename:
@@ -416,34 +428,38 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             flash(trans("flash_invalid_json"), "danger")
             return redirect(url_for(".admin_settings"))
 
-        raw = data.get("status_messages") if isinstance(data, dict) else data
-        if isinstance(raw, list):
-            mapped = {}
-            for entry in raw:
-                if not isinstance(entry, dict):
-                    continue
-                group = (entry.get("group") or "").strip()
-                key = (entry.get("key") or "").strip()
-                if not group or not key:
-                    continue
-                label = (entry.get("label") or "").strip()
-                style = (entry.get("style") or "").strip()
-                mapped.setdefault(group, {})[key] = {"label": label, "style": style}
-            raw = mapped
+        raw = data.get("settings") if isinstance(data, dict) else None
+        if raw is None and isinstance(data, dict):
+            raw = data
 
         if not isinstance(raw, dict):
             flash(trans("flash_invalid_json"), "danger")
             return redirect(url_for(".admin_settings"))
 
-        status_messages = filter_status_messages(raw)
         try:
-            updated_settings = load_app_settings(current_app, force_reload=True)
-            updated_settings = updated_settings.copy()
-            updated_settings["status_messages"] = status_messages
+            updated_settings = load_app_settings(current_app, force_reload=True).copy()
+            for key in (
+                "session_timeout_minutes",
+                "smtp_host",
+                "smtp_port",
+                "smtp_use_tls",
+                "smtp_use_ssl",
+                "smtp_user",
+                "smtp_password",
+                "smtp_from_address",
+                "imprint_markdown",
+                "privacy_markdown",
+            ):
+                if key in raw:
+                    updated_settings[key] = raw.get(key)
+
+            if "status_messages" in raw:
+                updated_settings["status_messages"] = filter_status_messages(raw.get("status_messages"))
+
             save_app_settings(current_app, updated_settings)
-            flash(trans("flash_status_messages_imported"), "success")
+            flash(trans("flash_settings_imported"), "success")
         except Exception:
-            current_app.logger.exception("Failed to import status messages")
+            current_app.logger.exception("Failed to import settings")
             flash(trans("flash_settings_save_error"), "danger")
 
         return redirect(url_for(".admin_settings"))

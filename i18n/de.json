@@ -241,6 +241,7 @@
   "flash_settings_invalid_timeout": "Bitte einen Timeout von mindestens 1 Minute angeben.",
   "flash_settings_save_error": "Einstellungen konnten nicht gespeichert werden.",
   "flash_settings_saved": "Einstellungen gespeichert.",
+  "flash_settings_imported": "Systemeinstellungen importiert.",
   "flash_material_created": "Material erstellt.",
   "flash_material_deleted": "Material gelöscht.",
   "flash_material_exists": "Ein Material mit diesem Namen existiert bereits.",

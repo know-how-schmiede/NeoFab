@@ -241,6 +241,7 @@
   "flash_settings_invalid_timeout": "Merci d'indiquer un délai d'au moins 1 minute.",
   "flash_settings_save_error": "Impossible d'enregistrer les paramètres.",
   "flash_settings_saved": "Paramètres enregistrés.",
+  "flash_settings_imported": "Paramètres importés.",
   "flash_material_created": "Matériau créé.",
   "flash_material_deleted": "Matériau supprimé.",
   "flash_material_exists": "Un matériau avec ce nom existe déjà.",
