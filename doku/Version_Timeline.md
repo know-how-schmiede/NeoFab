@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.6.6
+
+Layout-Anpassungen Druckaufträge und Statusanzeige Tab Allgemein
+
 ## Version 0.6.5
 
 Upload G-Code Files / Verwaltung G-Code Files

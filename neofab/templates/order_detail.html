@@ -62,7 +62,7 @@
           <div class="row g-3">
 
         <!-- Titel -->
-        <div class="col-12">
+        <div class="col-12 col-md-8">
           <label for="title" class="form-label">
             <i class="bi bi-card-text me-1"></i>
             {{ t("order_title_label") }}*
@@ -75,6 +75,43 @@
             required
             value="{{ order.title }}"
           >
+        </div>
+
+        <!-- Status & Meta-Infos -->
+        <div class="col-12 col-md-4">
+          <label class="form-label">
+            <i class="bi bi-flag me-1"></i>
+            {{ t("order_status_label") }}
+          </label>
+
+          {% if current_user.role == 'admin' %}
+            <select
+              id="status"
+              name="status"
+              class="form-select"
+            >
+              {% for value, label in order_statuses %}
+                <option value="{{ value }}"
+                        {% if order.status == value %}selected{% endif %}>
+                  {{ label }}
+                </option>
+              {% endfor %}
+            </select>
+          {% else %}
+            <div>
+              <span class="badge
+                    {% if order.status == 'new' %}bg-primary
+                    {% elif order.status == 'in_progress' %}bg-info
+                    {% elif order.status == 'on_hold' %}bg-warning text-dark
+                    {% elif order.status == 'completed' %}bg-success
+                    {% elif order.status == 'cancelled' %}bg-secondary
+                    {% else %}bg-light text-dark
+                    {% endif %}
+              ">
+                {{ status_labels.get(order.status, order.status) }}
+              </span>
+            </div>
+          {% endif %}
         </div>
 
         <!-- Beschreibung -->
@@ -172,43 +209,6 @@
               </div>
             </span>
           </div>
-        </div>
-
-        <!-- Status & Meta-Infos -->
-        <div class="col-md-4">
-          <label class="form-label">
-            <i class="bi bi-flag me-1"></i>
-            {{ t("order_status_label") }}
-          </label>
-
-          {% if current_user.role == 'admin' %}
-            <select
-              id="status"
-              name="status"
-              class="form-select"
-            >
-              {% for value, label in order_statuses %}
-                <option value="{{ value }}"
-                        {% if order.status == value %}selected{% endif %}>
-                  {{ label }}
-                </option>
-              {% endfor %}
-            </select>
-          {% else %}
-            <div>
-              <span class="badge
-                    {% if order.status == 'new' %}bg-primary
-                    {% elif order.status == 'in_progress' %}bg-info
-                    {% elif order.status == 'on_hold' %}bg-warning text-dark
-                    {% elif order.status == 'completed' %}bg-success
-                    {% elif order.status == 'cancelled' %}bg-secondary
-                    {% else %}bg-light text-dark
-                    {% endif %}
-              ">
-                {{ status_labels.get(order.status, order.status) }}
-              </span>
-            </div>
-          {% endif %}
         </div>
 
         <div class="col-md-4">
@@ -677,28 +677,11 @@
                       {% endif %}
                     </td>
                     <td>
-                      <div>
-                        {% if job.filament_m is not none %}
-                          {{ "%.2f"|format(job.filament_m) }} m
-                        {% else %}
-                          -
-                        {% endif %}
-                      </div>
-                      <div class="text-muted small">
-                        {% if job.filament_g is not none %}
-                          {{ "%.2f"|format(job.filament_g) }} g
-                        {% else %}
-                          -
-                        {% endif %}
-                      </div>
-                      <div class="text-muted small">
-                        {{ t("order_filament_material_label") }}:
-                        {% if order.filament_material %}
-                          {{ order.filament_material.name }}
-                        {% else %}
-                          -
-                        {% endif %}
-                      </div>
+                      {% if order.filament_material %}
+                        {{ order.filament_material.name }}
+                      {% else %}
+                        -
+                      {% endif %}
                     </td>
                     <td>{{ job.note or "" }}</td>
                     <td class="text-end">
