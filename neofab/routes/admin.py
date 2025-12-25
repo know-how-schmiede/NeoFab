@@ -23,6 +23,13 @@ from werkzeug.utils import secure_filename
 
 from auth_utils import roles_required
 from config import SETTINGS_FILE, coerce_positive_int, load_app_settings, save_app_settings
+from status_messages import (
+    STATUS_GROUP_DEFS,
+    STATUS_STYLE_OPTIONS,
+    default_label,
+    filter_status_messages,
+    resolve_status_messages,
+)
 from models import (
     Color,
     CostCenter,
@@ -278,12 +285,154 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     except Exception as exc:
                         current_app.logger.exception("Failed to send test email")
                         flash(trans("flash_email_test_failed").format(error=exc), "danger")
+            elif form_type == "status_messages":
+                allowed_styles = {value for value, _ in STATUS_STYLE_OPTIONS}
+                status_messages = {}
+                for group_key, defs in STATUS_GROUP_DEFS.items():
+                    group_entries = {}
+                    for item in defs:
+                        status_key = item["key"]
+                        label_field = f"status_label_{group_key}_{status_key}"
+                        style_field = f"status_style_{group_key}_{status_key}"
+                        label_value = (request.form.get(label_field) or "").strip()
+                        style_value = (request.form.get(style_field) or "").strip()
+
+                        if style_value not in allowed_styles:
+                            style_value = ""
+
+                        default_text = default_label(item, trans)
+                        default_style = item.get("style", "")
+                        if label_value == default_text:
+                            label_value = ""
+                        if style_value == default_style:
+                            style_value = ""
+
+                        if label_value or style_value:
+                            group_entries[status_key] = {"label": label_value, "style": style_value}
+
+                    if group_entries:
+                        status_messages[group_key] = group_entries
+
+                try:
+                    updated_settings = settings.copy()
+                    updated_settings["status_messages"] = status_messages
+                    save_app_settings(current_app, updated_settings)
+                    flash(trans("flash_status_messages_saved"), "success")
+                    return redirect(url_for(".admin_settings"))
+                except Exception:
+                    current_app.logger.exception("Failed to save status messages")
+                    flash(trans("flash_settings_save_error"), "danger")
+
+        status_resolved = resolve_status_messages(settings, trans)
+        status_groups = []
+        group_labels = {
+            "order": trans("status_group_orders"),
+            "print_job": trans("status_group_print_jobs"),
+        }
+        for group_key, _defs in STATUS_GROUP_DEFS.items():
+            items = []
+            for item in status_resolved.get(group_key, []):
+                items.append(
+                    {
+                        **item,
+                        "label_name": f"status_label_{group_key}_{item['key']}",
+                        "style_name": f"status_style_{group_key}_{item['key']}",
+                    }
+                )
+            status_groups.append(
+                {
+                    "key": group_key,
+                    "label": group_labels.get(group_key, group_key),
+                    "items_list": items,
+                }
+            )
+
+        status_style_options = [
+            {"value": value, "label": trans(label_key)}
+            for value, label_key in STATUS_STYLE_OPTIONS
+        ]
 
         return render_template(
             "admin_settings.html",
             settings=settings,
             settings_path=str(SETTINGS_FILE),
+            status_message_groups=status_groups,
+            status_style_options=status_style_options,
         )
+
+    @bp.route("/settings/status-messages/export", endpoint="admin_status_messages_export")
+    @roles_required("admin")
+    def admin_status_messages_export():
+        settings = load_app_settings(current_app, force_reload=True)
+        resolved = resolve_status_messages(settings, t)
+        payload = {
+            "version": APP_VERSION,
+            "status_messages": {
+                "order": {
+                    item["key"]: {"label": item["label"], "style": item["style"]}
+                    for item in resolved.get("order", [])
+                },
+                "print_job": {
+                    item["key"]: {"label": item["label"], "style": item["style"]}
+                    for item in resolved.get("print_job", [])
+                },
+            },
+        }
+        output = json.dumps(payload, ensure_ascii=False, indent=2)
+
+        return current_app.response_class(
+            output,
+            mimetype="application/json",
+            headers={"Content-Disposition": "attachment; filename=NeoFab_status_messages.json"},
+        )
+
+    @bp.route("/settings/status-messages/import", methods=["POST"], endpoint="admin_status_messages_import")
+    @roles_required("admin")
+    def admin_status_messages_import():
+        trans = t
+        file = request.files.get("file")
+        if not file or not file.filename:
+            flash(trans("flash_json_choose_file"), "warning")
+            return redirect(url_for(".admin_settings"))
+
+        try:
+            content = file.read().decode("utf-8-sig")
+            data = json.loads(content)
+        except Exception:
+            flash(trans("flash_invalid_json"), "danger")
+            return redirect(url_for(".admin_settings"))
+
+        raw = data.get("status_messages") if isinstance(data, dict) else data
+        if isinstance(raw, list):
+            mapped = {}
+            for entry in raw:
+                if not isinstance(entry, dict):
+                    continue
+                group = (entry.get("group") or "").strip()
+                key = (entry.get("key") or "").strip()
+                if not group or not key:
+                    continue
+                label = (entry.get("label") or "").strip()
+                style = (entry.get("style") or "").strip()
+                mapped.setdefault(group, {})[key] = {"label": label, "style": style}
+            raw = mapped
+
+        if not isinstance(raw, dict):
+            flash(trans("flash_invalid_json"), "danger")
+            return redirect(url_for(".admin_settings"))
+
+        status_messages = filter_status_messages(raw)
+        try:
+            updated_settings = load_app_settings(current_app, force_reload=True)
+            updated_settings = updated_settings.copy()
+            updated_settings["status_messages"] = status_messages
+            save_app_settings(current_app, updated_settings)
+            flash(trans("flash_status_messages_imported"), "success")
+        except Exception:
+            current_app.logger.exception("Failed to import status messages")
+            flash(trans("flash_settings_save_error"), "danger")
+
+        return redirect(url_for(".admin_settings"))
 
     # User Management -------------------------------------------------------
 

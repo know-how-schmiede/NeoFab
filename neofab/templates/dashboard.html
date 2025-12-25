@@ -51,15 +51,8 @@
               </td>
 
               <td>
-                <span class="badge
-                    {% if o.status == 'new' %}bg-primary
-                    {% elif o.status == 'in_progress' %}bg-info
-                    {% elif o.status == 'on_hold' %}bg-warning text-dark
-                    {% elif o.status == 'completed' %}bg-success
-                    {% elif o.status == 'cancelled' %}bg-secondary
-                    {% else %}bg-light text-dark
-                    {% endif %}
-                ">
+                {% set status_style = status_styles.get(o.status, "bg-light text-dark") %}
+                <span class="badge {{ status_style }}">
                   {{ status_labels.get(o.status, o.status) }}
                 </span>
               </td>

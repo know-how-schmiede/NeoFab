@@ -7,6 +7,8 @@ from typing import Any, Dict, Optional
 
 from cryptography.fernet import Fernet, InvalidToken
 
+from status_messages import normalize_status_messages
+
 BASE_DIR = Path(__file__).resolve().parent
 INSTANCE_DIR = BASE_DIR / "instance"
 SETTINGS_FILE = INSTANCE_DIR / "config.json"
@@ -21,6 +23,7 @@ DEFAULT_SETTINGS = {
     "smtp_password": "",
     "smtp_password_enc": "",
     "smtp_from_address": "",
+    "status_messages": {},
 }
 
 _settings_cache: Optional[Dict[str, Any]] = None
@@ -132,6 +135,9 @@ def load_app_settings(app, force_reload: bool = False) -> Dict[str, Any]:
                     else str(loaded.get("smtp_password", "") or "")
                 )
                 settings["smtp_from_address"] = str(loaded.get("smtp_from_address", "") or "").strip()
+                settings["status_messages"] = normalize_status_messages(
+                    loaded.get("status_messages", DEFAULT_SETTINGS.get("status_messages"))
+                )
             _settings_mtime = SETTINGS_FILE.stat().st_mtime
         else:
             _settings_mtime = None
@@ -165,6 +171,9 @@ def save_app_settings(app, new_settings: Dict[str, Any]) -> Dict[str, Any]:
         settings["smtp_user"] = str(new_settings.get("smtp_user", "") or "").strip()
         settings["smtp_password"] = str(new_settings.get("smtp_password", "") or "")
         settings["smtp_from_address"] = str(new_settings.get("smtp_from_address", "") or "").strip()
+        settings["status_messages"] = normalize_status_messages(
+            new_settings.get("status_messages", DEFAULT_SETTINGS.get("status_messages"))
+        )
 
     settings["session_timeout_minutes"] = _apply_session_timeout_setting(
         app,

@@ -65,6 +65,11 @@ from config import (
     load_app_settings,
     save_app_settings,
 )
+from status_messages import (
+    ORDER_STATUS_DEFS,
+    PRINT_JOB_STATUS_DEFS,
+    build_status_context,
+)
 from auth_utils import (
     roles_required,
     register_session_timeout,
@@ -200,31 +205,15 @@ logging.basicConfig(level=logging.DEBUG)
 app.logger.setLevel(logging.DEBUG)
 
 # Auftrags-Status-Codes (interne Werte + Labels)
-ORDER_STATUSES = [
-    ("new", "New"),
-    ("in_progress", "In progress"),
-    ("on_hold", "On hold"),
-    ("completed", "Completed"),
-    ("cancelled", "Cancelled"),
-]
+ORDER_STATUSES = [(item["key"], item["label"]) for item in ORDER_STATUS_DEFS]
+ORDER_STATUS_VALUES = [item["key"] for item in ORDER_STATUS_DEFS]
 
 # Mapping der Status-Codes zu lesbaren Labels
-STATUS_LABELS = {value: label for value, label in ORDER_STATUSES}
 
 # Abw├ñrtskompatibilit├ñt f├╝r alte deutsche Statuswerte
-STATUS_LABELS.setdefault("neu", "New")
-STATUS_LABELS.setdefault("in_bearbeitung", "In progress")
-STATUS_LABELS.setdefault("abgeschlossen", "Completed")
 
-PRINT_JOB_STATUSES = [
-    ("upload", "print_job_status_upload"),
-    ("preparation", "print_job_status_preparation"),
-    ("started", "print_job_status_started"),
-    ("error", "print_job_status_error"),
-    ("finished", "print_job_status_finished"),
-    ("cancelled", "print_job_status_cancelled"),
-]
-PRINT_JOB_STATUS_LABELS = {value: label for value, label in PRINT_JOB_STATUSES}
+PRINT_JOB_STATUSES = [(item["key"], item["label"]) for item in PRINT_JOB_STATUS_DEFS]
+PRINT_JOB_STATUS_VALUES = [item["key"] for item in PRINT_JOB_STATUS_DEFS]
 
 # Secret Key & Datenbank-Config
 app.config["SECRET_KEY"] = os.environ.get("NEOFAB_SECRET_KEY", "dev-secret-change-me")
@@ -236,6 +225,11 @@ app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 load_app_settings(app)
+
+
+def get_status_context(translator=None) -> dict:
+    settings = load_app_settings(app)
+    return build_status_context(settings, translator)
 
 
 # ============================================================
@@ -263,9 +257,15 @@ def inject_globals():
         default_trans = get_translations(DEFAULT_LANG)
         return lang_trans.get(key, default_trans.get(key, key))
 
+    status_context = get_status_context(t)
     return {
         "app_version": APP_VERSION,
-        "status_labels": STATUS_LABELS,
+        "status_labels": status_context["order_status_labels"],
+        "status_styles": status_context["order_status_styles"],
+        "print_job_status_labels": status_context["print_job_status_labels"],
+        "print_job_status_styles": status_context["print_job_status_styles"],
+        "order_statuses": status_context["order_statuses"],
+        "print_job_statuses": status_context["print_job_statuses"],
         "current_language": current_language,
         "t": t,
     }
@@ -1004,7 +1004,8 @@ def send_admin_order_notification(order: Order) -> bool:
         except Exception:
             order_url = url_for("order_detail", order_id=order.id)
 
-        status_label = STATUS_LABELS.get(order.status, order.status)
+        status_labels = get_status_context().get("order_status_labels", {})
+        status_label = status_labels.get(order.status, order.status)
         created_by = current_user.email if current_user.is_authenticated else ""
         created_at = order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else ""
 
@@ -1085,8 +1086,9 @@ def send_order_status_change_notification(order: Order, old_status: str, new_sta
         except Exception:
             order_url = url_for("order_detail", order_id=order.id)
 
-        old_label = STATUS_LABELS.get(old_status, old_status)
-        new_label = STATUS_LABELS.get(new_status, new_status)
+        status_labels = get_status_context().get("order_status_labels", {})
+        old_label = status_labels.get(old_status, old_status)
+        new_label = status_labels.get(new_status, new_status)
         changed_by = current_user.email if current_user.is_authenticated else ""
 
         msg = EmailMessage()
@@ -1524,6 +1526,8 @@ def new_order():
     cost_centers = CostCenter.query.order_by(CostCenter.name.asc()).all()
     printer_profiles = PrinterProfile.query.filter_by(active=True).order_by(PrinterProfile.name.asc()).all()
     filament_materials = FilamentMaterial.query.filter_by(active=True).order_by(FilamentMaterial.name.asc()).all()
+    trans = inject_globals().get("t")
+    status_context = get_status_context(trans)
 
     if request.method == "POST":
         title = request.form.get("title", "").strip()
@@ -1533,7 +1537,7 @@ def new_order():
         if current_user.role == "admin":
             # Admin darf initialen Status w├ñhlen
             status = request.form.get("status", "new")
-            valid_status_values = [s[0] for s in ORDER_STATUSES]
+            valid_status_values = ORDER_STATUS_VALUES
             if status not in valid_status_values:
                 status = "new"
         else:
@@ -1572,13 +1576,11 @@ def new_order():
         if language not in SUPPORTED_LANGS:
             language = "en"
 
-        trans = inject_globals().get("t")
-
         if not title:
             flash(trans("flash_title_required"), "danger")
             return render_template(
                 "orders_new.html",
-                order_statuses=ORDER_STATUSES,
+                order_statuses=status_context["order_statuses"],
                 materials=materials,
                 colors=colors,
                 cost_centers=cost_centers,
@@ -1709,7 +1711,7 @@ def new_order():
     # GET
     return render_template(
         "orders_new.html",
-        order_statuses=ORDER_STATUSES,
+        order_statuses=status_context["order_statuses"],
         materials=materials,
         colors=colors,
         cost_centers=cost_centers,
@@ -1863,7 +1865,7 @@ def order_detail(order_id):
 
                 # Statuswechsel nur f├╝r Admin
                 if current_user.role == "admin":
-                    valid_status_values = [s[0] for s in ORDER_STATUSES]
+                    valid_status_values = ORDER_STATUS_VALUES
                     app.logger.debug(f"[order_detail] Valid status values: {valid_status_values}")
                     if status in valid_status_values:
                         order.status = status
@@ -2123,7 +2125,7 @@ def order_detail(order_id):
                     flash(trans("flash_print_job_invalid_filament"), "danger")
                     return redirect(url_for("order_detail", order_id=order.id))
 
-            valid_statuses = {value for value, _ in PRINT_JOB_STATUSES}
+            valid_statuses = set(PRINT_JOB_STATUS_VALUES)
             status = status_raw if status_raw in valid_statuses else "upload"
 
             printer_profile_id = request.form.get("printer_profile_id") or None
@@ -2261,7 +2263,7 @@ def order_detail(order_id):
                     flash(trans("flash_print_job_invalid_filament"), "danger")
                     return redirect(url_for("order_detail", order_id=order.id))
 
-            valid_statuses = {value for value, _ in PRINT_JOB_STATUSES}
+            valid_statuses = set(PRINT_JOB_STATUS_VALUES)
             status = status_raw if status_raw in valid_statuses else (job.status or "upload")
 
             job.note = note or None
@@ -2482,6 +2484,7 @@ def order_detail(order_id):
         .all()
     )
 
+    status_context = get_status_context(inject_globals().get("t"))
     app.logger.debug(
         f"[order_detail] Render detail for order {order.id}: status={order.status!r}, "
         f"messages_count={len(messages)}, material_id={order.material_id}, color_id={order.color_id}"
@@ -2490,15 +2493,16 @@ def order_detail(order_id):
         "order_detail.html",
         order=order,
         messages=messages,
-        order_statuses=ORDER_STATUSES,
+        order_statuses=status_context["order_statuses"],
         materials=materials,
         colors=colors,
         cost_centers=cost_centers,
         printer_profiles=printer_profiles,
         filament_materials=filament_materials,
         print_jobs=print_jobs,
-        print_job_statuses=PRINT_JOB_STATUSES,
-        print_job_status_labels=PRINT_JOB_STATUS_LABELS,
+        print_job_statuses=status_context["print_job_statuses"],
+        print_job_status_labels=status_context["print_job_status_labels"],
+        print_job_status_styles=status_context["print_job_status_styles"],
         tags_value=order.tags_entry.tags if order.tags_entry else "",
     )
 
@@ -2791,6 +2795,7 @@ def dashboard():
     app.logger.debug(
         f"[dashboard] user={current_user.email}, role={current_user.role}"
     )
+    status_context = get_status_context(inject_globals().get("t"))
 
     # 1) Orders laden (je nach Rolle)
     if current_user.role == "admin":
@@ -2814,7 +2819,8 @@ def dashboard():
             "dashboard.html",
             orders=[],
             last_new_message={},
-            status_labels=STATUS_LABELS,
+            status_labels=status_context["order_status_labels"],
+            status_styles=status_context["order_status_styles"],
             file_counts={},   # wichtig, damit Template file_counts kennt
         )
 
@@ -2888,7 +2894,8 @@ def dashboard():
         "dashboard.html",
         orders=orders,
         last_new_message=last_new_message,
-        status_labels=STATUS_LABELS,
+        status_labels=status_context["order_status_labels"],
+        status_styles=status_context["order_status_styles"],
         file_counts=file_counts,
     )
 
@@ -2996,6 +3003,7 @@ def build_order_context(order, translator) -> dict:
             return ""
 
     generated_at = fmt_dt(datetime.now())
+    status_labels = get_status_context(translator).get("order_status_labels", {})
 
     return {
         "app_name": "NeoFab",
@@ -3005,7 +3013,7 @@ def build_order_context(order, translator) -> dict:
         "order_dict": {
             "id": order.id,
             "title": order.title,
-            "status": STATUS_LABELS.get(order.status, order.status),
+            "status": status_labels.get(order.status, order.status),
             "owner": order.user.email if order.user else "",
             "salutation": order.user.salutation if order.user else "",
             "first_name": order.user.first_name if order.user else "",
@@ -3104,12 +3112,13 @@ def _build_order_pdf(order, translator) -> bytes:
     """
     lines: List[Tuple[str, str]] = []
     add = lambda label, value: lines.append((label, value)) if value else None
+    status_labels = get_status_context(translator).get("order_status_labels", {})
 
     add("NeoFab", f"Version {APP_VERSION}")
     add("", "")
     add("Order ID", f"#{order.id}")
     add(translator("order_title_label"), order.title)
-    add(translator("order_status_label"), STATUS_LABELS.get(order.status, order.status))
+    add(translator("order_status_label"), status_labels.get(order.status, order.status))
     add(translator("order_owner_label"), order.user.email if order.user else "")
     add(translator("order_material_label"), order.material.name if order.material else "")
     add(translator("order_color_label"), order.color.name if order.color else "")

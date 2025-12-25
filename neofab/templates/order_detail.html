@@ -99,15 +99,8 @@
             </select>
           {% else %}
             <div>
-              <span class="badge
-                    {% if order.status == 'new' %}bg-primary
-                    {% elif order.status == 'in_progress' %}bg-info
-                    {% elif order.status == 'on_hold' %}bg-warning text-dark
-                    {% elif order.status == 'completed' %}bg-success
-                    {% elif order.status == 'cancelled' %}bg-secondary
-                    {% else %}bg-light text-dark
-                    {% endif %}
-              ">
+              {% set status_style = status_styles.get(order.status, "bg-light text-dark") %}
+              <span class="badge {{ status_style }}">
                 {{ status_labels.get(order.status, order.status) }}
               </span>
             </div>
@@ -644,7 +637,8 @@
               <tbody>
                 {% for job in print_jobs %}
                   {% set status_value = job.status or '' %}
-                  {% set status_label_key = print_job_status_labels.get(status_value, status_value) %}
+                  {% set status_label = print_job_status_labels.get(status_value, status_value) %}
+                  {% set status_style = print_job_status_styles.get(status_value, "bg-secondary") %}
                   <tr>
                     <td>
                       <div class="fw-semibold">{{ job.original_name }}</div>
@@ -656,15 +650,7 @@
                       </div>
                     </td>
                     <td>
-                      <span class="badge
-                            {% if status_value == 'finished' %}bg-success
-                            {% elif status_value == 'error' %}bg-danger
-                            {% elif status_value == 'started' %}bg-primary
-                            {% elif status_value == 'preparation' %}bg-info text-dark
-                            {% else %}bg-secondary
-                            {% endif %}">
-                        {{ status_label_key and t(status_label_key) or status_value }}
-                      </span>
+                      <span class="badge {{ status_style }}">{{ status_label }}</span>
                     </td>
                     <td>
                       {{ job.started_at.strftime("%Y-%m-%d %H:%M") if job.started_at else "-" }}
@@ -752,9 +738,9 @@
               <div class="col-md-6">
                 <label for="print_status" class="form-label">{{ t("print_jobs_label_status") }}</label>
                 <select id="print_status" name="print_status" class="form-select">
-                  {% for value, label_key in print_job_statuses %}
+                  {% for value, label in print_job_statuses %}
                     <option value="{{ value }}" {% if value == 'upload' %}selected{% endif %}>
-                      {{ t(label_key) }}
+                      {{ label }}
                     </option>
                   {% endfor %}
                 </select>
@@ -861,8 +847,8 @@
               <div class="col-md-6">
                 <label for="edit_print_status" class="form-label">{{ t("print_jobs_label_status") }}</label>
                 <select id="edit_print_status" name="edit_print_status" class="form-select">
-                  {% for value, label_key in print_job_statuses %}
-                    <option value="{{ value }}">{{ t(label_key) }}</option>
+                  {% for value, label in print_job_statuses %}
+                    <option value="{{ value }}">{{ label }}</option>
                   {% endfor %}
                 </select>
               </div>

@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.6.7
+
+Status-Meldungen Editieren, Systemeinstellugnen Ex- und Import
+
 ## Version 0.6.6
 
 Layout-Anpassungen Druckaufträge und Statusanzeige Tab Allgemein
@@ -98,8 +102,7 @@ PDF Download Order-Details
 
 ## Version 0.4.5
 
-Bemerkung und Anzahl bei Datei-Upload 3D 
-Modelle
+Bemerkung und Anzahl bei Datei-Upload 3D Modelle
 
 ## Version 0.4.4
 
@@ -167,8 +170,7 @@ File löschen, Badge-Icon für STL / 3mf, File-Anzahl in Dashboard
 
 ## Version 0.3.0
 
-File-Upload in Uploud-Verzeichnis, mehrere 3D 
-Modelle können hochgeladen werden
+File-Upload in Uploud-Verzeichnis, mehrere 3D Modelle können hochgeladen werden
 
 ## Version 0.2.1
 

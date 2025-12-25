@@ -18,6 +18,11 @@
           {{ t("admin_settings_tab_email") }}
         </button>
       </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="status-messages-tab" data-bs-toggle="tab" data-bs-target="#status-messages" type="button" role="tab" aria-controls="status-messages" aria-selected="false">
+          {{ t("admin_settings_tab_status_messages") }}
+        </button>
+      </li>
     </ul>
 
     <div class="tab-content pt-3">
@@ -116,6 +121,82 @@
             </button>
           </div>
         </form>
+      </div>
+
+      <div class="tab-pane fade" id="status-messages" role="tabpanel" aria-labelledby="status-messages-tab">
+        <form method="post" class="row g-3">
+          <input type="hidden" name="form_type" value="status_messages">
+          <div class="col-12">
+            <div class="alert alert-secondary small mb-0">
+              {{ t("status_messages_hint") }}
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="table-responsive">
+              <table class="table table-striped align-middle">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">{{ t("status_messages_group") }}</th>
+                    <th style="width: 15%;">{{ t("status_messages_key") }}</th>
+                    <th>{{ t("status_messages_text") }}</th>
+                    <th style="width: 22%;">{{ t("status_messages_style") }}</th>
+                    <th style="width: 18%;">{{ t("status_messages_preview") }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for group in status_message_groups %}
+                    {% for item in group.items_list %}
+                      <tr>
+                        <td>{{ group.label }}</td>
+                        <td><code>{{ item.key }}</code></td>
+                        <td>
+                          <input type="text"
+                                 class="form-control"
+                                 name="{{ item.label_name }}"
+                                 value="{{ item.label }}">
+                        </td>
+                        <td>
+                          <select class="form-select" name="{{ item.style_name }}">
+                            {% for option in status_style_options %}
+                              <option value="{{ option.value }}" {% if option.value == item.style %}selected{% endif %}>
+                                {{ option.label }}
+                              </option>
+                            {% endfor %}
+                          </select>
+                        </td>
+                        <td>
+                          <span class="badge {{ item.style }}">{{ item.label }}</span>
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="col-12 d-flex gap-2 align-items-center">
+            <button type="submit" class="btn btn-primary">{{ t("btn_save") }}</button>
+            <a href="{{ url_for('admin.admin_panel') }}" class="btn btn-secondary">
+              {{ t("btn_back_admin") }}
+            </a>
+          </div>
+        </form>
+
+        <hr>
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+          <a href="{{ url_for('admin.admin_status_messages_export') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-download me-1"></i>{{ t("btn_export_json") }}
+          </a>
+          <form action="{{ url_for('admin.admin_status_messages_import') }}" method="post" enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
+            <label class="form-label mb-0 small">{{ t("label_import_json") }}</label>
+            <input type="file" name="file" accept=".json,application/json" class="form-control form-control-sm" required>
+            <button type="submit" class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-upload me-1"></i>{{ t("btn_import") }}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   </div>
