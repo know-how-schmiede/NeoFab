@@ -8,8 +8,12 @@
     <h2 class="h5 mb-0">{{ t("footer_privacy") }}</h2>
   </div>
   <div class="card-body">
-    <p class="mb-2">Diese Seite dient als Platzhalter für Ihre Datenschutzhinweise.</p>
-    <p class="mb-0 text-muted small">Beschreiben Sie hier, welche Daten Sie verarbeiten, zu welchem Zweck und mit welchen Rechtsgrundlagen.</p>
+    {% if has_privacy %}
+      {{ privacy_html }}
+    {% else %}
+      <p class="mb-2">Diese Seite dient als Platzhalter für Ihre Datenschutzhinweise.</p>
+      <p class="mb-0 text-muted small">Beschreiben Sie hier, welche Daten Sie verarbeiten, zu welchem Zweck und mit welchen Rechtsgrundlagen.</p>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

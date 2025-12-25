@@ -24,6 +24,8 @@ DEFAULT_SETTINGS = {
     "smtp_password_enc": "",
     "smtp_from_address": "",
     "status_messages": {},
+    "imprint_markdown": "",
+    "privacy_markdown": "",
 }
 
 _settings_cache: Optional[Dict[str, Any]] = None
@@ -138,6 +140,8 @@ def load_app_settings(app, force_reload: bool = False) -> Dict[str, Any]:
                 settings["status_messages"] = normalize_status_messages(
                     loaded.get("status_messages", DEFAULT_SETTINGS.get("status_messages"))
                 )
+                settings["imprint_markdown"] = str(loaded.get("imprint_markdown", "") or "")
+                settings["privacy_markdown"] = str(loaded.get("privacy_markdown", "") or "")
             _settings_mtime = SETTINGS_FILE.stat().st_mtime
         else:
             _settings_mtime = None
@@ -174,6 +178,8 @@ def save_app_settings(app, new_settings: Dict[str, Any]) -> Dict[str, Any]:
         settings["status_messages"] = normalize_status_messages(
             new_settings.get("status_messages", DEFAULT_SETTINGS.get("status_messages"))
         )
+        settings["imprint_markdown"] = str(new_settings.get("imprint_markdown", "") or "")
+        settings["privacy_markdown"] = str(new_settings.get("privacy_markdown", "") or "")
 
     settings["session_timeout_minutes"] = _apply_session_timeout_setting(
         app,

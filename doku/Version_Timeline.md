@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.6.9
+
+MarkDown für Impressum und Datenschutz
+
 ## Version 0.6.8
 
 Spalte Anzahl Druckaufträge im Dashboard

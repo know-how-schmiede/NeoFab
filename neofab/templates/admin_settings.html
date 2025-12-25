@@ -23,6 +23,11 @@
           {{ t("admin_settings_tab_status_messages") }}
         </button>
       </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="legal-tab" data-bs-toggle="tab" data-bs-target="#legal" type="button" role="tab" aria-controls="legal" aria-selected="false">
+          {{ t("admin_settings_tab_legal") }}
+        </button>
+      </li>
     </ul>
 
     <div class="tab-content pt-3">
@@ -197,6 +202,46 @@
             </button>
           </form>
         </div>
+      </div>
+
+      <div class="tab-pane fade" id="legal" role="tabpanel" aria-labelledby="legal-tab">
+        <form method="post" class="row g-3">
+          <input type="hidden" name="form_type" value="legal">
+          <div class="col-12">
+            <label for="imprint_markdown" class="form-label">
+              <i class="bi bi-file-text me-1"></i>
+              {{ t("settings_imprint_label") }}
+            </label>
+            <textarea
+              class="form-control"
+              id="imprint_markdown"
+              name="imprint_markdown"
+              rows="8"
+            >{{ settings.get("imprint_markdown", "") }}</textarea>
+            <div class="form-text">{{ t("settings_markdown_help") }}</div>
+          </div>
+
+          <div class="col-12">
+            <label for="privacy_markdown" class="form-label">
+              <i class="bi bi-shield-lock me-1"></i>
+              {{ t("settings_privacy_label") }}
+            </label>
+            <textarea
+              class="form-control"
+              id="privacy_markdown"
+              name="privacy_markdown"
+              rows="8"
+            >{{ settings.get("privacy_markdown", "") }}</textarea>
+            <div class="form-text">{{ t("settings_markdown_help") }}</div>
+          </div>
+
+          <div class="col-12 d-flex gap-2 align-items-center">
+            <button type="submit" class="btn btn-primary">{{ t("btn_save") }}</button>
+            <a href="{{ url_for('admin.admin_panel') }}" class="btn btn-secondary">
+              {{ t("btn_back_admin") }}
+            </a>
+          </div>
+        </form>
       </div>
     </div>
   </div>

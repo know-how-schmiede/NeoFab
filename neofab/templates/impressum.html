@@ -8,8 +8,12 @@
     <h2 class="h5 mb-0">{{ t("footer_imprint") }}</h2>
   </div>
   <div class="card-body">
-    <p class="mb-2">Diese Seite dient als Platzhalter für das Impressum.</p>
-    <p class="mb-0 text-muted small">Bitte ergänzen Sie hier die rechtlich erforderlichen Angaben Ihres Betriebs.</p>
+    {% if has_imprint %}
+      {{ imprint_html }}
+    {% else %}
+      <p class="mb-2">Diese Seite dient als Platzhalter für das Impressum.</p>
+      <p class="mb-0 text-muted small">Bitte ergänzen Sie hier die rechtlich erforderlichen Angaben Ihres Betriebs.</p>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

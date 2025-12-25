@@ -29,6 +29,13 @@ from sqlalchemy import func, text
 
 from markupsafe import Markup, escape
 
+try:
+    import bleach
+    import markdown
+except Exception:
+    bleach = None
+    markdown = None
+
 from flask import (
     Flask,
     render_template,
@@ -1250,15 +1257,75 @@ def landing():
     """Einfache Landingpage vor dem Login."""
     return render_template("landing.html")
 
+def _render_legal_markdown(text: str) -> Markup:
+    if not markdown or not bleach:
+        return Markup(f"<pre>{escape(text or '')}</pre>")
+
+    html = markdown.markdown(
+        text or "",
+        extensions=["extra", "sane_lists", "tables"],
+        output_format="html",
+    )
+
+    allowed_tags = [tag for tag in bleach.sanitizer.ALLOWED_TAGS if tag != "a"] + [
+        "p",
+        "pre",
+        "span",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "table",
+        "thead",
+        "tbody",
+        "tr",
+        "th",
+        "td",
+        "code",
+        "hr",
+        "br",
+        "ul",
+        "ol",
+        "li",
+        "blockquote",
+    ]
+    allowed_attrs = {
+        "code": ["class"],
+    }
+
+    cleaned = bleach.clean(
+        html,
+        tags=allowed_tags,
+        attributes=allowed_attrs,
+        strip=True,
+    )
+    return Markup(cleaned)
+
 
 @app.route("/impressum")
 def imprint():
-    return render_template("impressum.html")
+    settings = load_app_settings(app)
+    imprint_md = settings.get("imprint_markdown") or ""
+    imprint_html = _render_legal_markdown(imprint_md)
+    return render_template(
+        "impressum.html",
+        imprint_html=imprint_html,
+        has_imprint=bool(imprint_md.strip()),
+    )
 
 
 @app.route("/datenschutz")
 def privacy():
-    return render_template("datenschutz.html")
+    settings = load_app_settings(app)
+    privacy_md = settings.get("privacy_markdown") or ""
+    privacy_html = _render_legal_markdown(privacy_md)
+    return render_template(
+        "datenschutz.html",
+        privacy_html=privacy_html,
+        has_privacy=bool(privacy_md.strip()),
+    )
 
 
 @app.route("/info")

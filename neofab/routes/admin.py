@@ -322,6 +322,20 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 except Exception:
                     current_app.logger.exception("Failed to save status messages")
                     flash(trans("flash_settings_save_error"), "danger")
+            elif form_type == "legal":
+                imprint_markdown = request.form.get("imprint_markdown") or ""
+                privacy_markdown = request.form.get("privacy_markdown") or ""
+
+                try:
+                    updated_settings = settings.copy()
+                    updated_settings["imprint_markdown"] = imprint_markdown
+                    updated_settings["privacy_markdown"] = privacy_markdown
+                    save_app_settings(current_app, updated_settings)
+                    flash(trans("flash_legal_settings_saved"), "success")
+                    return redirect(url_for(".admin_settings"))
+                except Exception:
+                    current_app.logger.exception("Failed to save legal settings")
+                    flash(trans("flash_settings_save_error"), "danger")
 
         status_resolved = resolve_status_messages(settings, trans)
         status_groups = []
