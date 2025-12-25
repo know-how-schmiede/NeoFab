@@ -1,5 +1,13 @@
 # Timeline NeoFab
 
+## Version 0.6.11
+
+APP.py verkleinern, Funktionen in externe Module auslagern
+
+## Version 0.6.10
+
+JSON-Ex- und Import für alle Systemeinstellungen
+
 ## Version 0.6.9
 
 MarkDown für Impressum und Datenschutz

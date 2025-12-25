@@ -17,24 +17,14 @@ import binascii
 import mimetypes
 import os
 import logging
-import json
 import re
-import smtplib
 import math
 import struct
 from urllib.parse import parse_qs, urlparse
-from email.message import EmailMessage
 
 from sqlalchemy import func, text
 
 from markupsafe import Markup, escape
-
-try:
-    import bleach
-    import markdown
-except Exception:
-    bleach = None
-    markdown = None
 
 from flask import (
     Flask,
@@ -71,6 +61,12 @@ from config import (
     coerce_positive_int,
     load_app_settings,
     save_app_settings,
+)
+from i18n_utils import DEFAULT_LANG, SUPPORTED_LANGS, get_translations
+from legal_markdown import render_legal_markdown
+from notifications import (
+    send_admin_order_notification,
+    send_order_status_change_notification,
 )
 from status_messages import (
     ORDER_STATUS_DEFS,
@@ -163,11 +159,6 @@ MODEL_THUMB_MAX_TRIANGLES = 12000
 MODEL_THUMB_SMALL_TRIANGLES = 3000
 MODEL_THUMB_LARGE_TRIANGLES = 8000
 
-# ├£bersetzungen aus externer Struktur laden (Ordner i18n im Projekt-Root)
-I18N_DIR = BASE_DIR.parent / "i18n"
-DEFAULT_LANG = "en"
-SUPPORTED_LANGS = ("en", "de", "fr")
-_translations_cache = {}
 
 # Optionaler PDF-Template-Pfad (HTML)
 PDF_TEMPLATE_PATH = os.environ.get(
@@ -175,34 +166,6 @@ PDF_TEMPLATE_PATH = os.environ.get(
     str(BASE_DIR.parent / "doku" / "pdf_template.html"),
 )
 
-
-def load_language_file(lang: str) -> dict:
-    """
-    L├ñdt eine Sprachdatei (JSON) aus i18n/<lang>.json.
-    Gibt ein leeres Dict zur├╝ck, falls nicht vorhanden/lesbar.
-    """
-    lang = (lang or DEFAULT_LANG).lower()
-    file_path = I18N_DIR / f"{lang}.json"
-    if not file_path.exists():
-        return {}
-    try:
-        with file_path.open("r", encoding="utf-8") as f:
-            data = json.load(f)
-            if isinstance(data, dict):
-                return data
-    except Exception:
-        pass
-    return {}
-
-
-def get_translations(lang: str) -> dict:
-    """
-    Cached Zugriff auf ├£bersetzungen.
-    """
-    lang = (lang or DEFAULT_LANG).lower()
-    if lang not in _translations_cache:
-        _translations_cache[lang] = load_language_file(lang)
-    return _translations_cache[lang]
 
 # Maximal erlaubte Upload-Gr├Â├ƒe (z.B. 50 MB)
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
@@ -956,194 +919,6 @@ def update_order_file_preview(order_file: OrderFile, source_path: Path) -> None:
     order_file.preview_status = "ok" if (small_ok or large_ok) else "failed"
 
 
-def _collect_order_recipients(order: Order, include_owner: bool = False) -> list[str]:
-    recipients: list[str] = []
-    seen = set()
-
-    admin_users = User.query.filter_by(role="admin").all()
-    for user in admin_users:
-        email = (user.email or "").strip()
-        if not email:
-            continue
-        key = email.lower()
-        if key in seen:
-            continue
-        recipients.append(email)
-        seen.add(key)
-
-    if include_owner and order.user:
-        owner_email = (order.user.email or "").strip()
-        if owner_email:
-            key = owner_email.lower()
-            if key not in seen:
-                recipients.append(owner_email)
-                seen.add(key)
-
-    return recipients
-
-
-def send_admin_order_notification(order: Order) -> bool:
-    """
-    Send a notification email to all admin users (plus order creator) for a newly created order.
-    Never raises; returns True on success, False otherwise.
-    """
-    try:
-        settings = load_app_settings(app, force_reload=True)
-        smtp_host = settings.get("smtp_host")
-        smtp_port = settings.get("smtp_port")
-        smtp_use_tls = bool(settings.get("smtp_use_tls"))
-        smtp_use_ssl = bool(settings.get("smtp_use_ssl"))
-        smtp_user = settings.get("smtp_user")
-        smtp_password = settings.get("smtp_password")
-        smtp_from = settings.get("smtp_from_address")
-
-        if not smtp_host or not smtp_port or not smtp_from:
-            app.logger.info("SMTP not configured, skipping admin notification.")
-            return False
-
-        recipients = _collect_order_recipients(order, include_owner=True)
-        if not recipients:
-            app.logger.info("No recipients found, skipping admin notification.")
-            return False
-
-        try:
-            order_url = url_for("order_detail", order_id=order.id, _external=True)
-        except Exception:
-            order_url = url_for("order_detail", order_id=order.id)
-
-        status_labels = get_status_context().get("order_status_labels", {})
-        status_label = status_labels.get(order.status, order.status)
-        created_by = current_user.email if current_user.is_authenticated else ""
-        created_at = order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else ""
-
-        msg = EmailMessage()
-        msg["Subject"] = f"NeoFab: New order #{order.id}"
-        msg["From"] = smtp_from
-        msg["To"] = ", ".join(recipients)
-        if order.user and order.user.email:
-            msg["Reply-To"] = order.user.email
-
-        body_lines = [
-            "A new order has been created.",
-            f"ID: {order.id}",
-            f"Title: {order.title}",
-            f"Status: {status_label}",
-            f"Created by: {created_by}",
-            f"Created at: {created_at}",
-            f"Link: {order_url}",
-        ]
-        if order.summary_short:
-            body_lines.extend(["", "Summary:", order.summary_short])
-
-        msg.set_content("\n".join(body_lines))
-
-        if smtp_use_ssl:
-            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10)
-        else:
-            server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
-
-        with server:
-            server.ehlo()
-            if smtp_use_tls and not smtp_use_ssl:
-                server.starttls()
-                server.ehlo()
-            if smtp_user:
-                server.login(smtp_user, smtp_password or "")
-            server.send_message(msg, from_addr=smtp_user or smtp_from)
-
-        app.logger.info(
-            "Sent admin notification for order %s to %s",
-            order.id,
-            ", ".join(recipients),
-        )
-        return True
-    except Exception:
-        app.logger.exception(
-            "Failed to send admin notification for order %s", getattr(order, "id", "?")
-        )
-        return False
-
-
-def send_order_status_change_notification(order: Order, old_status: str, new_status: str) -> bool:
-    """
-    Notify admins and the order owner about a status change.
-    Never raises; returns True on success, False otherwise.
-    """
-    try:
-        settings = load_app_settings(app, force_reload=True)
-        smtp_host = settings.get("smtp_host")
-        smtp_port = settings.get("smtp_port")
-        smtp_use_tls = bool(settings.get("smtp_use_tls"))
-        smtp_use_ssl = bool(settings.get("smtp_use_ssl"))
-        smtp_user = settings.get("smtp_user")
-        smtp_password = settings.get("smtp_password")
-        smtp_from = settings.get("smtp_from_address")
-
-        if not smtp_host or not smtp_port or not smtp_from:
-            app.logger.info("SMTP not configured, skipping status notification.")
-            return False
-
-        recipients = _collect_order_recipients(order, include_owner=True)
-        if not recipients:
-            app.logger.info("No recipients found, skipping status notification.")
-            return False
-
-        try:
-            order_url = url_for("order_detail", order_id=order.id, _external=True)
-        except Exception:
-            order_url = url_for("order_detail", order_id=order.id)
-
-        status_labels = get_status_context().get("order_status_labels", {})
-        old_label = status_labels.get(old_status, old_status)
-        new_label = status_labels.get(new_status, new_status)
-        changed_by = current_user.email if current_user.is_authenticated else ""
-
-        msg = EmailMessage()
-        msg["Subject"] = f"NeoFab: Order #{order.id} status changed to {new_label}"
-        msg["From"] = smtp_from
-        msg["To"] = ", ".join(recipients)
-        if order.user and order.user.email:
-            msg["Reply-To"] = order.user.email
-
-        body_lines = [
-            "The order status has changed.",
-            f"ID: {order.id}",
-            f"Title: {order.title}",
-            f"Status: {old_label} -> {new_label}",
-            f"Changed by: {changed_by}",
-            f"Link: {order_url}",
-        ]
-        if order.summary_short:
-            body_lines.extend(["", "Summary:", order.summary_short])
-
-        msg.set_content("\n".join(body_lines))
-
-        if smtp_use_ssl:
-            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10)
-        else:
-            server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
-
-        with server:
-            server.ehlo()
-            if smtp_use_tls and not smtp_use_ssl:
-                server.starttls()
-                server.ehlo()
-            if smtp_user:
-                server.login(smtp_user, smtp_password or "")
-            server.send_message(msg, from_addr=smtp_user or smtp_from)
-
-        app.logger.info(
-            "Sent status change notification for order %s to %s",
-            order.id,
-            ", ".join(recipients),
-        )
-        return True
-    except Exception:
-        app.logger.exception(
-            "Failed to send status change notification for order %s", getattr(order, "id", "?")
-        )
-        return False
-
 
 # ============================================================
 # Blueprints
@@ -1257,159 +1032,12 @@ def landing():
     """Einfache Landingpage vor dem Login."""
     return render_template("landing.html")
 
-def _render_legal_markdown(text: str) -> Markup:
-    def _apply_inline(markup_text: str) -> str:
-        markup_text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", markup_text)
-        markup_text = re.sub(r"`([^`]+)`", r"<code>\1</code>", markup_text)
-        markup_text = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", markup_text)
-        markup_text = re.sub(r"__([^_]+)__", r"<strong>\1</strong>", markup_text)
-        markup_text = re.sub(r"\*([^*]+)\*", r"<em>\1</em>", markup_text)
-        markup_text = re.sub(r"_([^_]+)_", r"<em>\1</em>", markup_text)
-        return markup_text
-
-    def _basic_markdown_to_html(raw_text: str) -> str:
-        if not raw_text:
-            return ""
-        escaped_text = str(escape(raw_text))
-        escaped_text = escaped_text.replace("\r\n", "\n").replace("\r", "\n")
-        lines = escaped_text.split("\n")
-        html_parts = []
-        paragraph = []
-        in_ul = False
-        in_ol = False
-        in_code = False
-        code_lines = []
-
-        def flush_paragraph():
-            nonlocal paragraph
-            if paragraph:
-                html_parts.append("<p>" + " ".join(paragraph) + "</p>")
-                paragraph = []
-
-        def close_lists():
-            nonlocal in_ul, in_ol
-            if in_ul:
-                html_parts.append("</ul>")
-                in_ul = False
-            if in_ol:
-                html_parts.append("</ol>")
-                in_ol = False
-
-        for line in lines:
-            if line.strip().startswith("```"):
-                if in_code:
-                    html_parts.append("<pre><code>" + "\n".join(code_lines) + "</code></pre>")
-                    code_lines = []
-                    in_code = False
-                else:
-                    flush_paragraph()
-                    close_lists()
-                    in_code = True
-                continue
-
-            if in_code:
-                code_lines.append(line)
-                continue
-
-            if not line.strip():
-                flush_paragraph()
-                close_lists()
-                continue
-
-            heading_match = re.match(r"^(#{1,6})\s+(.+)$", line)
-            if heading_match:
-                flush_paragraph()
-                close_lists()
-                level = len(heading_match.group(1))
-                content = _apply_inline(heading_match.group(2).strip())
-                html_parts.append(f"<h{level}>{content}</h{level}>")
-                continue
-
-            ul_match = re.match(r"^\s*[-*+]\s+(.+)$", line)
-            if ul_match:
-                flush_paragraph()
-                if in_ol:
-                    html_parts.append("</ol>")
-                    in_ol = False
-                if not in_ul:
-                    html_parts.append("<ul>")
-                    in_ul = True
-                html_parts.append("<li>" + _apply_inline(ul_match.group(1).strip()) + "</li>")
-                continue
-
-            ol_match = re.match(r"^\s*\d+[.)]\s+(.+)$", line)
-            if ol_match:
-                flush_paragraph()
-                if in_ul:
-                    html_parts.append("</ul>")
-                    in_ul = False
-                if not in_ol:
-                    html_parts.append("<ol>")
-                    in_ol = True
-                html_parts.append("<li>" + _apply_inline(ol_match.group(1).strip()) + "</li>")
-                continue
-
-            close_lists()
-            paragraph.append(_apply_inline(line.strip()))
-
-        if in_code:
-            html_parts.append("<pre><code>" + "\n".join(code_lines) + "</code></pre>")
-        flush_paragraph()
-        close_lists()
-
-        return "".join(html_parts)
-
-    if not markdown or not bleach:
-        return Markup(_basic_markdown_to_html(text or ""))
-
-    html = markdown.markdown(
-        text or "",
-        extensions=["extra", "sane_lists", "tables"],
-        output_format="html",
-    )
-
-    allowed_tags = [tag for tag in bleach.sanitizer.ALLOWED_TAGS if tag != "a"] + [
-        "p",
-        "pre",
-        "span",
-        "h1",
-        "h2",
-        "h3",
-        "h4",
-        "h5",
-        "h6",
-        "table",
-        "thead",
-        "tbody",
-        "tr",
-        "th",
-        "td",
-        "code",
-        "hr",
-        "br",
-        "ul",
-        "ol",
-        "li",
-        "blockquote",
-    ]
-    allowed_attrs = {
-        "code": ["class"],
-    }
-
-    cleaned = bleach.clean(
-        html,
-        tags=allowed_tags,
-        attributes=allowed_attrs,
-        strip=True,
-    )
-    return Markup(cleaned)
-
 
 @app.route("/impressum")
 def imprint():
     settings = load_app_settings(app)
     imprint_md = settings.get("imprint_markdown") or ""
-    imprint_html = _render_legal_markdown(imprint_md)
+    imprint_html = render_legal_markdown(imprint_md)
     return render_template(
         "impressum.html",
         imprint_html=imprint_html,
@@ -1421,7 +1049,7 @@ def imprint():
 def privacy():
     settings = load_app_settings(app)
     privacy_md = settings.get("privacy_markdown") or ""
-    privacy_html = _render_legal_markdown(privacy_md)
+    privacy_html = render_legal_markdown(privacy_md)
     return render_template(
         "datenschutz.html",
         privacy_html=privacy_html,
@@ -1871,8 +1499,7 @@ def new_order():
             f"printer_profile_id={order.printer_profile_id}, filament_material_id={order.filament_material_id}"
         )
 
-        send_admin_order_notification(order)
-
+        send_admin_order_notification(app, order, status_context["order_status_labels"])
         flash(trans("flash_order_created"), "success")
         return redirect(url_for("dashboard"))
 
@@ -2048,8 +1675,14 @@ def order_detail(order_id):
                 )
 
                 if previous_status != order.status:
-                    send_order_status_change_notification(order, previous_status, order.status)
-
+                    status_labels = get_status_context(trans).get("order_status_labels", {})
+                    send_order_status_change_notification(
+                        app,
+                        order,
+                        previous_status,
+                        order.status,
+                        status_labels,
+                    )
                 flash(trans("flash_order_updated"), "success")
                 return redirect(url_for("order_detail", order_id=order.id))
 
@@ -2087,7 +1720,14 @@ def order_detail(order_id):
                     app.logger.debug(
                         f"[order_detail] Order {order.id} cancelled. New status={order.status!r}"
                     )
-                    send_order_status_change_notification(order, previous_status, order.status)
+                    status_labels = get_status_context(trans).get("order_status_labels", {})
+                    send_order_status_change_notification(
+                        app,
+                        order,
+                        previous_status,
+                        order.status,
+                        status_labels,
+                    )
                     flash(trans("flash_order_cancelled"), "info")
                 else:
                     app.logger.debug(
