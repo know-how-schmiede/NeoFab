@@ -28,11 +28,10 @@
               <th>ID</th>
               <th>{{ t("title") }}</th>
               <th>{{ t("status") }}</th>
-              <th>{{ t("material") }}</th>
-              <th>{{ t("color") }}</th>
               <th>{{ t("owner") }}</th>
               <th>{{ t("created") }}</th>
               <th class="text-center">{{ t("files") }}</th>
+              <th class="text-center">{{ t("print_jobs_header") }}</th>
               <th class="text-end">{{ t("actions") }}</th>
             </tr>
           </thead>
@@ -57,32 +56,16 @@
                 </span>
               </td>
 
-              <td>{{ o.material.name if o.material else '' }}</td>
-
-              <td>
-                {% if o.color %}
-                  <span class="d-inline-flex align-items-center gap-1">
-                    {{ o.color.name }}
-                    {% if o.color.hex_code %}
-                      <span style="
-                        display:inline-block;
-                        width: 16px;
-                        height: 16px;
-                        border-radius: 3px;
-                        border: 1px solid #ccc;
-                        background-color: {{ o.color.hex_code }};
-                      "></span>
-                    {% endif %}
-                  </span>
-                {% endif %}
-              </td>
-
               <td>{{ o.user.email }}</td>
 
               <td>{{ o.created_at.strftime('%Y-%m-%d %H:%M') if o.created_at else '' }}</td>
 
               <td class="text-center">
                 {{ file_counts.get(o.id, 0) }}
+              </td>
+
+              <td class="text-center">
+                {{ print_job_counts.get(o.id, 0) }}
               </td>
 
               <td class="text-end">

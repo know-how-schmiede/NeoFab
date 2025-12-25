@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.6.8
+
+Spalte Anzahl Druckaufträge im Dashboard
+
 ## Version 0.6.7
 
 Status-Meldungen Editieren, Systemeinstellugnen Ex- und Import

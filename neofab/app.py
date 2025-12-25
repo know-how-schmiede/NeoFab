@@ -2822,6 +2822,7 @@ def dashboard():
             status_labels=status_context["order_status_labels"],
             status_styles=status_context["order_status_styles"],
             file_counts={},   # wichtig, damit Template file_counts kennt
+            print_job_counts={},
         )
 
     order_ids = [o.id for o in orders]
@@ -2845,6 +2846,21 @@ def dashboard():
         file_counts = {order_id: count for order_id, count in file_count_rows}
 
     app.logger.debug(f"[dashboard] file_counts: {file_counts}")
+
+    print_job_counts = {}
+    if order_ids:
+        print_job_rows = (
+            db.session.query(
+                OrderPrintJob.order_id,
+                func.count(OrderPrintJob.id),
+            )
+            .filter(OrderPrintJob.order_id.in_(order_ids))
+            .group_by(OrderPrintJob.order_id)
+            .all()
+        )
+        print_job_counts = {order_id: count for order_id, count in print_job_rows}
+
+    app.logger.debug(f"[dashboard] print_job_counts: {print_job_counts}")
 
     # 3) Latest message per order (Zeitstempel der letzten Nachricht)
     latest_messages = (
@@ -2897,6 +2913,7 @@ def dashboard():
         status_labels=status_context["order_status_labels"],
         status_styles=status_context["order_status_styles"],
         file_counts=file_counts,
+        print_job_counts=print_job_counts,
     )
 
 
