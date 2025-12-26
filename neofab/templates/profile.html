@@ -197,4 +197,140 @@
   </div>
 </div>
 
+<div class="card">
+  <div class="card-header">
+    <h3 class="h6 mb-0 d-flex align-items-center">
+      <i class="bi bi-archive me-2"></i>
+      {{ t("announcements_archive_header") }}
+    </h3>
+  </div>
+  <div class="card-body">
+    {% if announcements_read %}
+      <div class="list-group">
+        {% for a in announcements_read %}
+          {% set meta = announcement_priority_meta.get(a.priority, announcement_priority_meta.get("info")) %}
+          <div class="list-group-item">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+              <div>
+                <div class="fw-semibold">
+                  <i class="bi {{ meta["icon"] }} {{ meta["class"] }} me-1"></i>
+                  {{ a.title }}
+                </div>
+                <div class="text-muted small">
+                  {{ t(meta["label"]) }}{% if a.created_at %} · {{ a.created_at.strftime("%Y-%m-%d %H:%M") }}{% endif %}
+                </div>
+              </div>
+              <div class="d-flex gap-2">
+                {% if current_user.role == 'admin' %}
+                  <button type="button"
+                          class="btn btn-sm btn-outline-secondary"
+                          data-bs-toggle="modal"
+                          data-bs-target="#announcementModal"
+                          data-mode="edit"
+                          data-announcement-id="{{ a.id }}"
+                          data-announcement-title="{{ a.title|e }}"
+                          data-announcement-body="{{ a.body|e }}"
+                          data-announcement-priority="{{ a.priority }}">
+                    <i class="bi bi-pencil me-1"></i>{{ t("btn_edit") }}
+                  </button>
+                {% endif %}
+              </div>
+            </div>
+            <div class="mt-2">
+              {{ a.body }}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="mb-0 text-muted">{{ t("announcements_archive_none") }}</p>
+    {% endif %}
+  </div>
+</div>
+
+{% if current_user.role == 'admin' %}
+  <div class="modal fade" id="announcementModal" tabindex="-1" aria-labelledby="announcementModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="announcementModalLabel">{{ t("announcements_modal_edit_title") }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('btn_cancel') }}"></button>
+        </div>
+        <div class="modal-body">
+        <form method="post" action="{{ url_for('announcement_update') }}">
+          <input type="hidden" name="next" value="{{ url_for('profile') }}">
+          <input type="hidden" name="announcement_id" id="announcement_id" value="">
+            <div class="mb-3">
+              <label for="announcement_title" class="form-label">{{ t("announcement_title_label") }}</label>
+              <input class="form-control"
+                     type="text"
+                     id="announcement_title"
+                     name="announcement_title"
+                     maxlength="200"
+                     required>
+            </div>
+            <div class="mb-3">
+              <label for="announcement_priority" class="form-label">{{ t("announcement_priority_label") }}</label>
+              <select id="announcement_priority" name="announcement_priority" class="form-select">
+                <option value="info">{{ t("announcement_priority_info") }}</option>
+                <option value="notice">{{ t("announcement_priority_notice") }}</option>
+                <option value="important">{{ t("announcement_priority_important") }}</option>
+                <option value="warning">{{ t("announcement_priority_warning") }}</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="announcement_body" class="form-label">{{ t("announcement_body_label") }}</label>
+              <textarea class="form-control"
+                        id="announcement_body"
+                        name="announcement_body"
+                        rows="4"
+                        required></textarea>
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                {{ t("btn_cancel") }}
+              </button>
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save me-1"></i>{{ t("btn_save_changes") }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{% if current_user.role == 'admin' %}
+<script>
+(function() {
+  const modalEl = document.getElementById("announcementModal");
+  if (!modalEl) return;
+
+  modalEl.addEventListener("show.bs.modal", (event) => {
+    const button = event.relatedTarget;
+    if (!button) return;
+
+    const id = button.getAttribute("data-announcement-id") || "";
+    const title = button.getAttribute("data-announcement-title") || "";
+    const body = button.getAttribute("data-announcement-body") || "";
+    const priority = button.getAttribute("data-announcement-priority") || "info";
+
+    const idInput = modalEl.querySelector("#announcement_id");
+    const titleInput = modalEl.querySelector("#announcement_title");
+    const bodyInput = modalEl.querySelector("#announcement_body");
+    const priorityInput = modalEl.querySelector("#announcement_priority");
+
+    if (idInput) idInput.value = id;
+    if (titleInput) titleInput.value = title;
+    if (bodyInput) bodyInput.value = body;
+    if (priorityInput) priorityInput.value = priority;
+  });
+})();
+</script>
+{% endif %}
 {% endblock %}

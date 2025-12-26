@@ -143,6 +143,45 @@ class OrderReadStatus(db.Model):
     )
 
 
+# --- Announcement (Mitteilungen) --------------------------------------------
+
+
+class Announcement(db.Model):
+    __tablename__ = "announcements"
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    priority = db.Column(db.String(20), nullable=False, default="info")
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by_id = db.Column(db.Integer, db.ForeignKey("user.id"))
+    updated_by_id = db.Column(db.Integer, db.ForeignKey("user.id"))
+
+    created_by = db.relationship("User", foreign_keys=[created_by_id])
+    updated_by = db.relationship("User", foreign_keys=[updated_by_id])
+    reads = db.relationship("AnnouncementRead", back_populates="announcement", lazy=True)
+
+
+# --- AnnouncementRead (per-user archive status) -----------------------------
+
+
+class AnnouncementRead(db.Model):
+    __tablename__ = "announcement_reads"
+
+    id = db.Column(db.Integer, primary_key=True)
+    announcement_id = db.Column(db.Integer, db.ForeignKey("announcements.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    read_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    announcement = db.relationship("Announcement", back_populates="reads")
+    user = db.relationship("User")
+
+    __table_args__ = (
+        db.UniqueConstraint("announcement_id", "user_id", name="uq_announcement_user"),
+    )
+
+
 # --- OrderFile (hochgeladene 3D-Modelle) ------------------------------------
 
 class OrderFile(db.Model):
@@ -353,6 +392,8 @@ __all__ = [
     "Order",
     "OrderMessage",
     "OrderReadStatus",
+    "Announcement",
+    "AnnouncementRead",
     "OrderFile",
     "OrderPrintJob",
     "OrderImage",

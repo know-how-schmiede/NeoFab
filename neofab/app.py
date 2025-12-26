@@ -86,6 +86,8 @@ from models import (
     Order,
     OrderMessage,
     OrderReadStatus,
+    Announcement,
+    AnnouncementRead,
     OrderFile,
     OrderPrintJob,
     OrderImage,
@@ -186,6 +188,13 @@ ORDER_STATUS_VALUES = [item["key"] for item in ORDER_STATUS_DEFS]
 
 PRINT_JOB_STATUSES = [(item["key"], item["label"]) for item in PRINT_JOB_STATUS_DEFS]
 PRINT_JOB_STATUS_VALUES = [item["key"] for item in PRINT_JOB_STATUS_DEFS]
+
+ANNOUNCEMENT_PRIORITY_META = {
+    "info": {"label": "announcement_priority_info", "icon": "bi-info-circle", "class": "text-primary"},
+    "notice": {"label": "announcement_priority_notice", "icon": "bi-exclamation-circle", "class": "text-info"},
+    "important": {"label": "announcement_priority_important", "icon": "bi-exclamation-triangle", "class": "text-warning"},
+    "warning": {"label": "announcement_priority_warning", "icon": "bi-exclamation-octagon", "class": "text-danger"},
+}
 
 # Secret Key & Datenbank-Config
 app.config["SECRET_KEY"] = os.environ.get("NEOFAB_SECRET_KEY", "dev-secret-change-me")
@@ -594,6 +603,113 @@ def ensure_order_print_jobs_table():
         app.logger.exception("Failed to ensure order_print_jobs table exists")
 
 
+def ensure_announcements_table():
+    """
+    Ensures the announcements table and required columns exist.
+    """
+    try:
+        exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='announcements'")
+        ).scalar()
+        if not exists:
+            db.session.execute(
+                text(
+                    """
+                    CREATE TABLE announcements (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        title VARCHAR(200) NOT NULL,
+                        body TEXT NOT NULL,
+                        priority VARCHAR(20) NOT NULL DEFAULT 'info',
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        created_by_id INTEGER,
+                        updated_by_id INTEGER
+                    )
+                    """
+                )
+            )
+            db.session.commit()
+            return
+
+        cols = {
+            row[1]
+            for row in db.session.execute(text("PRAGMA table_info(announcements)"))
+        }
+        statements = []
+        if "title" not in cols:
+            statements.append("ALTER TABLE announcements ADD COLUMN title VARCHAR(200) NOT NULL DEFAULT ''")
+        if "body" not in cols:
+            statements.append("ALTER TABLE announcements ADD COLUMN body TEXT NOT NULL DEFAULT ''")
+        if "priority" not in cols:
+            statements.append("ALTER TABLE announcements ADD COLUMN priority VARCHAR(20) NOT NULL DEFAULT 'info'")
+        if "created_at" not in cols:
+            statements.append(
+                "ALTER TABLE announcements ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            )
+        if "updated_at" not in cols:
+            statements.append(
+                "ALTER TABLE announcements ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            )
+        if "created_by_id" not in cols:
+            statements.append("ALTER TABLE announcements ADD COLUMN created_by_id INTEGER")
+        if "updated_by_id" not in cols:
+            statements.append("ALTER TABLE announcements ADD COLUMN updated_by_id INTEGER")
+
+        for stmt in statements:
+            db.session.execute(text(stmt))
+        if statements:
+            db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure announcements table exists")
+
+
+def ensure_announcement_reads_table():
+    """
+    Ensures the announcement_reads table and required columns exist.
+    """
+    try:
+        exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='announcement_reads'")
+        ).scalar()
+        if not exists:
+            db.session.execute(
+                text(
+                    """
+                    CREATE TABLE announcement_reads (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        announcement_id INTEGER NOT NULL,
+                        user_id INTEGER NOT NULL,
+                        read_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE(announcement_id, user_id)
+                    )
+                    """
+                )
+            )
+            db.session.commit()
+            return
+
+        cols = {
+            row[1]
+            for row in db.session.execute(text("PRAGMA table_info(announcement_reads)"))
+        }
+        statements = []
+        if "announcement_id" not in cols:
+            statements.append("ALTER TABLE announcement_reads ADD COLUMN announcement_id INTEGER NOT NULL DEFAULT 0")
+        if "user_id" not in cols:
+            statements.append("ALTER TABLE announcement_reads ADD COLUMN user_id INTEGER NOT NULL DEFAULT 0")
+        if "read_at" not in cols:
+            statements.append(
+                "ALTER TABLE announcement_reads ADD COLUMN read_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            )
+
+        for stmt in statements:
+            db.session.execute(text(stmt))
+        if statements:
+            db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure announcement_reads table exists")
+
+
 with app.app_context():
     ensure_order_file_columns()
     ensure_order_image_columns()
@@ -602,6 +718,8 @@ with app.app_context():
     ensure_filament_materials_table()
     ensure_order_estimation_columns()
     ensure_order_print_jobs_table()
+    ensure_announcements_table()
+    ensure_announcement_reads_table()
 
 
 def save_image_thumbnail(source_path: Path, target_path: Path, max_width: int = THUMBNAIL_MAX_WIDTH) -> bool:
@@ -1072,6 +1190,51 @@ def login():
 
     if request.method == "POST":
         trans = inject_globals().get("t")
+        action = (request.form.get("action") or "").strip()
+        if not action and (
+            "announcement_id" in request.form
+            or "announcement_title" in request.form
+            or "announcement_body" in request.form
+            or "announcement_priority" in request.form
+        ):
+            action = "update_announcement"
+        allowed_priorities = set(ANNOUNCEMENT_PRIORITY_META.keys())
+
+        if action == "update_announcement":
+            if current_user.role != "admin":
+                abort(403)
+            try:
+                announcement_id = int(request.form.get("announcement_id", "0"))
+            except ValueError:
+                announcement_id = 0
+
+            if not announcement_id:
+                flash(trans("flash_announcement_not_found"), "warning")
+                return redirect(url_for("profile"))
+
+            announcement = Announcement.query.filter_by(id=announcement_id).first()
+            if not announcement:
+                flash(trans("flash_announcement_not_found"), "warning")
+                return redirect(url_for("profile"))
+
+            title = (request.form.get("announcement_title") or "").strip()
+            body = (request.form.get("announcement_body") or "").strip()
+            priority = (request.form.get("announcement_priority") or "info").strip()
+            if priority not in allowed_priorities:
+                priority = "info"
+            if not title or not body:
+                flash(trans("flash_announcement_required"), "warning")
+                return redirect(url_for("profile"))
+
+            announcement.title = title[:200]
+            announcement.body = body
+            announcement.priority = priority
+            announcement.updated_by_id = current_user.id
+            announcement.updated_at = datetime.utcnow()
+            AnnouncementRead.query.filter_by(announcement_id=announcement.id).delete()
+            db.session.commit()
+            flash(trans("flash_announcement_updated"), "success")
+            return redirect(url_for("profile"))
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
 
@@ -1101,6 +1264,44 @@ def register():
 
     if request.method == "POST":
         trans = inject_globals().get("t")
+        action = (request.form.get("action") or "").strip()
+        allowed_priorities = set(ANNOUNCEMENT_PRIORITY_META.keys())
+
+        if action == "update_announcement":
+            if current_user.role != "admin":
+                abort(403)
+            try:
+                announcement_id = int(request.form.get("announcement_id", "0"))
+            except ValueError:
+                announcement_id = 0
+
+            if not announcement_id:
+                flash(trans("flash_announcement_not_found"), "warning")
+                return redirect(url_for("profile"))
+
+            announcement = Announcement.query.filter_by(id=announcement_id).first()
+            if not announcement:
+                flash(trans("flash_announcement_not_found"), "warning")
+                return redirect(url_for("profile"))
+
+            title = (request.form.get("announcement_title") or "").strip()
+            body = (request.form.get("announcement_body") or "").strip()
+            priority = (request.form.get("announcement_priority") or "info").strip()
+            if priority not in allowed_priorities:
+                priority = "info"
+            if not title or not body:
+                flash(trans("flash_announcement_required"), "warning")
+                return redirect(url_for("profile"))
+
+            announcement.title = title[:200]
+            announcement.body = body
+            announcement.priority = priority
+            announcement.updated_by_id = current_user.id
+            announcement.updated_at = datetime.utcnow()
+            AnnouncementRead.query.filter_by(announcement_id=announcement.id).delete()
+            db.session.commit()
+            flash(trans("flash_announcement_updated"), "success")
+            return redirect(url_for("profile"))
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         password2 = request.form.get("password2", "")
@@ -1194,7 +1395,17 @@ def profile():
                 flash(trans("flash_profile_updated"), "success")
                 return redirect(url_for("profile"))
 
-    return render_template("profile.html", user=user)
+    announcements = Announcement.query.order_by(Announcement.created_at.desc()).all()
+    announcement_reads = AnnouncementRead.query.filter_by(user_id=current_user.id).all()
+    read_by_announcement = {entry.announcement_id: entry for entry in announcement_reads}
+    announcements_read = [a for a in announcements if a.id in read_by_announcement]
+
+    return render_template(
+        "profile.html",
+        user=user,
+        announcements_read=announcements_read,
+        announcement_priority_meta=ANNOUNCEMENT_PRIORITY_META,
+    )
 
 
 # ============================================================
@@ -2684,7 +2895,7 @@ def set_file_color(file_id):
 # Dashboard
 # ============================================================
 
-@app.route("/dashboard")
+@app.route("/dashboard", methods=["GET", "POST"])
 @login_required
 def dashboard():
     """
@@ -2697,7 +2908,104 @@ def dashboard():
     app.logger.debug(
         f"[dashboard] user={current_user.email}, role={current_user.role}"
     )
-    status_context = get_status_context(inject_globals().get("t"))
+    trans = inject_globals().get("t")
+    status_context = get_status_context(trans)
+
+    if request.method == "POST":
+        action = (request.form.get("action") or "").strip()
+        allowed_priorities = set(ANNOUNCEMENT_PRIORITY_META.keys())
+
+        if action == "create_announcement":
+            if current_user.role != "admin":
+                abort(403)
+            title = (request.form.get("announcement_title") or "").strip()
+            body = (request.form.get("announcement_body") or "").strip()
+            priority = (request.form.get("announcement_priority") or "info").strip()
+            if priority not in allowed_priorities:
+                priority = "info"
+            if not title or not body:
+                flash(trans("flash_announcement_required"), "warning")
+                return redirect(url_for("dashboard"))
+
+            announcement = Announcement(
+                title=title[:200],
+                body=body,
+                priority=priority,
+                created_by_id=current_user.id,
+                updated_by_id=current_user.id,
+            )
+            db.session.add(announcement)
+            db.session.commit()
+            flash(trans("flash_announcement_created"), "success")
+            return redirect(url_for("dashboard"))
+
+        if action == "update_announcement":
+            if current_user.role != "admin":
+                abort(403)
+            try:
+                announcement_id = int(request.form.get("announcement_id", "0"))
+            except ValueError:
+                announcement_id = 0
+
+            if not announcement_id:
+                flash(trans("flash_announcement_not_found"), "warning")
+                return redirect(url_for("dashboard"))
+
+            announcement = Announcement.query.filter_by(id=announcement_id).first()
+            if not announcement:
+                flash(trans("flash_announcement_not_found"), "warning")
+                return redirect(url_for("dashboard"))
+
+            title = (request.form.get("announcement_title") or "").strip()
+            body = (request.form.get("announcement_body") or "").strip()
+            priority = (request.form.get("announcement_priority") or "info").strip()
+            if priority not in allowed_priorities:
+                priority = "info"
+            if not title or not body:
+                flash(trans("flash_announcement_required"), "warning")
+                return redirect(url_for("dashboard"))
+
+            announcement.title = title[:200]
+            announcement.body = body
+            announcement.priority = priority
+            announcement.updated_by_id = current_user.id
+            announcement.updated_at = datetime.utcnow()
+            AnnouncementRead.query.filter_by(announcement_id=announcement.id).delete()
+            db.session.commit()
+            flash(trans("flash_announcement_updated"), "success")
+            return redirect(url_for("dashboard"))
+
+        if action == "mark_announcement_read":
+            try:
+                announcement_id = int(request.form.get("announcement_id", "0"))
+            except ValueError:
+                announcement_id = 0
+
+            if not announcement_id:
+                flash(trans("flash_announcement_not_found"), "warning")
+                return redirect(url_for("dashboard"))
+
+            announcement = Announcement.query.filter_by(id=announcement_id).first()
+            if not announcement:
+                flash(trans("flash_announcement_not_found"), "warning")
+                return redirect(url_for("dashboard"))
+
+            existing = AnnouncementRead.query.filter_by(
+                announcement_id=announcement_id,
+                user_id=current_user.id,
+            ).first()
+            if existing:
+                existing.read_at = datetime.utcnow()
+            else:
+                db.session.add(
+                    AnnouncementRead(
+                        announcement_id=announcement_id,
+                        user_id=current_user.id,
+                    )
+                )
+            db.session.commit()
+            flash(trans("flash_announcement_archived"), "info")
+            return redirect(url_for("dashboard"))
 
     # 1) Orders laden (je nach Rolle)
     if current_user.role == "admin":
@@ -2715,17 +3023,6 @@ def dashboard():
         )
 
     app.logger.debug(f"[dashboard] Loaded {len(orders)} orders")
-
-    if not orders:
-        return render_template(
-            "dashboard.html",
-            orders=[],
-            last_new_message={},
-            status_labels=status_context["order_status_labels"],
-            status_styles=status_context["order_status_styles"],
-            file_counts={},   # wichtig, damit Template file_counts kennt
-            print_job_counts={},
-        )
 
     order_ids = [o.id for o in orders]
     for o in orders:
@@ -2808,6 +3105,12 @@ def dashboard():
             f"[dashboard] Computed last_new_message for order {o.id}: {last_new_message[o.id]!r}"
         )
 
+    announcements = Announcement.query.order_by(Announcement.created_at.desc()).all()
+    announcement_reads = AnnouncementRead.query.filter_by(user_id=current_user.id).all()
+    read_by_announcement = {entry.announcement_id: entry for entry in announcement_reads}
+    announcements_unread = [a for a in announcements if a.id not in read_by_announcement]
+    announcements_read = [a for a in announcements if a.id in read_by_announcement]
+
     return render_template(
         "dashboard.html",
         orders=orders,
@@ -2816,7 +3119,53 @@ def dashboard():
         status_styles=status_context["order_status_styles"],
         file_counts=file_counts,
         print_job_counts=print_job_counts,
+        announcements_unread=announcements_unread,
+        announcements_read=announcements_read,
+        announcement_reads=read_by_announcement,
+        announcement_priority_meta=ANNOUNCEMENT_PRIORITY_META,
     )
+
+
+@app.route("/announcements/update", methods=["POST"])
+@login_required
+def announcement_update():
+    trans = inject_globals().get("t")
+    if current_user.role != "admin":
+        abort(403)
+
+    try:
+        announcement_id = int(request.form.get("announcement_id", "0"))
+    except ValueError:
+        announcement_id = 0
+
+    if not announcement_id:
+        flash(trans("flash_announcement_not_found"), "warning")
+        return redirect(request.form.get("next") or url_for("dashboard"))
+
+    announcement = Announcement.query.filter_by(id=announcement_id).first()
+    if not announcement:
+        flash(trans("flash_announcement_not_found"), "warning")
+        return redirect(request.form.get("next") or url_for("dashboard"))
+
+    title = (request.form.get("announcement_title") or "").strip()
+    body = (request.form.get("announcement_body") or "").strip()
+    priority = (request.form.get("announcement_priority") or "info").strip()
+    if priority not in ANNOUNCEMENT_PRIORITY_META:
+        priority = "info"
+    if not title or not body:
+        flash(trans("flash_announcement_required"), "warning")
+        return redirect(request.form.get("next") or url_for("dashboard"))
+
+    announcement.title = title[:200]
+    announcement.body = body
+    announcement.priority = priority
+    announcement.updated_by_id = current_user.id
+    announcement.updated_at = datetime.utcnow()
+    AnnouncementRead.query.filter_by(announcement_id=announcement.id).delete()
+    db.session.commit()
+
+    flash(trans("flash_announcement_updated"), "success")
+    return redirect(request.form.get("next") or url_for("dashboard"))
 
 
 
