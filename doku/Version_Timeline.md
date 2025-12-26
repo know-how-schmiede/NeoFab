@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.6.15
+
+Bearbeiten 3D-Modelle
+
 ## Version 0.6.14
 
 Optimierung UI "Auftrag stornieren" bei Order

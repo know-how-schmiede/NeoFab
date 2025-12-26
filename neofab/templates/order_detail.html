@@ -450,6 +450,17 @@
                 </div>
 
                 <div class="d-flex gap-2">
+                  <button type="button"
+                          class="btn btn-sm btn-outline-secondary"
+                          data-bs-toggle="modal"
+                          data-bs-target="#fileEditModal"
+                          data-file-id="{{ f.id }}"
+                          data-file-name="{{ f.original_name }}"
+                          data-file-note="{{ f.note or '' }}"
+                          data-file-quantity="{{ f.quantity or 1 }}">
+                    <i class="bi bi-pencil me-1"></i>
+                    {{ t("btn_edit") }}
+                  </button>
                   <a class="btn btn-sm btn-outline-primary"
                     href="{{ url_for('download_order_file', order_id=order.id, file_id=f.id) }}">
                     <i class="bi bi-download me-1"></i>
@@ -837,6 +848,55 @@
   </div>
 </div>
 
+<div class="modal fade" id="fileEditModal" tabindex="-1" aria-labelledby="fileEditLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="fileEditLabel">{{ t("files_edit_title") }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('btn_cancel') }}"></button>
+      </div>
+      <div class="modal-body">
+        <form method="post">
+          <input type="hidden" name="action" value="update_file">
+          <input type="hidden" name="file_id" id="edit_file_id" value="">
+          <div class="row g-3">
+            <div class="col-12">
+              <label for="edit_file_name" class="form-label">{{ t("files_preview_filename") }}</label>
+              <input class="form-control" type="text" id="edit_file_name" value="" readonly>
+            </div>
+            <div class="col-md-8">
+              <label for="edit_file_note" class="form-label">{{ t("files_label_note") }}</label>
+              <input class="form-control"
+                     type="text"
+                     id="edit_file_note"
+                     name="file_note"
+                     maxlength="255"
+                     placeholder="{{ t('files_note_placeholder') }}">
+            </div>
+            <div class="col-md-4">
+              <label for="edit_file_quantity" class="form-label">{{ t("files_label_quantity") }}</label>
+              <input class="form-control"
+                     type="number"
+                     min="1"
+                     step="1"
+                     id="edit_file_quantity"
+                     name="file_quantity">
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 mt-3">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              {{ t("btn_cancel") }}
+            </button>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-save me-1"></i>{{ t("btn_save_changes") }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% if current_user.role == 'admin' %}
   <div class="modal fade" id="printJobEditModal" tabindex="-1" aria-labelledby="printJobEditLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -1088,6 +1148,31 @@ function updateColorPreview() {
     if (filamentGInput) filamentGInput.value = filamentG;
     if (noteInput) noteInput.value = note;
     if (fileInput) fileInput.value = filename;
+  });
+})();
+
+(function() {
+  const fileEditModal = document.getElementById("fileEditModal");
+  if (!fileEditModal) return;
+
+  fileEditModal.addEventListener("show.bs.modal", (event) => {
+    const button = event.relatedTarget;
+    if (!button) return;
+
+    const fileId = button.getAttribute("data-file-id") || "";
+    const fileName = button.getAttribute("data-file-name") || "";
+    const fileNote = button.getAttribute("data-file-note") || "";
+    const fileQuantity = button.getAttribute("data-file-quantity") || "1";
+
+    const idInput = fileEditModal.querySelector("#edit_file_id");
+    const nameInput = fileEditModal.querySelector("#edit_file_name");
+    const noteInput = fileEditModal.querySelector("#edit_file_note");
+    const quantityInput = fileEditModal.querySelector("#edit_file_quantity");
+
+    if (idInput) idInput.value = fileId;
+    if (nameInput) nameInput.value = fileName;
+    if (noteInput) noteInput.value = fileNote;
+    if (quantityInput) quantityInput.value = fileQuantity;
   });
 })();
 </script>

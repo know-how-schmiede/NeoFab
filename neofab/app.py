@@ -1839,6 +1839,41 @@ def order_detail(order_id):
             flash(trans("flash_file_uploaded"), "success")
             return redirect(url_for("order_detail", order_id=order.id))
 
+        # --- 4b) Datei bearbeiten (Notiz + Anzahl) ----------------------------
+        elif action == "update_file":
+            try:
+                file_id = int(request.form.get("file_id", "0"))
+            except ValueError:
+                file_id = 0
+
+            if not file_id:
+                flash(trans("flash_invalid_file_id"), "danger")
+                return redirect(url_for("order_detail", order_id=order.id))
+
+            order_file = OrderFile.query.filter_by(
+                id=file_id,
+                order_id=order.id,
+            ).first()
+
+            if not order_file:
+                flash(trans("flash_file_not_found"), "warning")
+                return redirect(url_for("order_detail", order_id=order.id))
+
+            file_note_raw = request.form.get("file_note", "").strip()
+            file_note = file_note_raw[:255] if file_note_raw else None
+            file_quantity_raw = request.form.get("file_quantity", "").strip()
+            try:
+                file_quantity = max(1, int(file_quantity_raw or "1"))
+            except ValueError:
+                file_quantity = 1
+
+            order_file.note = file_note
+            order_file.quantity = file_quantity
+            db.session.commit()
+
+            flash(trans("flash_file_updated"), "success")
+            return redirect(url_for("order_detail", order_id=order.id))
+
         # --- 5) Projektbild hochladen --------------------------------------
         elif action == "upload_image":
             file = request.files.get("image_file")
