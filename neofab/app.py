@@ -249,6 +249,7 @@ def inject_globals():
         "print_job_statuses": status_context["print_job_statuses"],
         "current_language": current_language,
         "t": t,
+        "render_markdown": render_legal_markdown,
     }
 
 

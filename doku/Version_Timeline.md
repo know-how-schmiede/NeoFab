@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.6.18
+
+MarkDown in Mitteilungen
+
 ## Version 0.6.17
 
 Mitteilungen im Dashboard / Backend Admin

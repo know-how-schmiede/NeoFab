@@ -237,7 +237,7 @@
               </div>
             </div>
             <div class="mt-2">
-              {{ a.body }}
+              {{ render_markdown(a.body) }}
             </div>
           </div>
         {% endfor %}
@@ -286,13 +286,32 @@
                         rows="4"
                         required></textarea>
             </div>
-            <div class="d-flex justify-content-end gap-2">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                {{ t("btn_cancel") }}
-              </button>
-              <button type="submit" class="btn btn-primary">
-                <i class="bi bi-save me-1"></i>{{ t("btn_save_changes") }}
-              </button>
+            <div class="d-flex justify-content-between align-items-center gap-2">
+              <div>
+                <details class="markdown-help d-inline-block">
+                  <summary class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center">
+                    <i class="bi bi-question-circle me-1"></i>
+                    {{ t("btn_help") }}
+                  </summary>
+                  <div class="small text-muted mt-2">
+                    <div class="fw-semibold">{{ t("markdown_help_title") }}</div>
+                    <div>{{ t("markdown_help_bold") }}</div>
+                    <div>{{ t("markdown_help_italic") }}</div>
+                    <div>{{ t("markdown_help_list") }}</div>
+                    <div>{{ t("markdown_help_numbered") }}</div>
+                    <div>{{ t("markdown_help_code") }}</div>
+                    <div>{{ t("markdown_help_link") }}</div>
+                  </div>
+                </details>
+              </div>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                  {{ t("btn_cancel") }}
+                </button>
+                <button type="submit" class="btn btn-primary">
+                  <i class="bi bi-save me-1"></i>{{ t("btn_save_changes") }}
+                </button>
+              </div>
             </div>
           </form>
         </div>
