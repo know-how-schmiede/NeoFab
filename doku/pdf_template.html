@@ -45,6 +45,44 @@
       padding: 3px;
       margin: 6px 0;
     }
+    .print-job-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    .print-job-table th,
+    .print-job-table td {
+      padding: 4px 6px;
+      vertical-align: top;
+      text-align: left;
+    }
+    .print-job-name th {
+      background: #f2f2f2;
+      font-size: 13px;
+      border: 1px solid #ddd;
+      border-bottom: none;
+    }
+    .print-job-name .meta { font-weight: normal; }
+    .print-job-note td {
+      background: #fafafa;
+      border-left: 1px solid #ddd;
+      border-right: 1px solid #ddd;
+      border-bottom: 1px solid #ddd;
+    }
+    .print-job-subhead th {
+      background: #fafafa;
+      font-size: 11px;
+      color: #555;
+      border-left: 1px solid #ddd;
+      border-right: 1px solid #ddd;
+      border-bottom: 1px solid #ddd;
+    }
+    .print-job-data td {
+      border-left: 1px solid #ddd;
+      border-right: 1px solid #ddd;
+      border-bottom: 1px solid #ddd;
+    }
   </style>
 </head>
 <body>
@@ -208,6 +246,59 @@
       </ul>
     {% else %}
       <div class="meta">{{ t("files_none") }}</div>
+    {% endif %}
+  </div>
+
+  <div class="section page-break">
+    <h2>{{ t("print_jobs_header") }}</h2>
+    <p>Order #{{ order_dict.id }} - {{ order_dict.title }}</p>
+    <hr>
+    {% if print_jobs %}
+      {% for job in print_jobs %}
+        <table class="print-job-table">
+          <tbody>
+            <tr class="print-job-name">
+              <th colspan="4">
+                {{ job.name }}
+                <div class="meta">
+                  {% set parts = [] %}
+                  {% if job.filesize %}{% set _ = parts.append(((job.filesize / 1024)|round(1)) ~ " KB") %}{% endif %}
+                  {% if job.uploaded_at %}{% set _ = parts.append(job.uploaded_at) %}{% endif %}
+                  {{ " | ".join(parts) }}
+                </div>
+              </th>
+            </tr>
+            <tr class="print-job-note">
+              <td colspan="4">{{ t("print_jobs_table_note") }}: {{ job.note or "-" }}</td>
+            </tr>
+            <tr class="print-job-subhead">
+              <th>{{ t("print_jobs_table_status") }}</th>
+              <th>{{ t("print_jobs_table_started_at") }}</th>
+              <th>{{ t("print_jobs_table_duration") }}</th>
+              <th>{{ t("print_jobs_table_filament") }}</th>
+            </tr>
+            <tr class="print-job-data">
+              <td>{{ job.status }}</td>
+              <td>{{ job.started_at if job.started_at else "-" }}</td>
+              <td>
+                {% if job.duration_min is not none %}
+                  {{ job.duration_min }} {{ t("print_jobs_unit_minutes") }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td>
+                {% set filament = [] %}
+                {% if job.filament_m is not none %}{% set _ = filament.append((job.filament_m|round(1)) ~ " m") %}{% endif %}
+                {% if job.filament_g is not none %}{% set _ = filament.append((job.filament_g|round(1)) ~ " g") %}{% endif %}
+                {{ " / ".join(filament) if filament else "-" }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      {% endfor %}
+    {% else %}
+      <div class="meta">{{ t("print_jobs_none") }}</div>
     {% endif %}
   </div>
 

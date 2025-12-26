@@ -2860,7 +2860,16 @@ def build_order_context(order, translator) -> dict:
             return ""
 
     generated_at = fmt_dt(datetime.now())
-    status_labels = get_status_context(translator).get("order_status_labels", {})
+    status_context = get_status_context(translator)
+    status_labels = status_context.get("order_status_labels", {})
+    print_job_status_labels = status_context.get("print_job_status_labels", {})
+
+    print_jobs = (
+        OrderPrintJob.query
+        .filter_by(order_id=order.id)
+        .order_by(OrderPrintJob.uploaded_at.desc())
+        .all()
+    )
 
     return {
         "app_name": "NeoFab",
@@ -2926,6 +2935,20 @@ def build_order_context(order, translator) -> dict:
                 "thumb_data_uri": image_thumb_data_uri(img),
             }
             for img in order.images
+        ],
+        "print_jobs": [
+            {
+                "name": job.original_name,
+                "filesize": job.filesize,
+                "uploaded_at": fmt_dt(job.uploaded_at),
+                "status": print_job_status_labels.get(job.status, job.status),
+                "started_at": fmt_dt(job.started_at),
+                "duration_min": job.duration_min,
+                "filament_m": job.filament_m,
+                "filament_g": job.filament_g,
+                "note": job.note or "",
+            }
+            for job in print_jobs
         ],
         "t": translator,
     }
@@ -3019,6 +3042,48 @@ def _build_order_pdf(order, translator) -> bytes:
         if f.note:
             parts.append(f.note)
         add(f"ÔÇó {f.original_name}", " | ".join(parts))
+
+    add("", "")
+    add(translator("print_jobs_header"), "")
+    print_job_status_labels = get_status_context(translator).get("print_job_status_labels", {})
+    print_jobs = (
+        OrderPrintJob.query
+        .filter_by(order_id=order.id)
+        .order_by(OrderPrintJob.uploaded_at.desc())
+        .all()
+    )
+    for job in print_jobs:
+        parts = []
+        status_label = print_job_status_labels.get(job.status, job.status or "")
+        if status_label:
+            parts.append(status_label)
+        if job.started_at:
+            parts.append(
+                f"{translator('print_jobs_table_started_at')} {job.started_at.strftime('%Y-%m-%d %H:%M')}"
+            )
+        if job.duration_min is not None:
+            parts.append(
+                f"{translator('print_jobs_table_duration')} {job.duration_min} {translator('print_jobs_unit_minutes')}"
+            )
+        filament_parts = []
+        if job.filament_m is not None:
+            filament_parts.append(f"{job.filament_m:g} m")
+        if job.filament_g is not None:
+            filament_parts.append(f"{job.filament_g:g} g")
+        if filament_parts:
+            parts.append(
+                f"{translator('print_jobs_table_filament')} {' / '.join(filament_parts)}"
+            )
+        if job.note:
+            parts.append(f"{translator('print_jobs_table_note')} {job.note}")
+        meta = []
+        if job.filesize:
+            meta.append(f"{(job.filesize / 1024):.1f} KB")
+        if job.uploaded_at:
+            meta.append(job.uploaded_at.strftime("%Y-%m-%d %H:%M"))
+        if meta:
+            parts.append(" | ".join(meta))
+        add(f"- {job.original_name}", " | ".join(parts))
 
     add("", "")
     add(translator("images_header"), "")
