@@ -156,7 +156,7 @@
   "cancel_not_possible": "Cette commande est déjà {status} et ne peut plus être annulée.",
   "color": "Couleur",
   "communication_header": "Communication",
-  "confirm_cancel_order": "Annuler cette commande ?",
+  "confirm_cancel_order": "Annuler cette commande ? Vous pouvez annuler cette commande. Le statut sera d\u00e9fini sur \"cancelled\". Cette action est irr\u00e9versible.",
   "confirm_delete": "Supprimer {item} \"{name}\" ?",
   "confirm_delete_file": "Supprimer ce fichier ?",
   "confirm_delete_image": "Supprimer cette image ?",

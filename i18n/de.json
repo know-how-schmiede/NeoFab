@@ -156,7 +156,7 @@
   "cancel_not_possible": "Dieser Auftrag ist bereits {status} und kann nicht mehr storniert werden.",
   "color": "Farbe",
   "communication_header": "Kommunikation",
-  "confirm_cancel_order": "Diesen Auftrag stornieren?",
+  "confirm_cancel_order": "Diesen Auftrag stornieren? Du kannst diesen Auftrag stornieren. Der Status wird auf \u201ecancelled\u201c gesetzt. Dies kann nicht r\u00fcckg\u00e4ngig gemacht werden.",
   "confirm_delete": "{item} „{name}“ löschen?",
   "confirm_delete_file": "Datei löschen?",
   "confirm_delete_image": "Bild löschen?",

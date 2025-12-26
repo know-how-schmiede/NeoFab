@@ -168,7 +168,7 @@
   "cancel_not_possible": "This order is already {status} and can no longer be cancelled.",
   "color": "Color",
   "communication_header": "Communication",
-  "confirm_cancel_order": "Cancel this order?",
+  "confirm_cancel_order": "Cancel this order? You can cancel this order. The status will be set to \"cancelled\". This cannot be undone.",
   "confirm_delete": "Delete {item} \"{name}\"?",
   "confirm_delete_file": "Delete this file?",
   "confirm_delete_image": "Delete this image?",
