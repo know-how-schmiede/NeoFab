@@ -1929,6 +1929,33 @@ def order_detail(order_id):
             flash(trans("flash_image_uploaded"), "success")
             return redirect(url_for("order_detail", order_id=order.id))
 
+        # --- 5b) Projektbild bearbeiten (Notiz) ------------------------------
+        elif action == "update_image":
+            try:
+                image_id = int(request.form.get("image_id", "0"))
+            except ValueError:
+                image_id = 0
+
+            if not image_id:
+                flash(trans("flash_invalid_image_id"), "danger")
+                return redirect(url_for("order_detail", order_id=order.id))
+
+            image_entry = OrderImage.query.filter_by(
+                id=image_id,
+                order_id=order.id,
+            ).first()
+
+            if not image_entry:
+                flash(trans("flash_image_not_found"), "warning")
+                return redirect(url_for("order_detail", order_id=order.id))
+
+            image_note_raw = (request.form.get("image_note") or "").strip()
+            image_entry.note = image_note_raw[:255] if image_note_raw else None
+            db.session.commit()
+
+            flash(trans("flash_image_updated"), "success")
+            return redirect(url_for("order_detail", order_id=order.id))
+
         # --- 6) G-Code hochladen (nur Admin) -------------------------------
         elif action == "upload_print_job":
             if current_user.role != "admin":

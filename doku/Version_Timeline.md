@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.6.16
+
+Bearbeiten Bilder
+
 ## Version 0.6.15
 
 Bearbeiten 3D-Modelle

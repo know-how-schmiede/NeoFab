@@ -577,6 +577,15 @@
                     </div>
                   </div>
                   <div class="d-flex gap-2">
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            data-bs-toggle="modal"
+                            data-bs-target="#imageEditModal"
+                            data-image-id="{{ img.id }}"
+                            data-image-name="{{ img.original_name }}"
+                            data-image-note="{{ img.note or '' }}">
+                      <i class="bi bi-pencil me-1"></i>{{ t("btn_edit") }}
+                    </button>
                     <a class="btn btn-sm btn-outline-primary" href="{{ url_for('download_order_image', order_id=order.id, image_id=img.id) }}">
                       <i class="bi bi-download me-1"></i>{{ t("btn_download") }}
                     </a>
@@ -897,6 +906,46 @@
   </div>
 </div>
 
+<div class="modal fade" id="imageEditModal" tabindex="-1" aria-labelledby="imageEditLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="imageEditLabel">{{ t("images_edit_title") }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('btn_cancel') }}"></button>
+      </div>
+      <div class="modal-body">
+        <form method="post">
+          <input type="hidden" name="action" value="update_image">
+          <input type="hidden" name="image_id" id="edit_image_id" value="">
+          <div class="row g-3">
+            <div class="col-12">
+              <label for="edit_image_name" class="form-label">{{ t("files_preview_filename") }}</label>
+              <input class="form-control" type="text" id="edit_image_name" value="" readonly>
+            </div>
+            <div class="col-12">
+              <label for="edit_image_note" class="form-label">{{ t("images_label_note") }}</label>
+              <input class="form-control"
+                     type="text"
+                     id="edit_image_note"
+                     name="image_note"
+                     maxlength="255"
+                     placeholder="{{ t('images_note_placeholder') }}">
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 mt-3">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              {{ t("btn_cancel") }}
+            </button>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-save me-1"></i>{{ t("btn_save_changes") }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% if current_user.role == 'admin' %}
   <div class="modal fade" id="printJobEditModal" tabindex="-1" aria-labelledby="printJobEditLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -1173,6 +1222,28 @@ function updateColorPreview() {
     if (nameInput) nameInput.value = fileName;
     if (noteInput) noteInput.value = fileNote;
     if (quantityInput) quantityInput.value = fileQuantity;
+  });
+})();
+
+(function() {
+  const imageEditModal = document.getElementById("imageEditModal");
+  if (!imageEditModal) return;
+
+  imageEditModal.addEventListener("show.bs.modal", (event) => {
+    const button = event.relatedTarget;
+    if (!button) return;
+
+    const imageId = button.getAttribute("data-image-id") || "";
+    const imageName = button.getAttribute("data-image-name") || "";
+    const imageNote = button.getAttribute("data-image-note") || "";
+
+    const idInput = imageEditModal.querySelector("#edit_image_id");
+    const nameInput = imageEditModal.querySelector("#edit_image_name");
+    const noteInput = imageEditModal.querySelector("#edit_image_note");
+
+    if (idInput) idInput.value = imageId;
+    if (nameInput) nameInput.value = imageName;
+    if (noteInput) noteInput.value = imageNote;
   });
 })();
 </script>
