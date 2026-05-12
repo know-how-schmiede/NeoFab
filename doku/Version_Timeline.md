@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.6.19
+
+Nach erfolgreichem Datei-Upload bleibt die Auftragsdetailseite im jeweiligen Upload-Reiter
+
 ## Version 0.6.18
 
 MarkDown in Mitteilungen

@@ -1779,6 +1779,16 @@ def order_detail(order_id):
     if current_user.role != "admin" and order.user_id != current_user.id:
         abort(403)
 
+    valid_tabs = {"general", "project", "files", "print-jobs"}
+    active_tab = request.args.get("tab", "general")
+    if active_tab not in valid_tabs:
+        active_tab = "general"
+
+    def order_detail_redirect(tab="general"):
+        if tab in valid_tabs and tab != "general":
+            return redirect(url_for("order_detail", order_id=order.id, tab=tab))
+        return redirect(url_for("order_detail", order_id=order.id))
+
     if request.method == "POST":
         app.logger.debug(f"[order_detail] POST data for order {order.id}: {dict(request.form)}")
         trans = inject_globals().get("t")
@@ -1998,7 +2008,7 @@ def order_detail(order_id):
 
             if not file or not file.filename:
                 flash(trans("flash_select_file"), "warning")
-                return redirect(url_for("order_detail", order_id=order.id))
+                return order_detail_redirect("files")
 
             original_name = file.filename
             safe_name = secure_filename(original_name)
@@ -2009,7 +2019,7 @@ def order_detail(order_id):
             allowed_ext = {"stl", "3mf"}
             if ext not in allowed_ext:
                 flash(trans("flash_invalid_file"), "warning")
-                return redirect(url_for("order_detail", order_id=order.id))
+                return order_detail_redirect("files")
 
             # OrderFile-Eintrag mit Platzhalter
             order_file = OrderFile(
@@ -2049,7 +2059,7 @@ def order_detail(order_id):
             )
 
             flash(trans("flash_file_uploaded"), "success")
-            return redirect(url_for("order_detail", order_id=order.id))
+            return order_detail_redirect("files")
 
         # --- 4b) Datei bearbeiten (Notiz + Anzahl) ----------------------------
         elif action == "update_file":
@@ -2094,7 +2104,7 @@ def order_detail(order_id):
                 image_note = image_note[:255]
             if not file or not file.filename:
                 flash(trans("flash_select_image"), "warning")
-                return redirect(url_for("order_detail", order_id=order.id))
+                return order_detail_redirect("files")
 
             original_name = file.filename
             safe_name = secure_filename(original_name)
@@ -2105,7 +2115,7 @@ def order_detail(order_id):
             allowed_ext = {"png", "jpg", "jpeg", "gif", "webp"}
             if ext not in allowed_ext:
                 flash(trans("flash_invalid_image"), "warning")
-                return redirect(url_for("order_detail", order_id=order.id))
+                return order_detail_redirect("files")
 
             image_entry = OrderImage(
                 order_id=order.id,
@@ -2139,7 +2149,7 @@ def order_detail(order_id):
             db.session.commit()
 
             flash(trans("flash_image_uploaded"), "success")
-            return redirect(url_for("order_detail", order_id=order.id))
+            return order_detail_redirect("files")
 
         # --- 5b) Projektbild bearbeiten (Notiz) ------------------------------
         elif action == "update_image":
@@ -2186,7 +2196,7 @@ def order_detail(order_id):
 
             if not file or not file.filename:
                 flash(trans("flash_print_job_select_file"), "warning")
-                return redirect(url_for("order_detail", order_id=order.id))
+                return order_detail_redirect("print-jobs")
 
             original_name = file.filename
             safe_name = secure_filename(original_name)
@@ -2196,7 +2206,7 @@ def order_detail(order_id):
             allowed_ext = {"gcode", "gco", "gc"}
             if ext not in allowed_ext:
                 flash(trans("flash_print_job_invalid_file"), "warning")
-                return redirect(url_for("order_detail", order_id=order.id))
+                return order_detail_redirect("print-jobs")
 
             started_at = None
             if started_at_raw:
@@ -2204,7 +2214,7 @@ def order_detail(order_id):
                     started_at = datetime.fromisoformat(started_at_raw)
                 except ValueError:
                     flash(trans("flash_print_job_invalid_start"), "danger")
-                    return redirect(url_for("order_detail", order_id=order.id))
+                    return order_detail_redirect("print-jobs")
 
             duration_min = None
             if duration_raw:
@@ -2212,10 +2222,10 @@ def order_detail(order_id):
                     duration_min = int(duration_raw)
                 except ValueError:
                     flash(trans("flash_print_job_invalid_duration"), "danger")
-                    return redirect(url_for("order_detail", order_id=order.id))
+                    return order_detail_redirect("print-jobs")
                 if duration_min < 0:
                     flash(trans("flash_print_job_invalid_duration"), "danger")
-                    return redirect(url_for("order_detail", order_id=order.id))
+                    return order_detail_redirect("print-jobs")
 
             filament_m = None
             if filament_m_raw:
@@ -2223,10 +2233,10 @@ def order_detail(order_id):
                     filament_m = float(filament_m_raw)
                 except ValueError:
                     flash(trans("flash_print_job_invalid_filament"), "danger")
-                    return redirect(url_for("order_detail", order_id=order.id))
+                    return order_detail_redirect("print-jobs")
                 if filament_m < 0:
                     flash(trans("flash_print_job_invalid_filament"), "danger")
-                    return redirect(url_for("order_detail", order_id=order.id))
+                    return order_detail_redirect("print-jobs")
 
             filament_g = None
             if filament_g_raw:
@@ -2234,10 +2244,10 @@ def order_detail(order_id):
                     filament_g = float(filament_g_raw)
                 except ValueError:
                     flash(trans("flash_print_job_invalid_filament"), "danger")
-                    return redirect(url_for("order_detail", order_id=order.id))
+                    return order_detail_redirect("print-jobs")
                 if filament_g < 0:
                     flash(trans("flash_print_job_invalid_filament"), "danger")
-                    return redirect(url_for("order_detail", order_id=order.id))
+                    return order_detail_redirect("print-jobs")
 
             valid_statuses = set(PRINT_JOB_STATUS_VALUES)
             status = status_raw if status_raw in valid_statuses else "upload"
@@ -2301,7 +2311,7 @@ def order_detail(order_id):
 
             db.session.commit()
             flash(trans("flash_print_job_uploaded"), "success")
-            return redirect(url_for("order_detail", order_id=order.id))
+            return order_detail_redirect("print-jobs")
 
         # --- 7) G-Code l├Âschen (nur Admin) ---------------------------------
         elif action == "update_print_job":
@@ -2618,6 +2628,7 @@ def order_detail(order_id):
         print_job_status_labels=status_context["print_job_status_labels"],
         print_job_status_styles=status_context["print_job_status_styles"],
         tags_value=order.tags_entry.tags if order.tags_entry else "",
+        active_tab=active_tab,
     )
 
 
