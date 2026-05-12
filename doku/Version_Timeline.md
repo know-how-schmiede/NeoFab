@@ -1,5 +1,10 @@
 # Timeline NeoFab
 
+## Version 0.7.2
+
+Fehlermeldung bei zu großen STL-/3MF- und G-Code-Uploads
+Anzeige der maximal erlaubten Dateigröße bei 3D-Modell- und G-Code-Uploads
+
 ## Version 0.7.1
 
 Thumbnail-Erzeugung für 3MF-Dateien im 3D-Modell-Viewer

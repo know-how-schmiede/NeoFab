@@ -483,7 +483,7 @@
         {% endif %}
 
         {# Upload weiterer Dateien - eigenes Formular #}
-        <form method="post" enctype="multipart/form-data" class="mt-2">
+        <form method="post" enctype="multipart/form-data" class="mt-2" action="{{ url_for('order_detail', order_id=order.id, tab='files') }}">
           <input type="hidden" name="action" value="upload_file">
 
           <div class="mb-2">
@@ -495,9 +495,15 @@
                    type="file"
                    id="model_file"
                    name="model_file"
-                   accept=".stl,.3mf">
+                   accept=".stl,.3mf"
+                   data-upload-size-check="true"
+                   data-max-upload-size="{{ max_upload_size_bytes }}">
             <div class="form-text">
               {{ t("files_upload_hint") }}
+              <br>{{ t("upload_max_size_hint") }} {{ max_upload_size_mb }} MB.
+            </div>
+            <div class="upload-size-feedback alert alert-danger mt-2 mb-0 d-none" role="alert">
+              {{ t("flash_upload_too_large") }}
             </div>
           </div>
 
@@ -747,7 +753,7 @@
           </h4>
         </div>
         <div class="card-body">
-          <form method="post" enctype="multipart/form-data">
+          <form method="post" enctype="multipart/form-data" action="{{ url_for('order_detail', order_id=order.id, tab='print-jobs') }}">
             <input type="hidden" name="action" value="upload_print_job">
             <div class="row g-3">
               <div class="col-md-6">
@@ -757,8 +763,16 @@
                        id="gcode_file"
                        name="gcode_file"
                        accept=".gcode,.gco,.gc"
+                       data-upload-size-check="true"
+                       data-max-upload-size="{{ max_upload_size_bytes }}"
                        required>
-                <div class="form-text">{{ t("print_jobs_hint_file") }}</div>
+                <div class="form-text">
+                  {{ t("print_jobs_hint_file") }}
+                  <br>{{ t("upload_max_size_hint") }} {{ max_upload_size_mb }} MB.
+                </div>
+                <div class="upload-size-feedback alert alert-danger mt-2 mb-0 d-none" role="alert">
+                  {{ t("flash_upload_too_large") }}
+                </div>
               </div>
               <div class="col-md-6">
                 <label for="print_status" class="form-label">{{ t("print_jobs_label_status") }}</label>
@@ -1239,6 +1253,36 @@ function updateColorPreview() {
     if (idInput) idInput.value = imageId;
     if (nameInput) nameInput.value = imageName;
     if (noteInput) noteInput.value = imageNote;
+  });
+})();
+
+(function() {
+  const inputs = document.querySelectorAll("[data-upload-size-check='true']");
+  inputs.forEach((input) => {
+    const form = input.closest("form");
+    const feedback = form ? form.querySelector(".upload-size-feedback") : null;
+    const maxSize = Number(input.getAttribute("data-max-upload-size") || "0");
+    if (!form || !maxSize) return;
+
+    function clearError() {
+      input.classList.remove("is-invalid");
+      if (feedback) {
+        feedback.classList.add("d-none");
+      }
+    }
+
+    input.addEventListener("change", clearError);
+    form.addEventListener("submit", (event) => {
+      const file = input.files && input.files[0] ? input.files[0] : null;
+      if (!file || file.size <= maxSize) return;
+
+      event.preventDefault();
+      input.classList.add("is-invalid");
+      if (feedback) {
+        feedback.classList.remove("d-none");
+      }
+      input.focus();
+    });
   });
 })();
 </script>

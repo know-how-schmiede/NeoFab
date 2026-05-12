@@ -25,6 +25,7 @@ from urllib.parse import parse_qs, urlparse
 from sqlalchemy import func, text
 
 from markupsafe import Markup, escape
+from werkzeug.exceptions import RequestEntityTooLarge
 
 from flask import (
     Flask,
@@ -172,7 +173,8 @@ PDF_TEMPLATE_PATH = os.environ.get(
 
 
 # Maximal erlaubte Upload-Gr├Â├ƒe (z.B. 50 MB)
-app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
+MAX_UPLOAD_SIZE_MB = 50
+app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_SIZE_MB * 1024 * 1024
 
 # Einfache Logging-Konfiguration
 logging.basicConfig(level=logging.DEBUG)
@@ -241,6 +243,8 @@ def inject_globals():
     status_context = get_status_context(t)
     return {
         "app_version": APP_VERSION,
+        "max_upload_size_mb": MAX_UPLOAD_SIZE_MB,
+        "max_upload_size_bytes": app.config["MAX_CONTENT_LENGTH"],
         "status_labels": status_context["order_status_labels"],
         "status_styles": status_context["order_status_styles"],
         "print_job_status_labels": status_context["print_job_status_labels"],
@@ -251,6 +255,20 @@ def inject_globals():
         "t": t,
         "render_markdown": render_legal_markdown,
     }
+
+
+@app.errorhandler(RequestEntityTooLarge)
+def handle_request_entity_too_large(_error):
+    trans = inject_globals().get("t")
+    flash(trans("flash_upload_too_large"), "danger")
+
+    if request.endpoint == "order_detail" and request.view_args and request.view_args.get("order_id"):
+        tab = request.args.get("tab")
+        if tab not in {"files", "print-jobs"}:
+            tab = "files"
+        return redirect(url_for("order_detail", order_id=request.view_args["order_id"], tab=tab), code=303)
+
+    return redirect(request.referrer or url_for("dashboard"), code=303)
 
 
 # ============================================================
