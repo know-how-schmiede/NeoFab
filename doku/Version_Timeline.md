@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.7.3
+
+Gelesene Auftragsnachrichten werden persistent pro Benutzer gespeichert und bleiben nach erneutem Anmelden gelesen
+
 ## Version 0.7.2
 
 Fehlermeldung bei zu großen STL-/3MF- und G-Code-Uploads

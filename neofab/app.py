@@ -729,6 +729,53 @@ def ensure_announcement_reads_table():
         app.logger.exception("Failed to ensure announcement_reads table exists")
 
 
+def ensure_order_read_status_table():
+    """
+    Ensures the persistent per-user order read status table exists.
+    """
+    try:
+        exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='order_read_status'")
+        ).scalar()
+        if not exists:
+            db.session.execute(
+                text(
+                    """
+                    CREATE TABLE order_read_status (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        order_id INTEGER NOT NULL,
+                        user_id INTEGER NOT NULL,
+                        last_read_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE(order_id, user_id)
+                    )
+                    """
+                )
+            )
+            db.session.commit()
+            return
+
+        cols = {
+            row[1]
+            for row in db.session.execute(text("PRAGMA table_info(order_read_status)"))
+        }
+        statements = []
+        if "order_id" not in cols:
+            statements.append("ALTER TABLE order_read_status ADD COLUMN order_id INTEGER NOT NULL DEFAULT 0")
+        if "user_id" not in cols:
+            statements.append("ALTER TABLE order_read_status ADD COLUMN user_id INTEGER NOT NULL DEFAULT 0")
+        if "last_read_at" not in cols:
+            statements.append(
+                "ALTER TABLE order_read_status ADD COLUMN last_read_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            )
+
+        for stmt in statements:
+            db.session.execute(text(stmt))
+        if statements:
+            db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure order_read_status table exists")
+
+
 with app.app_context():
     ensure_order_file_columns()
     ensure_order_image_columns()
@@ -737,6 +784,7 @@ with app.app_context():
     ensure_filament_materials_table()
     ensure_order_estimation_columns()
     ensure_order_print_jobs_table()
+    ensure_order_read_status_table()
     ensure_announcements_table()
     ensure_announcement_reads_table()
 
@@ -3104,18 +3152,20 @@ def dashboard():
     latest_by_order = {order_id: latest_created for order_id, latest_created in latest_messages}
     app.logger.debug(f"[dashboard] latest_by_order: {latest_by_order}")
 
-    # 4) Read-Zeitpunkte aus der Session holen (pro Order)
+    # 4) Persistente Read-Zeitpunkte aus der Datenbank holen (pro Order)
     read_by_order = {}
-    for oid in order_ids:
-        session_key = f"order_last_read_{oid}"
-        iso_val = session.get(session_key)
-        if iso_val:
-            try:
-                read_by_order[oid] = datetime.fromisoformat(iso_val)
-            except Exception:
-                read_by_order[oid] = None
+    if order_ids:
+        read_rows = (
+            OrderReadStatus.query
+            .filter(
+                OrderReadStatus.user_id == current_user.id,
+                OrderReadStatus.order_id.in_(order_ids),
+            )
+            .all()
+        )
+        read_by_order = {entry.order_id: entry.last_read_at for entry in read_rows}
 
-    app.logger.debug(f"[dashboard] read_by_order (session): {read_by_order}")
+    app.logger.debug(f"[dashboard] read_by_order (database): {read_by_order}")
 
     # 5) "last_new_message" pro Order berechnen (f├╝r "new message"-Badge)
     last_new_message = {}
