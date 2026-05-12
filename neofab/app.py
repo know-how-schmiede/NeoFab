@@ -2688,7 +2688,7 @@ def order_file_thumbnail(order_id, file_id, size):
         abort(403)
 
     order_file = OrderFile.query.filter_by(id=file_id, order_id=order.id).first_or_404()
-    if (order_file.file_type or "").lower() != "stl":
+    if (order_file.file_type or "").lower() not in {"stl", "3mf"}:
         abort(404)
     if size not in {"sm", "lg"}:
         abort(404)

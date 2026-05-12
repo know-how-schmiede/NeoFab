@@ -382,6 +382,7 @@
                         data-preview-poster="{{ thumb_lg_url }}"
                         data-preview-thumb-sm="{{ thumb_sm_url }}"
                         data-preview-thumb-lg="{{ thumb_lg_url }}"
+                        data-preview-thumbnail-ready="{{ 'true' if f.thumb_sm_path or f.thumb_lg_path else 'false' }}"
                         data-preview-color-id="{{ f.color_id or '' }}"
                         aria-label="{{ preview_tooltip }}"
                         title="{{ preview_tooltip }}"
@@ -1285,6 +1286,7 @@ if (modalEl && previewButtons.length) {
   let currentOrderId = null;
   let currentThumbSmUrl = "";
   let currentThumbLgUrl = "";
+  let currentThumbnailReady = false;
   let currentColorHex = defaultColorHex;
   let colorSaveTimer = null;
   let modelReady = false;
@@ -1369,6 +1371,8 @@ if (modalEl && previewButtons.length) {
       currentButton.setAttribute("data-preview-poster", posterUrl);
       setPoster(posterUrl);
     }
+    currentThumbnailReady = true;
+    currentButton.setAttribute("data-preview-thumbnail-ready", "true");
   }
 
   async function uploadThumbnail() {
@@ -1561,6 +1565,26 @@ if (modalEl && previewButtons.length) {
     controls.update();
   }
 
+  function finishModelLoad(object) {
+    currentObject = object;
+    scene.add(object);
+    frameObject(object);
+    applyColorToObject(currentColorHex);
+    setStatus("");
+    setPoster("");
+    modelReady = true;
+    startRender();
+
+    if (!currentThumbnailReady) {
+      requestAnimationFrame(async () => {
+        const thumbOk = await uploadThumbnail();
+        if (thumbOk === false) {
+          setFeedback(labels.thumbnailFailed);
+        }
+      });
+    }
+  }
+
   function loadModel(url, type) {
     if (!url) {
       setStatus(labels.unavailable);
@@ -1582,14 +1606,7 @@ if (modalEl && previewButtons.length) {
       loader.load(
         url,
         (object) => {
-          currentObject = object;
-          scene.add(object);
-          frameObject(object);
-          applyColorToObject(currentColorHex);
-          setStatus("");
-          setPoster("");
-          modelReady = true;
-          startRender();
+          finishModelLoad(object);
         },
         undefined,
         () => {
@@ -1610,14 +1627,7 @@ if (modalEl && previewButtons.length) {
           roughness: 0.6
         });
         const mesh = new THREE.Mesh(geometry, material);
-        currentObject = mesh;
-        scene.add(mesh);
-        frameObject(mesh);
-        applyColorToObject(currentColorHex);
-        setStatus("");
-        setPoster("");
-        modelReady = true;
-        startRender();
+        finishModelLoad(mesh);
       },
       undefined,
       () => {
@@ -1639,6 +1649,7 @@ if (modalEl && previewButtons.length) {
       currentOrderId = btn.getAttribute("data-preview-order-id") || "";
       currentThumbSmUrl = btn.getAttribute("data-preview-thumb-sm") || "";
       currentThumbLgUrl = btn.getAttribute("data-preview-thumb-lg") || "";
+      currentThumbnailReady = btn.getAttribute("data-preview-thumbnail-ready") === "true";
 
       if (titleEl) {
         titleEl.textContent = name ? name : baseTitle;
@@ -1686,6 +1697,7 @@ if (modalEl && previewButtons.length) {
     currentOrderId = null;
     currentThumbSmUrl = "";
     currentThumbLgUrl = "";
+    currentThumbnailReady = false;
     currentColorHex = defaultColorHex;
     if (colorSelect) {
       colorSelect.value = "";

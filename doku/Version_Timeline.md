@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.7.1
+
+Thumbnail-Erzeugung für 3MF-Dateien im 3D-Modell-Viewer
+
 ## Version 0.7.0
 
 3MF-Dateien werden im 3D-Modell-Viewer angezeigt
