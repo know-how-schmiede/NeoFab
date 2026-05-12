@@ -355,8 +355,8 @@
           <ul class="list-group mb-3">
             {% for f in order.files %}
              {% set file_type = (f.file_type or '').lower() %}
-             {% set can_preview = file_type == 'stl' %}
-             {% if file_type == 'stl' %}
+             {% set can_preview = file_type in ['stl', '3mf'] %}
+             {% if can_preview %}
                {% set thumb_sm_url = url_for('order_file_thumbnail', order_id=order.id, file_id=f.id, size='sm') %}
                {% set thumb_lg_url = url_for('order_file_thumbnail', order_id=order.id, file_id=f.id, size='lg') %}
              {% else %}
@@ -364,9 +364,6 @@
                {% set thumb_lg_url = '' %}
              {% endif %}
              {% set preview_tooltip = t('files_preview_open') %}
-             {% if file_type == '3mf' %}
-               {% set preview_tooltip = t('files_preview_3mf_unavailable') %}
-             {% endif %}
              <li class="list-group-item">
               <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
                 <div class="d-flex gap-3 align-items-start">
@@ -406,10 +403,6 @@
                           </span>
                         {% endif %}
                       </button>
-                    {% elif file_type == '3mf' %}
-                      <span class="model-thumb-placeholder" title="{{ preview_tooltip }}">
-                        <span class="model-thumb-label">{{ (file_type or '3D')|upper }}</span>
-                      </span>
                     {% else %}
                       <div class="model-thumb-placeholder">
                         <i class="bi bi-box"></i>

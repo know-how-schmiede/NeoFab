@@ -154,7 +154,7 @@ app.config["TRAINING_UPLOAD_FOLDER"] = str(TRAINING_UPLOAD_FOLDER)
 # Max width for generated thumbnails (px)
 THUMBNAIL_MAX_WIDTH = 200
 
-# Thumbnail sizes for STL previews
+# Thumbnail sizes for 3D model previews
 MODEL_THUMB_SMALL_SIZE = (240, 240)
 MODEL_THUMB_LARGE_SIZE = (1024, 768)
 MODEL_THUMB_PADDING = 12
@@ -1013,15 +1013,12 @@ def update_order_file_preview(order_file: OrderFile, source_path: Path) -> None:
         order_file.preview_status = "unsupported"
         return
 
-    order_file.has_3d_preview = True
-
-    if file_type != "stl":
-        order_file.preview_status = "unsupported"
-        return
-
     if not source_path.exists():
+        order_file.has_3d_preview = False
         order_file.preview_status = "missing"
         return
+
+    order_file.has_3d_preview = True
 
     thumb_sm_name, thumb_lg_name = _build_model_thumbnail_names(order_file.stored_name)
     thumb_folder = source_path.parent / "thumbnails"
@@ -1030,14 +1027,17 @@ def update_order_file_preview(order_file: OrderFile, source_path: Path) -> None:
 
     small_ok = thumb_sm_path.exists()
     large_ok = thumb_lg_path.exists()
-    if not small_ok or not large_ok:
+    if file_type == "stl" and (not small_ok or not large_ok):
         gen_small, gen_large = generate_stl_thumbnails(source_path, thumb_sm_path, thumb_lg_path)
         small_ok = small_ok or gen_small
         large_ok = large_ok or gen_large
 
     order_file.thumb_sm_path = thumb_sm_name if small_ok else None
     order_file.thumb_lg_path = thumb_lg_name if large_ok else None
-    order_file.preview_status = "ok" if (small_ok or large_ok) else "failed"
+    if file_type == "3mf":
+        order_file.preview_status = "ok"
+    else:
+        order_file.preview_status = "ok" if (small_ok or large_ok) else "failed"
 
 
 

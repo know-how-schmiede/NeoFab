@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.7.0
+
+3MF-Dateien werden im 3D-Modell-Viewer angezeigt
+
 ## Version 0.6.19
 
 Nach erfolgreichem Datei-Upload bleibt die Auftragsdetailseite im jeweiligen Upload-Reiter
