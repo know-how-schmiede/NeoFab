@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.7.4
+
+Admin-Bereich zur Verwaltung von Mitteilungen inklusive Bearbeiten, Löschen sowie JSON Ex- und Import
+
 ## Version 0.7.3
 
 Gelesene Auftragsnachrichten werden persistent pro Benutzer gespeichert und bleiben nach erneutem Anmelden gelesen

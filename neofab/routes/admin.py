@@ -18,6 +18,7 @@ from flask import (
     request,
     url_for,
 )
+from flask_login import current_user
 from sqlalchemy import func
 from sqlalchemy.exc import OperationalError
 from werkzeug.utils import secure_filename
@@ -39,6 +40,8 @@ from models import (
     TrainingPlaylist,
     TrainingVideo,
     User,
+    Announcement,
+    AnnouncementRead,
     PrinterProfile,
     FilamentMaterial,
     db,
@@ -55,6 +58,12 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
     bp = Blueprint("admin", __name__, url_prefix="/admin")
 
     t = lambda key: _translator(get_translator)(key)
+    announcement_priority_meta = {
+        "info": {"label": "announcement_priority_info", "icon": "bi-info-circle", "class": "text-primary"},
+        "notice": {"label": "announcement_priority_notice", "icon": "bi-exclamation-circle", "class": "text-info"},
+        "important": {"label": "announcement_priority_important", "icon": "bi-exclamation-triangle", "class": "text-warning"},
+        "warning": {"label": "announcement_priority_warning", "icon": "bi-exclamation-octagon", "class": "text-danger"},
+    }
 
     def normalize_training_video_order() -> None:
         """Ensure sequential sort_order without gaps."""
@@ -467,6 +476,148 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             flash(trans("flash_settings_save_error"), "danger")
 
         return redirect(url_for(".admin_settings"))
+
+    @bp.route("/announcements", endpoint="admin_announcement_list")
+    @roles_required("admin")
+    def admin_announcement_list():
+        announcements = Announcement.query.order_by(Announcement.created_at.desc(), Announcement.id.desc()).all()
+        return render_template(
+            "admin_announcements.html",
+            announcements=announcements,
+            announcement_priority_meta=announcement_priority_meta,
+        )
+
+    @bp.route("/announcements/<int:announcement_id>/update", methods=["POST"], endpoint="admin_announcement_update")
+    @roles_required("admin")
+    def admin_announcement_update(announcement_id):
+        trans = t
+        announcement = Announcement.query.get_or_404(announcement_id)
+        title = (request.form.get("title") or "").strip()
+        body = (request.form.get("body") or "").strip()
+        priority = (request.form.get("priority") or "info").strip()
+        if priority not in announcement_priority_meta:
+            priority = "info"
+
+        if not title or not body:
+            flash(trans("flash_announcement_required"), "warning")
+            return redirect(url_for(".admin_announcement_list"))
+
+        announcement.title = title[:200]
+        announcement.body = body
+        announcement.priority = priority
+        announcement.updated_by_id = current_user.id
+        announcement.updated_at = datetime.utcnow()
+        AnnouncementRead.query.filter_by(announcement_id=announcement.id).delete()
+        db.session.commit()
+        flash(trans("flash_announcement_updated"), "success")
+        return redirect(url_for(".admin_announcement_list"))
+
+    @bp.route("/announcements/<int:announcement_id>/delete", methods=["POST"], endpoint="admin_announcement_delete")
+    @roles_required("admin")
+    def admin_announcement_delete(announcement_id):
+        trans = t
+        announcement = Announcement.query.get_or_404(announcement_id)
+        AnnouncementRead.query.filter_by(announcement_id=announcement.id).delete()
+        db.session.delete(announcement)
+        db.session.commit()
+        flash(trans("flash_announcement_deleted"), "info")
+        return redirect(url_for(".admin_announcement_list"))
+
+    @bp.route("/announcements/export", endpoint="admin_announcement_export")
+    @roles_required("admin")
+    def admin_announcement_export():
+        announcements = Announcement.query.order_by(Announcement.created_at.asc(), Announcement.id.asc()).all()
+        payload = {
+            "version": APP_VERSION,
+            "announcements": [
+                {
+                    "title": item.title,
+                    "body": item.body,
+                    "priority": item.priority or "info",
+                    "created_at": item.created_at.isoformat() if item.created_at else None,
+                    "updated_at": item.updated_at.isoformat() if item.updated_at else None,
+                }
+                for item in announcements
+            ],
+        }
+        output = json.dumps(payload, ensure_ascii=False, indent=2)
+        return current_app.response_class(
+            output,
+            mimetype="application/json",
+            headers={"Content-Disposition": "attachment; filename=NeoFab_announcements.json"},
+        )
+
+    @bp.route("/announcements/import", methods=["POST"], endpoint="admin_announcement_import")
+    @roles_required("admin")
+    def admin_announcement_import():
+        trans = t
+        file = request.files.get("file")
+        if not file or not file.filename:
+            flash(trans("flash_json_choose_file"), "warning")
+            return redirect(url_for(".admin_announcement_list"))
+
+        try:
+            content = file.read().decode("utf-8-sig")
+            data = json.loads(content)
+        except Exception:
+            flash(trans("flash_invalid_json"), "danger")
+            return redirect(url_for(".admin_announcement_list"))
+
+        rows = data.get("announcements", []) if isinstance(data, dict) else []
+        if not isinstance(rows, list):
+            flash(trans("flash_invalid_json"), "danger")
+            return redirect(url_for(".admin_announcement_list"))
+
+        AnnouncementRead.query.delete()
+        Announcement.query.delete()
+
+        created = skipped = 0
+        now = datetime.utcnow()
+        for entry in rows:
+            if not isinstance(entry, dict):
+                skipped += 1
+                continue
+            title = (entry.get("title") or "").strip()
+            body = (entry.get("body") or "").strip()
+            priority = (entry.get("priority") or "info").strip()
+            if priority not in announcement_priority_meta:
+                priority = "info"
+
+            if not title or not body:
+                skipped += 1
+                continue
+
+            created_at = now
+            updated_at = now
+            for field_name, target in (("created_at", "created_at"), ("updated_at", "updated_at")):
+                raw_date = entry.get(field_name)
+                if not raw_date:
+                    continue
+                try:
+                    parsed_date = datetime.fromisoformat(str(raw_date))
+                except ValueError:
+                    continue
+                if target == "created_at":
+                    created_at = parsed_date
+                else:
+                    updated_at = parsed_date
+
+            db.session.add(
+                Announcement(
+                    title=title[:200],
+                    body=body,
+                    priority=priority,
+                    created_at=created_at,
+                    updated_at=updated_at,
+                    created_by_id=current_user.id,
+                    updated_by_id=current_user.id,
+                )
+            )
+            created += 1
+
+        db.session.commit()
+        flash(trans("flash_import_result_simple").format(created=created, skipped=skipped), "success")
+        return redirect(url_for(".admin_announcement_list"))
 
     # User Management -------------------------------------------------------
 

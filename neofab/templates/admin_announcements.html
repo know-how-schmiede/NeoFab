@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t("admin_announcements_title") }} - NeoFab{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">{{ t("admin_announcements_title") }}</h1>
+
+<div class="mb-3 d-flex gap-2 flex-wrap align-items-center">
+  <a href="{{ url_for('admin.admin_panel') }}" class="btn btn-secondary">
+    {{ t("btn_back_admin") }}
+  </a>
+  <a href="{{ url_for('admin.admin_announcement_export') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-download me-1"></i>{{ t("btn_export_json") }}
+  </a>
+  <form action="{{ url_for('admin.admin_announcement_import') }}" method="post" enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
+    <label class="form-label mb-0 small">{{ t("label_import_json") }}</label>
+    <input type="file" name="file" accept=".json,application/json" class="form-control form-control-sm" required>
+    <button type="submit" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-upload me-1"></i>{{ t("btn_import") }}
+    </button>
+  </form>
+</div>
+
+{% if announcements %}
+  <div class="table-responsive">
+    <table class="table table-striped align-middle">
+      <thead>
+        <tr>
+          <th style="width: 24%;">{{ t("announcement_title_label") }}</th>
+          <th style="width: 14%;">{{ t("announcement_priority_label") }}</th>
+          <th>{{ t("announcement_body_label") }}</th>
+          <th style="width: 16%;">{{ t("created") }}</th>
+          <th class="text-end" style="width: 18%;">{{ t("table_actions") }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in announcements %}
+          {% set meta = announcement_priority_meta.get(a.priority, announcement_priority_meta.get("info")) %}
+          <tr>
+            <td class="fw-semibold">{{ a.title }}</td>
+            <td>
+              <span class="{{ meta['class'] }}">
+                <i class="bi {{ meta['icon'] }} me-1"></i>{{ t(meta["label"]) }}
+              </span>
+            </td>
+            <td>
+              <div class="small">{{ render_markdown(a.body) }}</div>
+            </td>
+            <td>{{ a.created_at.strftime("%Y-%m-%d %H:%M") if a.created_at else "-" }}</td>
+            <td class="text-end">
+              <button type="button"
+                      class="btn btn-sm btn-primary"
+                      data-bs-toggle="modal"
+                      data-bs-target="#announcementEditModal"
+                      data-announcement-id="{{ a.id }}"
+                      data-announcement-title="{{ a.title|e }}"
+                      data-announcement-body="{{ a.body|e }}"
+                      data-announcement-priority="{{ a.priority or 'info' }}">
+                {{ t("btn_edit") }}
+              </button>
+              <form action="{{ url_for('admin.admin_announcement_delete', announcement_id=a.id) }}"
+                    method="post"
+                    class="d-inline"
+                    onsubmit="return confirm('{{ t('confirm_delete_named').format(name=a.title)|e }}');">
+                <button type="submit" class="btn btn-sm btn-danger">
+                  {{ t("btn_delete") }}
+                </button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p>{{ t("announcements_none") }}</p>
+{% endif %}
+
+<div class="modal fade" id="announcementEditModal" tabindex="-1" aria-labelledby="announcementEditModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" id="announcementEditForm">
+        <div class="modal-header">
+          <h5 class="modal-title" id="announcementEditModalLabel">{{ t("announcements_modal_edit_title") }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('btn_cancel') }}"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="announcement_title" class="form-label">{{ t("announcement_title_label") }}</label>
+            <input class="form-control" type="text" id="announcement_title" name="title" maxlength="200" required>
+          </div>
+          <div class="mb-3">
+            <label for="announcement_priority" class="form-label">{{ t("announcement_priority_label") }}</label>
+            <select id="announcement_priority" name="priority" class="form-select">
+              <option value="info">{{ t("announcement_priority_info") }}</option>
+              <option value="notice">{{ t("announcement_priority_notice") }}</option>
+              <option value="important">{{ t("announcement_priority_important") }}</option>
+              <option value="warning">{{ t("announcement_priority_warning") }}</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="announcement_body" class="form-label">{{ t("announcement_body_label") }}</label>
+            <textarea class="form-control" id="announcement_body" name="body" rows="6" required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t("btn_cancel") }}</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save me-1"></i>{{ t("btn_save_changes") }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const modalEl = document.getElementById("announcementEditModal");
+  if (!modalEl) return;
+
+  modalEl.addEventListener("show.bs.modal", (event) => {
+    const button = event.relatedTarget;
+    if (!button) return;
+
+    const id = button.getAttribute("data-announcement-id") || "";
+    const title = button.getAttribute("data-announcement-title") || "";
+    const body = button.getAttribute("data-announcement-body") || "";
+    const priority = button.getAttribute("data-announcement-priority") || "info";
+
+    const form = document.getElementById("announcementEditForm");
+    const titleInput = document.getElementById("announcement_title");
+    const bodyInput = document.getElementById("announcement_body");
+    const priorityInput = document.getElementById("announcement_priority");
+
+    if (form) {
+      form.action = "{{ url_for('admin.admin_announcement_update', announcement_id=0) }}".replace("/0/", `/${id}/`);
+    }
+    if (titleInput) titleInput.value = title;
+    if (bodyInput) bodyInput.value = body;
+    if (priorityInput) priorityInput.value = priority;
+  });
+});
+</script>
+{% endblock %}
