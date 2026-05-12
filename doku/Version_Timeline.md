@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.7.5
+
+Kommunikation in der Auftragsdetailseite als eigener Tab und unterer Bereich standardmäßig zugeklappt
+
 ## Version 0.7.4
 
 Admin-Bereich zur Verwaltung von Mitteilungen inklusive Bearbeiten, Löschen sowie JSON Ex- und Import

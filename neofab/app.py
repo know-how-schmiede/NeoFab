@@ -1845,7 +1845,7 @@ def order_detail(order_id):
     if current_user.role != "admin" and order.user_id != current_user.id:
         abort(403)
 
-    valid_tabs = {"general", "project", "files", "print-jobs"}
+    valid_tabs = {"general", "project", "files", "print-jobs", "communication"}
     active_tab = request.args.get("tab", "general")
     if active_tab not in valid_tabs:
         active_tab = "general"

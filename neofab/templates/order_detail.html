@@ -16,6 +16,36 @@
 
 {% block content %}
 {% set active_tab = active_tab|default('general') %}
+{% macro communication_panel(container_id, form_action) %}
+  <div class="card mt-4">
+    <div class="card-header">
+      <h5 class="mb-0">{{ t("messages_header") }}</h5>
+    </div>
+
+    <div id="{{ container_id }}" class="card-body neo-chat-thread" data-messages-container>
+      {% include "order_messages_fragment.html" %}
+    </div>
+
+    <div class="card-footer bg-light">
+      <form method="post" action="{{ form_action }}" class="neo-chat-input">
+        <input type="hidden" name="action" value="add_message">
+        <div class="input-group">
+          <textarea
+            class="form-control"
+            name="content"
+            rows="1"
+            placeholder="{{ t('message_placeholder') }}"
+            required
+          ></textarea>
+          <button class="btn btn-primary" type="submit">
+            <i class="bi bi-send"></i>
+            <span class="d-none d-sm-inline ms-1">{{ t("btn_send") }}</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endmacro %}
 
 <!-- ORDER FORMULAR / DETAILS -->
 <div class="card mb-3">
@@ -64,6 +94,11 @@
         <li class="nav-item" role="presentation">
           <button class="nav-link {% if active_tab == 'print-jobs' %}active{% endif %}" id="print-jobs-tab" data-bs-toggle="tab" data-bs-target="#print-jobs-tab-pane" type="button" role="tab" aria-controls="print-jobs-tab-pane" aria-selected="{{ 'true' if active_tab == 'print-jobs' else 'false' }}">
             {{ t("tab_print_jobs") }}
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link {% if active_tab == 'communication' %}active{% endif %}" id="communication-tab" data-bs-toggle="tab" data-bs-target="#communication-tab-pane" type="button" role="tab" aria-controls="communication-tab-pane" aria-selected="{{ 'true' if active_tab == 'communication' else 'false' }}">
+            {{ t("communication_header") }}
           </button>
         </li>
       </ul>
@@ -864,6 +899,10 @@
       <p class="text-muted">{{ t("print_jobs_admin_only") }}</p>
     {% endif %}
   </div>
+
+  <div class="tab-pane fade {% if active_tab == 'communication' %}show active{% endif %}" id="communication-tab-pane" role="tabpanel" aria-labelledby="communication-tab">
+    {{ communication_panel("messagesContainerTab", url_for("order_detail", order_id=order.id, tab="communication")) }}
+  </div>
 </div>
 
 <div class="modal fade" id="fileEditModal" tabindex="-1" aria-labelledby="fileEditLabel" aria-hidden="true">
@@ -1082,49 +1121,19 @@
 
 <!-- NACHRICHTEN / KOMMUNIKATION -->
 <div class="card mb-3">
-  <div class="card-header">
+  <div class="card-header d-flex justify-content-between align-items-center">
     <h3 class="h6 mb-0 d-flex align-items-center">
       <i class="bi bi-chat-dots me-2"></i>
       {{ t("communication_header") }}
     </h3>
+    <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#communicationCollapse" aria-expanded="false" aria-controls="communicationCollapse">
+      {{ t("btn_show_hide") }}
+    </button>
   </div>
-  <div class="card-body">
-
-  <div class="card mt-4">
-    <div class="card-header">
-        <h5 class="mb-0">{{ t("messages_header") }}</h5>
+  <div id="communicationCollapse" class="collapse">
+    <div class="card-body">
+      {{ communication_panel("messagesContainerBottom", url_for("order_detail", order_id=order.id)) }}
     </div>
-
-    <div id="messagesContainer" class="card-body neo-chat-thread">
-        {% include "order_messages_fragment.html" %}
-    </div>
-
-    <!-- Chat-Eingabefeld im Footer -->
-    <div class="card-footer bg-light">
-        <form method="post" class="neo-chat-input">
-            <input type="hidden" name="action" value="add_message">
-            <div class="input-group">
-                <textarea
-                    class="form-control"
-                    name="content"
-                    rows="1"
-                    placeholder="{{ t('message_placeholder') }}"
-                    required
-                ></textarea>
-                <button class="btn btn-primary" type="submit">
-                    <i class="bi bi-send"></i>
-                    <span class="d-none d-sm-inline ms-1">{{ t("btn_send") }}</span>
-                </button>
-            </div>
-        </form>
-    </div>
-  </div>
-
-  
-
-
-    
-
   </div>
 </div>
 
@@ -1152,17 +1161,19 @@ function updateColorPreview() {
 }
 
 (function() {
-  const container = document.getElementById("messagesContainer");
+  const containers = document.querySelectorAll("[data-messages-container]");
   const fetchUrl = "{{ url_for('order_messages_fragment', order_id=order.id) }}";
 
-  if (!container || !fetchUrl) return;
+  if (!containers.length || !fetchUrl) return;
 
   async function refreshMessages() {
     try {
       const resp = await fetch(fetchUrl, { headers: { "X-Requested-With": "Fetch" } });
       if (!resp.ok) return;
       const html = await resp.text();
-      container.innerHTML = html;
+      containers.forEach((container) => {
+        container.innerHTML = html;
+      });
     } catch (err) {
       // still retry on next interval
     }
