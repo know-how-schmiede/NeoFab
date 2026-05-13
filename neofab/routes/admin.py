@@ -24,7 +24,7 @@ from sqlalchemy.exc import OperationalError
 from werkzeug.utils import secure_filename
 
 from auth_utils import roles_required
-from audit_logs import list_log_files, read_log_entries, write_audit_log
+from audit_logs import delete_log_file, list_log_files, read_log_entries, write_audit_log
 from config import SETTINGS_FILE, coerce_positive_int, load_app_settings, save_app_settings
 from schema_utils import ensure_training_playlist_schema
 from status_messages import (
@@ -401,6 +401,24 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             selected_file=selected_file,
             entries=entries,
         )
+
+    @bp.route("/logs/delete", methods=["POST"], endpoint="admin_log_delete")
+    @roles_required("admin")
+    def admin_log_delete():
+        """Delete one known log file after UI confirmation."""
+        trans = t
+        selected_file = (request.form.get("file") or "").strip()
+        if selected_file and delete_log_file(current_app, selected_file):
+            write_audit_log(
+                current_app,
+                "log_file_deleted",
+                user=current_user,
+                details={"file": selected_file},
+            )
+            flash(trans("flash_log_file_deleted"), "info")
+        else:
+            flash(trans("flash_log_file_delete_failed"), "danger")
+        return redirect(url_for(".admin_logs"))
 
     @bp.route("/settings/export", endpoint="admin_settings_export")
     @roles_required("admin")

@@ -111,3 +111,27 @@ def read_log_entries(app, relative_path: str | None, max_entries: int = 500) -> 
             entries.append(entry)
 
     return selected, list(reversed(entries[-max_entries:]))
+
+
+def delete_log_file(app, relative_path: str) -> bool:
+    files = list_log_files(app)
+    known_paths = {item["path"] for item in files}
+    if relative_path not in known_paths:
+        return False
+
+    root = get_log_root(app).resolve()
+    log_path = (root / relative_path).resolve()
+    if root not in log_path.parents or not log_path.is_file():
+        return False
+
+    log_path.unlink()
+
+    parent = log_path.parent
+    while parent != root:
+        try:
+            parent.rmdir()
+        except OSError:
+            break
+        parent = parent.parent
+
+    return True

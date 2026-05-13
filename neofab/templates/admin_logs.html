@@ -18,13 +18,22 @@
       </div>
       <div class="list-group list-group-flush">
         {% for file in log_files %}
-          <a class="list-group-item list-group-item-action {% if file.path == selected_file %}active{% endif %}"
-             href="{{ url_for('admin.admin_logs', file=file.path) }}">
-            <div class="fw-semibold">{{ file.path }}</div>
-            <div class="small {% if file.path == selected_file %}text-white-50{% else %}text-muted{% endif %}">
-              {{ file.size }} bytes
+          <div class="list-group-item {% if file.path == selected_file %}active{% endif %}">
+            <div class="d-flex justify-content-between gap-2 align-items-start">
+              <a class="text-decoration-none flex-grow-1 {% if file.path == selected_file %}text-white{% endif %}"
+                 href="{{ url_for('admin.admin_logs', file=file.path) }}">
+                <div class="fw-semibold">{{ file.path }}</div>
+                <div class="small {% if file.path == selected_file %}text-white-50{% else %}text-muted{% endif %}">
+                  {{ file.size }} bytes
+                </div>
+              </a>
+              <button type="button"
+                      class="btn btn-sm {% if file.path == selected_file %}btn-outline-light{% else %}btn-outline-danger{% endif %} btn-delete-log"
+                      data-file="{{ file.path }}">
+                <i class="bi bi-trash"></i>
+              </button>
             </div>
-          </a>
+          </div>
         {% else %}
           <div class="list-group-item text-muted">{{ t("admin_logs_no_files") }}</div>
         {% endfor %}
@@ -71,4 +80,46 @@
     </div>
   </div>
 </div>
+
+<div class="modal fade" id="deleteLogModal" tabindex="-1" aria-labelledby="deleteLogModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteLogModalLabel">{{ t("admin_logs_delete_title") }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        {{ t("admin_logs_delete_confirm") }}
+        <div class="fw-semibold mt-2" id="deleteLogName"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t("btn_cancel") }}</button>
+        <form method="post" action="{{ url_for('admin.admin_log_delete') }}" class="m-0">
+          <input type="hidden" name="file" id="deleteLogFile">
+          <button type="submit" class="btn btn-danger">{{ t("btn_delete") }}</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const modalEl = document.getElementById('deleteLogModal');
+  if (!modalEl) return;
+
+  const deleteModal = new bootstrap.Modal(modalEl);
+  const fileInput = document.getElementById('deleteLogFile');
+  const nameEl = document.getElementById('deleteLogName');
+
+  document.querySelectorAll('.btn-delete-log').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const file = btn.getAttribute('data-file') || '';
+      fileInput.value = file;
+      nameEl.textContent = file;
+      deleteModal.show();
+    });
+  });
+});
+</script>
 {% endblock %}

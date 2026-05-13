@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.7.8
+
+Logfiles koennen im Admin-Bereich nach Sicherheitsabfrage geloescht werden
+
 ## Version 0.7.7
 
 Mehrere E-Mail-Empfaenger pro Kostenstelle fuer Status-Meldungen
