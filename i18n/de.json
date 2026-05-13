@@ -147,6 +147,7 @@
   "admin_user_label_new_password": "Neues Passwort",
   "admin_user_new_admin_title": "Neuen Admin erstellen",
   "admin_user_new_title": "Neuer Benutzer",
+  "admin_user_own_role_hint": "Die eigene Rolle kann nicht geaendert werden.",
   "admin_users_back": "Zurück zum Admin-Panel",
   "admin_users_desc": "Registrierte Nutzer und Rollen ansehen und bearbeiten.",
   "admin_users_heading": "Benutzerverwaltung",

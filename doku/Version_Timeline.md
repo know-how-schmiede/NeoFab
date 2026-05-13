@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.7.10
+
+Angemeldete Admins koennen ihre eigene Rolle nicht mehr aendern
+
 ## Version 0.7.9
 
 Admin-User koennen in der Benutzerverwaltung erstellt werden

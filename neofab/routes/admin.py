@@ -915,7 +915,8 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                         return redirect(url_for(".admin_user_edit", user_id=user.id))
 
                     user.email = email
-                    user.role = role
+                    if user.id != current_user.id:
+                        user.role = role
                     user.is_active = is_active
 
                     user.salutation = salutation

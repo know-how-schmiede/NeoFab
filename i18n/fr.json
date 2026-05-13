@@ -147,6 +147,7 @@
   "admin_user_label_new_password": "Nouveau mot de passe",
   "admin_user_new_admin_title": "Creer un nouvel admin",
   "admin_user_new_title": "Nouvel utilisateur",
+  "admin_user_own_role_hint": "Vous ne pouvez pas modifier votre propre role.",
   "admin_users_back": "Retour au panneau d'administration",
   "admin_users_desc": "Afficher et modifier les utilisateurs enregistrés et leurs rôles.",
   "admin_users_heading": "Gestion des utilisateurs",

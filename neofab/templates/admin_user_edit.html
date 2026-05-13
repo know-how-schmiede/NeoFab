@@ -44,6 +44,9 @@
           </label>
           {% if is_new_admin %}
             <input type="text" class="form-control" value="Admin" disabled>
+          {% elif user.id == current_user.id %}
+            <input type="text" class="form-control" value="{{ user.role }}" disabled>
+            <div class="form-text">{{ t("admin_user_own_role_hint") }}</div>
           {% else %}
             <select
               id="role"
