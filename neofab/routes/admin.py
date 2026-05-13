@@ -942,6 +942,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                             "previous_email": before["email"],
                             "previous_role": before["role"],
                             "previous_is_active": before["is_active"],
+                            "new_is_active": bool(user.is_active),
                             "password_changed": bool(new_password),
                             "source": "admin_user_edit",
                         },
@@ -960,6 +961,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             flash(trans("flash_user_deleted_cannot_activate"), "warning")
             return redirect(url_for(".admin_user_list"))
 
+        previous_is_active = bool(user.is_active)
         user.is_active = True
         db.session.commit()
         write_audit_log(
@@ -970,6 +972,9 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 "target_user_id": user.id,
                 "target_email": user.email,
                 "target_role": user.role,
+                "previous_is_active": previous_is_active,
+                "new_is_active": bool(user.is_active),
+                "status_change": "activated",
                 "source": "admin_user_activate",
             },
         )
@@ -988,6 +993,8 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             flash(trans("flash_last_admin_required"), "danger")
             return redirect(url_for(".admin_user_list"))
 
+        previous_is_active = bool(user.is_active)
+        previous_deleted_at = user.deleted_at.isoformat() if user.deleted_at else None
         user.is_active = False
         db.session.commit()
         write_audit_log(
@@ -998,6 +1005,11 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 "target_user_id": user.id,
                 "target_email": user.email,
                 "target_role": user.role,
+                "previous_is_active": previous_is_active,
+                "new_is_active": bool(user.is_active),
+                "previous_deleted_at": previous_deleted_at,
+                "new_deleted_at": user.deleted_at.isoformat() if user.deleted_at else None,
+                "status_change": "deactivated",
                 "source": "admin_user_deactivate",
             },
         )
@@ -1016,6 +1028,8 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             flash(trans("flash_last_admin_required"), "danger")
             return redirect(url_for(".admin_user_list"))
 
+        previous_is_active = bool(user.is_active)
+        previous_deleted_at = user.deleted_at.isoformat() if user.deleted_at else None
         user.is_active = False
         user.deleted_at = datetime.utcnow()
         db.session.commit()
@@ -1027,6 +1041,11 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 "target_user_id": user.id,
                 "target_email": user.email,
                 "target_role": user.role,
+                "previous_is_active": previous_is_active,
+                "new_is_active": bool(user.is_active),
+                "previous_deleted_at": previous_deleted_at,
+                "new_deleted_at": user.deleted_at.isoformat() if user.deleted_at else None,
+                "status_change": "soft_deleted",
                 "source": "admin_user_delete",
             },
         )
