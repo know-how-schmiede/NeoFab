@@ -28,6 +28,7 @@ sudo -u neofab git clone https://github.com/Know-How-Schmiede/neofab.git /home/n
 chmod +x /home/neofab/projects/neofab/script/setupNeoFab
 chmod +x /home/neofab/projects/neofab/script/setupNeoFabService
 chmod +x /home/neofab/projects/neofab/script/upDateNeoFabService
+chmod +x /home/neofab/projects/neofab/script/resetAdminPassword
 
 # Basis-Setup & Test-Run (interaktiv, startet Server optional im Terminal)
 sudo bash /home/neofab/projects/neofab/script/setupNeoFab
@@ -37,6 +38,9 @@ sudo bash /home/neofab/projects/neofab/script/setupNeoFabService
 
 # Update NeoFab als Service
 sudo bash /home/neofab/projects/neofab/script/upDateNeoFabService
+
+# Admin-Passwort im Notfall zuruecksetzen
+sudo bash /home/neofab/projects/neofab/script/resetAdminPassword
 ```
 
 ## Hinweis
@@ -46,6 +50,8 @@ sudo bash /home/neofab/projects/neofab/script/upDateNeoFabService
 - Zu Beginn des Script`s werden einige Infos abgefragt, bei einfach Return werden die Standard-Einstellugnen übernommen.
 - `setupNeoFabService` setzt auf der Basisinstallation auf und erstellt den systemd-Dienst (`/etc/systemd/system/<name>.service`).
 - `upDateNeoFabService` stopt den systemd-Dienst, holt sich den aktuellen Stand auf Git von NeoFab, installiert neue Abhängigkeiten, migriert bei Bedarf die Datenbank und startet den Dienst neu.
+
+- `resetAdminPassword` liest die vorhandenen Admin-User aus der Datenbank, laesst einen User auswaehlen und setzt dessen Passwort standardmaessig auf `ChangePass`. Wer dieses Notfallscript auf einem Produktivserver nicht vorhalten moechte, kann es nach der Installation dort loeschen.
 
 ## Installation auf Proxmox LXC-Container
 

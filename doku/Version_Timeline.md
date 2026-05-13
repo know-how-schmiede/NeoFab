@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.7.6
+
+Notfallscript zum Zuruecksetzen eines Admin-Passworts ueber die Installations-Scripte
+
 ## Version 0.7.5
 
 Kommunikation in der Auftragsdetailseite als eigener Tab und unterer Bereich standardmäßig zugeklappt
