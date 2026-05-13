@@ -5,6 +5,8 @@
 Admin-User koennen in der Benutzerverwaltung erstellt werden
 Benutzer koennen deaktiviert oder als geloescht markiert werden
 Deaktivierte und geloeschte Benutzer koennen sich nicht mehr anmelden und erhalten eine passende Login-Meldung
+Statusaenderungen von Benutzern werden detailliert im Logfile protokolliert
+Notfallscript zum Zuruecksetzen des Admin-Passworts aktiviert den Admin-User wieder
 
 ## Version 0.7.8
 
