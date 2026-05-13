@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ t("admin_user_edit_title") }} - NeoFab{% endblock %}
+{% block title %}{{ is_new_admin and t("admin_user_new_admin_title") or t("admin_user_edit_title") }} - NeoFab{% endblock %}
 
 {% block content %}
 
@@ -8,7 +8,11 @@
   <div class="card-header">
     <h2 class="h5 mb-0">
       <i class="bi bi-person-gear me-1"></i>
-      {{ t("admin_user_edit_title") }}: {{ user.email }}
+      {% if is_new_admin %}
+        {{ t("admin_user_new_admin_title") }}
+      {% else %}
+        {{ t("admin_user_edit_title") }}: {{ user.email }}
+      {% endif %}
     </h2>
   </div>
 
@@ -28,7 +32,7 @@
             id="email"
             name="email"
             required
-            value="{{ user.email }}"
+            value="{{ user.email if user else '' }}"
           >
         </div>
 
@@ -38,15 +42,19 @@
             <i class="bi bi-shield-lock me-1"></i>
             {{ t("label_role") }}*
           </label>
-          <select
-            id="role"
-            name="role"
-            class="form-select"
-            required
-          >
-            <option value="user"  {% if user.role == 'user' %}selected{% endif %}>User</option>
-            <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
-          </select>
+          {% if is_new_admin %}
+            <input type="text" class="form-control" value="Admin" disabled>
+          {% else %}
+            <select
+              id="role"
+              name="role"
+              class="form-select"
+              required
+            >
+              <option value="user"  {% if user.role == 'user' %}selected{% endif %}>User</option>
+              <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
+            </select>
+          {% endif %}
         </div>
 
         <!-- New Password -->
@@ -60,8 +68,25 @@
             class="form-control"
             id="password"
             name="password"
+            {% if is_new_admin %}required{% endif %}
           >
         </div>
+
+        {% if not is_new_admin %}
+        <div class="col-md-6 d-flex align-items-end">
+          <div class="form-check">
+            <input class="form-check-input"
+                   type="checkbox"
+                   id="is_active"
+                   name="is_active"
+                   {% if user.is_active %}checked{% endif %}
+                   {% if user.id == current_user.id or user.deleted_at %}disabled{% endif %}>
+            <label class="form-check-label" for="is_active">
+              {{ t("admin_user_label_is_active") }}
+            </label>
+          </div>
+        </div>
+        {% endif %}
 
         <!-- Salutation -->
         <div class="col-md-6">
@@ -73,7 +98,7 @@
             class="form-control"
             id="salutation"
             name="salutation"
-            value="{{ user.salutation or '' }}"
+            value="{{ user.salutation if user and user.salutation else '' }}"
           >
         </div>
 
@@ -87,7 +112,7 @@
             class="form-control"
             id="first_name"
             name="first_name"
-            value="{{ user.first_name or '' }}"
+            value="{{ user.first_name if user and user.first_name else '' }}"
           >
         </div>
 
@@ -101,7 +126,7 @@
             class="form-control"
             id="last_name"
             name="last_name"
-            value="{{ user.last_name or '' }}"
+            value="{{ user.last_name if user and user.last_name else '' }}"
           >
         </div>
 
@@ -115,7 +140,7 @@
             class="form-control"
             id="address"
             name="address"
-            value="{{ user.address or '' }}"
+            value="{{ user.address if user and user.address else '' }}"
           >
         </div>
 
@@ -129,7 +154,7 @@
             class="form-control"
             id="position"
             name="position"
-            value="{{ user.position or '' }}"
+            value="{{ user.position if user and user.position else '' }}"
           >
         </div>
 
@@ -143,7 +168,7 @@
             class="form-control"
             id="cost_center"
             name="cost_center"
-            value="{{ user.cost_center or '' }}"
+            value="{{ user.cost_center if user and user.cost_center else '' }}"
           >
         </div>
 
@@ -157,7 +182,7 @@
             class="form-control"
             id="study_program"
             name="study_program"
-            value="{{ user.study_program or '' }}"
+            value="{{ user.study_program if user and user.study_program else '' }}"
           >
         </div>
 
@@ -171,7 +196,7 @@
             id="note"
             name="note"
             rows="3"
-          >{{ user.note or '' }}</textarea>
+          >{{ user.note if user and user.note else '' }}</textarea>
         </div>
 
       </div>

@@ -1,5 +1,11 @@
 # Timeline NeoFab
 
+## Version 0.7.9
+
+Admin-User koennen in der Benutzerverwaltung erstellt werden
+Benutzer koennen deaktiviert oder als geloescht markiert werden
+Deaktivierte und geloeschte Benutzer koennen sich nicht mehr anmelden und erhalten eine passende Login-Meldung
+
 ## Version 0.7.8
 
 Logfiles koennen im Admin-Bereich nach Sicherheitsabfrage geloescht werden

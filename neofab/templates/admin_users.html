@@ -10,10 +10,16 @@
       <i class="bi bi-people me-1"></i>
       {{ t("admin_users_heading") }}
     </h2>
-    <a href="{{ url_for('admin.admin_panel') }}" class="btn btn-sm btn-outline-secondary">
-      <i class="bi bi-arrow-left me-1"></i>
-      {{ t("btn_back_admin") }}
-    </a>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('admin.admin_user_new_admin') }}" class="btn btn-sm btn-success">
+        <i class="bi bi-person-plus me-1"></i>
+        {{ t("admin_user_add_admin") }}
+      </a>
+      <a href="{{ url_for('admin.admin_panel') }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>
+        {{ t("btn_back_admin") }}
+      </a>
+    </div>
   </div>
 
   <div class="card-body p-2">
@@ -26,6 +32,7 @@
               <th>{{ t("table_email") }}</th>
               <th>{{ t("table_name") }}</th>
               <th>{{ t("table_role") }}</th>
+              <th>{{ t("table_status") }}</th>
               <th>{{ t("table_created") }}</th>
               <th>{{ t("table_last_login") }}</th>
               <th class="text-end">{{ t("table_actions") }}</th>
@@ -44,6 +51,15 @@
                   {{ u.role }}
                 </span>
               </td>
+              <td>
+                {% if u.deleted_at %}
+                  <span class="badge bg-dark">{{ t("user_status_deleted") }}</span>
+                {% elif u.is_active %}
+                  <span class="badge bg-success">{{ t("user_status_active") }}</span>
+                {% else %}
+                  <span class="badge bg-warning text-dark">{{ t("user_status_inactive") }}</span>
+                {% endif %}
+              </td>
               <td>{{ u.created_at.strftime('%Y-%m-%d') if u.created_at else '' }}</td>
               <td>{{ u.last_login_at.strftime('%Y-%m-%d %H:%M') if u.last_login_at else '-' }}</td>
               <td class="text-end">
@@ -52,6 +68,31 @@
                   <i class="bi bi-pencil-square me-1"></i>
                   {{ t("btn_edit") }}
                 </a>
+                {% if not u.deleted_at %}
+                  {% if u.is_active %}
+                    <form action="{{ url_for('admin.admin_user_deactivate', user_id=u.id) }}" method="post" class="d-inline">
+                      <button type="submit" class="btn btn-outline-warning btn-sm" {% if u.id == current_user.id %}disabled{% endif %}>
+                        <i class="bi bi-person-dash me-1"></i>
+                        {{ t("btn_deactivate") }}
+                      </button>
+                    </form>
+                  {% else %}
+                    <form action="{{ url_for('admin.admin_user_activate', user_id=u.id) }}" method="post" class="d-inline">
+                      <button type="submit" class="btn btn-outline-success btn-sm">
+                        <i class="bi bi-person-check me-1"></i>
+                        {{ t("btn_activate") }}
+                      </button>
+                    </form>
+                  {% endif %}
+                  <button type="button"
+                          class="btn btn-outline-danger btn-sm btn-delete-user"
+                          data-user-id="{{ u.id }}"
+                          data-user-email="{{ u.email }}"
+                          {% if u.id == current_user.id %}disabled{% endif %}>
+                    <i class="bi bi-trash me-1"></i>
+                    {{ t("btn_delete") }}
+                  </button>
+                {% endif %}
               </td>
             </tr>
             {% endfor %}
@@ -76,5 +117,47 @@
     </button>
   </form>
 </div>
+
+<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteUserModalLabel">{{ t("admin_user_delete_title") }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        {{ t("admin_user_delete_confirm") }}
+        <div class="fw-semibold mt-2" id="deleteUserEmail"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t("btn_cancel") }}</button>
+        <form method="post" id="deleteUserForm" class="m-0">
+          <button type="submit" class="btn btn-danger">{{ t("btn_delete") }}</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const modalEl = document.getElementById('deleteUserModal');
+  if (!modalEl) return;
+
+  const deleteModal = new bootstrap.Modal(modalEl);
+  const form = document.getElementById('deleteUserForm');
+  const emailEl = document.getElementById('deleteUserEmail');
+
+  document.querySelectorAll('.btn-delete-user').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const userId = btn.getAttribute('data-user-id') || '';
+      const email = btn.getAttribute('data-user-email') || '';
+      form.action = "{{ url_for('admin.admin_user_delete', user_id=0) }}".replace('/0/', '/' + userId + '/');
+      emailEl.textContent = email;
+      deleteModal.show();
+    });
+  });
+});
+</script>
 
 {% endblock %}

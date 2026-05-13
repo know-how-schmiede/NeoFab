@@ -777,7 +777,37 @@ def ensure_order_read_status_table():
         app.logger.exception("Failed to ensure order_read_status table exists")
 
 
+def ensure_user_status_columns():
+    """
+    Adds lightweight user status columns used for deactivate/soft-delete.
+    """
+    try:
+        exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='user'")
+        ).scalar()
+        if not exists:
+            return
+
+        cols = {
+            row[1]
+            for row in db.session.execute(text("PRAGMA table_info(user)"))
+        }
+        statements = []
+        if "is_active" not in cols:
+            statements.append("ALTER TABLE user ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1")
+        if "deleted_at" not in cols:
+            statements.append("ALTER TABLE user ADD COLUMN deleted_at DATETIME")
+
+        for stmt in statements:
+            db.session.execute(text(stmt))
+        if statements:
+            db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure user status columns exist")
+
+
 with app.app_context():
+    ensure_user_status_columns()
     ensure_order_file_columns()
     ensure_order_image_columns()
     ensure_training_videos_table()
@@ -1308,6 +1338,13 @@ def login():
 
         user = User.query.filter_by(email=email).first()
         if user and user.check_password(password):
+            if user.deleted_at is not None:
+                flash(trans("flash_account_deleted"), "danger")
+                return render_template("login.html")
+            if not user.is_active:
+                flash(trans("flash_account_inactive"), "warning")
+                return render_template("login.html")
+
             login_user(user)
             write_audit_log(app, "user_login", user=user)
             load_app_settings(app)

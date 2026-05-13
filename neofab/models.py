@@ -18,6 +18,8 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(50), nullable=False, default="user")
     language = db.Column(db.String(5), nullable=False, default="en")
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
+    deleted_at = db.Column(db.DateTime, nullable=True)
 
     # Zusatzfelder
     salutation = db.Column(db.String(50))   # Anrede

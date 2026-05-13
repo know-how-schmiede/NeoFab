@@ -661,6 +661,11 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         users = User.query.order_by(User.id.asc()).all()
         return render_template("admin_users.html", users=users)
 
+    def _is_last_active_admin(user: User) -> bool:
+        if user.role != "admin" or not user.is_active or user.deleted_at is not None:
+            return False
+        return User.query.filter_by(role="admin", is_active=True, deleted_at=None).count() <= 1
+
     @bp.route("/users/export", endpoint="admin_user_export")
     @roles_required("admin")
     def admin_user_export():
@@ -685,6 +690,8 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     "note": u.note or "",
                     "created_at": u.created_at.isoformat() if u.created_at else "",
                     "last_login_at": u.last_login_at.isoformat() if u.last_login_at else "",
+                    "is_active": bool(u.is_active),
+                    "deleted_at": u.deleted_at.isoformat() if u.deleted_at else "",
                     "password_hash": u.password_hash,
                 }
                 for u in users
@@ -750,6 +757,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
 
             user.role = (entry.get("role") or user.role or "user").strip() or "user"
             user.language = (entry.get("language") or user.language or "en").strip() or "en"
+            user.is_active = bool(entry.get("is_active", user.is_active if user.id else True))
 
             user.salutation = (entry.get("salutation") or "").strip() or None
             user.first_name = (entry.get("first_name") or "").strip() or None
@@ -766,6 +774,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             last_login = parse_dt(entry.get("last_login_at"))
             if last_login:
                 user.last_login_at = last_login
+            user.deleted_at = parse_dt(entry.get("deleted_at"))
 
             raw_pw_hash = (entry.get("password_hash") or "").strip()
             raw_pw_plain = (entry.get("password") or "").strip()
@@ -817,6 +826,54 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         )
         return redirect(url_for(".admin_user_list"))
 
+    @bp.route("/users/new-admin", methods=["GET", "POST"], endpoint="admin_user_new_admin")
+    @roles_required("admin")
+    def admin_user_new_admin():
+        """Creates an additional admin user."""
+        trans = t
+        if request.method == "POST":
+            email = request.form.get("email", "").strip().lower()
+            password = request.form.get("password", "")
+
+            if not email:
+                flash(trans("flash_email_required"), "danger")
+            elif not password:
+                flash(trans("flash_password_required"), "danger")
+            elif User.query.filter_by(email=email).first():
+                flash(trans("flash_user_email_exists"), "danger")
+            else:
+                user = User(
+                    email=email,
+                    role="admin",
+                    is_active=True,
+                    salutation=request.form.get("salutation") or None,
+                    first_name=request.form.get("first_name") or None,
+                    last_name=request.form.get("last_name") or None,
+                    address=request.form.get("address") or None,
+                    position=request.form.get("position") or None,
+                    cost_center=request.form.get("cost_center") or None,
+                    study_program=request.form.get("study_program") or None,
+                    note=request.form.get("note") or None,
+                )
+                user.set_password(password)
+                db.session.add(user)
+                db.session.commit()
+                write_audit_log(
+                    current_app,
+                    "user_created",
+                    user=current_user,
+                    details={
+                        "target_user_id": user.id,
+                        "target_email": user.email,
+                        "target_role": user.role,
+                        "source": "admin_new_admin",
+                    },
+                )
+                flash(trans("flash_user_created"), "success")
+                return redirect(url_for(".admin_user_list"))
+
+        return render_template("admin_user_edit.html", user=None, is_new_admin=True)
+
     @bp.route("/users/<int:user_id>/edit", methods=["GET", "POST"], endpoint="admin_user_edit")
     @roles_required("admin")
     def admin_user_edit(user_id):
@@ -837,6 +894,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             cost_center = request.form.get("cost_center") or None
             study_program = request.form.get("study_program") or None
             note = request.form.get("note") or None
+            is_active = bool(request.form.get("is_active"))
 
             if not email:
                 flash(trans("flash_email_required"), "danger")
@@ -848,9 +906,17 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     before = {
                         "email": user.email,
                         "role": user.role,
+                        "is_active": bool(user.is_active),
                     }
+                    if user.id == current_user.id:
+                        is_active = True
+                    elif not is_active and _is_last_active_admin(user):
+                        flash(trans("flash_last_admin_required"), "danger")
+                        return redirect(url_for(".admin_user_edit", user_id=user.id))
+
                     user.email = email
                     user.role = role
+                    user.is_active = is_active
 
                     user.salutation = salutation
                     user.first_name = first_name
@@ -875,6 +941,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                             "target_role": user.role,
                             "previous_email": before["email"],
                             "previous_role": before["role"],
+                            "previous_is_active": before["is_active"],
                             "password_changed": bool(new_password),
                             "source": "admin_user_edit",
                         },
@@ -883,6 +950,88 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     return redirect(url_for(".admin_user_list"))
 
         return render_template("admin_user_edit.html", user=user)
+
+    @bp.route("/users/<int:user_id>/activate", methods=["POST"], endpoint="admin_user_activate")
+    @roles_required("admin")
+    def admin_user_activate(user_id):
+        trans = t
+        user = User.query.get_or_404(user_id)
+        if user.deleted_at is not None:
+            flash(trans("flash_user_deleted_cannot_activate"), "warning")
+            return redirect(url_for(".admin_user_list"))
+
+        user.is_active = True
+        db.session.commit()
+        write_audit_log(
+            current_app,
+            "user_updated",
+            user=current_user,
+            details={
+                "target_user_id": user.id,
+                "target_email": user.email,
+                "target_role": user.role,
+                "source": "admin_user_activate",
+            },
+        )
+        flash(trans("flash_user_activated"), "success")
+        return redirect(url_for(".admin_user_list"))
+
+    @bp.route("/users/<int:user_id>/deactivate", methods=["POST"], endpoint="admin_user_deactivate")
+    @roles_required("admin")
+    def admin_user_deactivate(user_id):
+        trans = t
+        user = User.query.get_or_404(user_id)
+        if user.id == current_user.id:
+            flash(trans("flash_user_self_status_forbidden"), "danger")
+            return redirect(url_for(".admin_user_list"))
+        if _is_last_active_admin(user):
+            flash(trans("flash_last_admin_required"), "danger")
+            return redirect(url_for(".admin_user_list"))
+
+        user.is_active = False
+        db.session.commit()
+        write_audit_log(
+            current_app,
+            "user_updated",
+            user=current_user,
+            details={
+                "target_user_id": user.id,
+                "target_email": user.email,
+                "target_role": user.role,
+                "source": "admin_user_deactivate",
+            },
+        )
+        flash(trans("flash_user_deactivated"), "info")
+        return redirect(url_for(".admin_user_list"))
+
+    @bp.route("/users/<int:user_id>/delete", methods=["POST"], endpoint="admin_user_delete")
+    @roles_required("admin")
+    def admin_user_delete(user_id):
+        trans = t
+        user = User.query.get_or_404(user_id)
+        if user.id == current_user.id:
+            flash(trans("flash_user_self_status_forbidden"), "danger")
+            return redirect(url_for(".admin_user_list"))
+        if _is_last_active_admin(user):
+            flash(trans("flash_last_admin_required"), "danger")
+            return redirect(url_for(".admin_user_list"))
+
+        user.is_active = False
+        user.deleted_at = datetime.utcnow()
+        db.session.commit()
+        write_audit_log(
+            current_app,
+            "user_deleted",
+            user=current_user,
+            details={
+                "target_user_id": user.id,
+                "target_email": user.email,
+                "target_role": user.role,
+                "source": "admin_user_delete",
+            },
+        )
+        flash(trans("flash_user_deleted"), "info")
+        return redirect(url_for(".admin_user_list"))
 
     # Material Master Data --------------------------------------------------
 
