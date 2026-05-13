@@ -1398,6 +1398,17 @@ def register():
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
+            write_audit_log(
+                app,
+                "user_created",
+                user=user,
+                details={
+                    "target_user_id": user.id,
+                    "target_email": user.email,
+                    "target_role": user.role,
+                    "source": "registration",
+                },
+            )
             flash(trans("flash_registration_success"), "success")
             return redirect(url_for("login"))
 
@@ -1746,6 +1757,19 @@ def new_order():
 
         db.session.add(order)
         db.session.commit()
+        write_audit_log(
+            app,
+            "order_created",
+            user=current_user,
+            details={
+                "order_id": order.id,
+                "title": order.title,
+                "status": order.status,
+                "cost_center_id": order.cost_center_id,
+                "material_id": order.material_id,
+                "color_id": order.color_id,
+            },
+        )
 
         # Tags speichern
         if tags_value:
@@ -1797,6 +1821,20 @@ def new_order():
                 update_order_file_preview(order_file, full_path)
 
                 db.session.commit()
+                write_audit_log(
+                    app,
+                    "file_uploaded",
+                    user=current_user,
+                    details={
+                        "order_id": order.id,
+                        "file_kind": "model",
+                        "file_id": order_file.id,
+                        "original_name": order_file.original_name,
+                        "stored_name": order_file.stored_name,
+                        "file_type": order_file.file_type,
+                        "filesize": order_file.filesize,
+                    },
+                )
 
                 app.logger.debug(
                     f"[new_order] Uploaded file for order {order.id}: "
@@ -2120,6 +2158,21 @@ def order_detail(order_id):
             update_order_file_preview(order_file, full_path)
 
             db.session.commit()
+            write_audit_log(
+                app,
+                "file_uploaded",
+                user=current_user,
+                details={
+                    "order_id": order.id,
+                    "file_kind": "model",
+                    "file_id": order_file.id,
+                    "original_name": order_file.original_name,
+                    "stored_name": order_file.stored_name,
+                    "file_type": order_file.file_type,
+                    "filesize": order_file.filesize,
+                    "quantity": order_file.quantity,
+                },
+            )
 
             app.logger.debug(
                 f"[order_detail] Uploaded extra file for order {order.id}: "
@@ -2215,6 +2268,19 @@ def order_detail(order_id):
             image_entry.uploaded_at = datetime.utcnow()
 
             db.session.commit()
+            write_audit_log(
+                app,
+                "file_uploaded",
+                user=current_user,
+                details={
+                    "order_id": order.id,
+                    "file_kind": "image",
+                    "file_id": image_entry.id,
+                    "original_name": image_entry.original_name,
+                    "stored_name": image_entry.stored_name,
+                    "filesize": image_entry.filesize,
+                },
+            )
 
             flash(trans("flash_image_uploaded"), "success")
             return order_detail_redirect("files")
@@ -2378,6 +2444,20 @@ def order_detail(order_id):
             job.uploaded_at = datetime.utcnow()
 
             db.session.commit()
+            write_audit_log(
+                app,
+                "file_uploaded",
+                user=current_user,
+                details={
+                    "order_id": order.id,
+                    "file_kind": "print_job",
+                    "file_id": job.id,
+                    "original_name": job.original_name,
+                    "stored_name": job.stored_name,
+                    "status": job.status,
+                    "filesize": job.filesize,
+                },
+            )
             flash(trans("flash_print_job_uploaded"), "success")
             return order_detail_redirect("print-jobs")
 

@@ -4,6 +4,7 @@
 
 Mehrere E-Mail-Empfaenger pro Kostenstelle fuer Status-Meldungen
 Admin-Bereich fuer Logfiles mit taeglicher Ablage unter Jahr/Monat/Tag und Logging von An- und Abmeldungen
+Logging fuer User-Erstellung und User-Bearbeitung
 
 ## Version 0.7.6
 

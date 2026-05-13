@@ -24,7 +24,7 @@ from sqlalchemy.exc import OperationalError
 from werkzeug.utils import secure_filename
 
 from auth_utils import roles_required
-from audit_logs import list_log_files, read_log_entries
+from audit_logs import list_log_files, read_log_entries, write_audit_log
 from config import SETTINGS_FILE, coerce_positive_int, load_app_settings, save_app_settings
 from schema_utils import ensure_training_playlist_schema
 from status_messages import (
@@ -703,6 +703,8 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         rows = data.get("users", []) if isinstance(data, dict) else []
 
         created = updated = skipped = 0
+        imported_created: list[User] = []
+        imported_updated: list[User] = []
 
         def parse_dt(raw):
             if not raw:
@@ -758,11 +760,37 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
 
             if is_new:
                 db.session.add(user)
+                imported_created.append(user)
                 created += 1
             else:
+                imported_updated.append(user)
                 updated += 1
 
         db.session.commit()
+        for user in imported_created:
+            write_audit_log(
+                current_app,
+                "user_created",
+                user=current_user,
+                details={
+                    "target_user_id": user.id,
+                    "target_email": user.email,
+                    "target_role": user.role,
+                    "source": "user_import",
+                },
+            )
+        for user in imported_updated:
+            write_audit_log(
+                current_app,
+                "user_updated",
+                user=current_user,
+                details={
+                    "target_user_id": user.id,
+                    "target_email": user.email,
+                    "target_role": user.role,
+                    "source": "user_import",
+                },
+            )
         flash(
             trans("flash_import_result_extended").format(
                 created=created, updated=updated, skipped=skipped
@@ -799,6 +827,10 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 if existing and existing.id != user.id:
                     flash(trans("flash_user_email_exists"), "danger")
                 else:
+                    before = {
+                        "email": user.email,
+                        "role": user.role,
+                    }
                     user.email = email
                     user.role = role
 
@@ -815,6 +847,20 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                         user.set_password(new_password)
 
                     db.session.commit()
+                    write_audit_log(
+                        current_app,
+                        "user_updated",
+                        user=current_user,
+                        details={
+                            "target_user_id": user.id,
+                            "target_email": user.email,
+                            "target_role": user.role,
+                            "previous_email": before["email"],
+                            "previous_role": before["role"],
+                            "password_changed": bool(new_password),
+                            "source": "admin_user_edit",
+                        },
+                    )
                     flash(trans("flash_user_updated"), "success")
                     return redirect(url_for(".admin_user_list"))
 
