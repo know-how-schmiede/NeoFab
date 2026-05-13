@@ -55,13 +55,13 @@ sudo bash /home/neofab/projects/neofab/script/resetAdminPassword
 
 ## Installation auf Proxmox LXC-Container
 
-![Proxmox LXC Container - Allgemein](/NeoFab/images/Proxmox_LXC_01.png)
-![Proxmox LXC Container - Template](/NeoFab/images/Proxmox_LXC_02.png)
-![Proxmox LXC Container - Disks](/NeoFab/images/Proxmox_LXC_03.png)
-![Proxmox LXC Container - CPU](/NeoFab/images/Proxmox_LXC_04.png)
-![Proxmox LXC Container - Speicher](/NeoFab/images/Proxmox_LXC_05.png)
-![Proxmox LXC Container - Netzwerk](/NeoFab/images/Proxmox_LXC_06.png)
-![Proxmox LXC Container - DNS](/NeoFab/images/Proxmox_LXC_07.png)
-![Proxmox LXC Container - Bestätigen](/NeoFab/images/Proxmox_LXC_08.png)
+![Proxmox LXC Container - Allgemein](../images/Proxmox_LXC_01.png)
+![Proxmox LXC Container - Template](../images/Proxmox_LXC_02.png)
+![Proxmox LXC Container - Disks](../images/Proxmox_LXC_03.png)
+![Proxmox LXC Container - CPU](../images/Proxmox_LXC_04.png)
+![Proxmox LXC Container - Speicher](../images/Proxmox_LXC_05.png)
+![Proxmox LXC Container - Netzwerk](../images/Proxmox_LXC_06.png)
+![Proxmox LXC Container - DNS](../images/Proxmox_LXC_07.png)
+![Proxmox LXC Container - Bestätigen](../images/Proxmox_LXC_08.png)
 
-![Proxmox LXC Container - Konsole aufrufen](/NeoFab/images/Proxmox_LXC_Konsole.png)
+![Proxmox LXC Container - Konsole aufrufen](../images/Proxmox_LXC_Konsole.png)
