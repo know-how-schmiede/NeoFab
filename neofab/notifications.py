@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import smtplib
+from email.utils import getaddresses
 from email.message import EmailMessage
 from typing import Mapping
 
@@ -11,13 +12,20 @@ from config import load_app_settings
 from models import Order, User
 
 
-def _collect_order_recipients(order: Order, include_owner: bool = False) -> list[str]:
-    recipients: list[str] = []
-    seen = set()
+def _split_email_recipients(raw: str | None) -> list[str]:
+    if not raw:
+        return []
+    normalized = raw.replace(";", ",").replace("\n", ",").replace("\r", ",")
+    return [
+        email.strip()
+        for _, email in getaddresses([normalized])
+        if email and "@" in email
+    ]
 
-    admin_users = User.query.filter_by(role="admin").all()
-    for user in admin_users:
-        email = (user.email or "").strip()
+
+def _add_recipients(recipients: list[str], seen: set[str], candidates: list[str]) -> None:
+    for email in candidates:
+        email = (email or "").strip()
         if not email:
             continue
         key = email.lower()
@@ -26,13 +34,24 @@ def _collect_order_recipients(order: Order, include_owner: bool = False) -> list
         recipients.append(email)
         seen.add(key)
 
+
+def _collect_order_recipients(
+    order: Order,
+    include_owner: bool = False,
+    include_cost_center: bool = False,
+) -> list[str]:
+    recipients: list[str] = []
+    seen: set[str] = set()
+
+    admin_users = User.query.filter_by(role="admin").all()
+    for user in admin_users:
+        _add_recipients(recipients, seen, _split_email_recipients(user.email))
+
     if include_owner and order.user:
-        owner_email = (order.user.email or "").strip()
-        if owner_email:
-            key = owner_email.lower()
-            if key not in seen:
-                recipients.append(owner_email)
-                seen.add(key)
+        _add_recipients(recipients, seen, _split_email_recipients(order.user.email))
+
+    if include_cost_center and order.cost_center:
+        _add_recipients(recipients, seen, _split_email_recipients(order.cost_center.email))
 
     return recipients
 
@@ -144,7 +163,11 @@ def send_order_status_change_notification(
             app.logger.info("SMTP not configured, skipping status notification.")
             return False
 
-        recipients = _collect_order_recipients(order, include_owner=True)
+        recipients = _collect_order_recipients(
+            order,
+            include_owner=True,
+            include_cost_center=True,
+        )
         if not recipients:
             app.logger.info("No recipients found, skipping status notification.")
             return False

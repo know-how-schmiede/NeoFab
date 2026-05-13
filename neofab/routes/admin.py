@@ -24,6 +24,7 @@ from sqlalchemy.exc import OperationalError
 from werkzeug.utils import secure_filename
 
 from auth_utils import roles_required
+from audit_logs import list_log_files, read_log_entries
 from config import SETTINGS_FILE, coerce_positive_int, load_app_settings, save_app_settings
 from schema_utils import ensure_training_playlist_schema
 from status_messages import (
@@ -385,6 +386,20 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             settings_path=str(SETTINGS_FILE),
             status_message_groups=status_groups,
             status_style_options=status_style_options,
+        )
+
+    @bp.route("/logs", endpoint="admin_logs")
+    @roles_required("admin")
+    def admin_logs():
+        """Structured audit log viewer."""
+        selected_file = request.args.get("file") or None
+        log_files = list_log_files(current_app)
+        selected_file, entries = read_log_entries(current_app, selected_file, max_entries=500)
+        return render_template(
+            "admin_logs.html",
+            log_files=log_files,
+            selected_file=selected_file,
+            entries=entries,
         )
 
     @bp.route("/settings/export", endpoint="admin_settings_export")

@@ -1,5 +1,10 @@
 # Timeline NeoFab
 
+## Version 0.7.7
+
+Mehrere E-Mail-Empfaenger pro Kostenstelle fuer Status-Meldungen
+Admin-Bereich fuer Logfiles mit taeglicher Ablage unter Jahr/Monat/Tag und Logging von An- und Abmeldungen
+
 ## Version 0.7.6
 
 Notfallscript zum Zuruecksetzen eines Admin-Passworts ueber die Installations-Scripte

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t("admin_logs_title") }} - NeoFab{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="mb-0">{{ t("admin_logs_title") }}</h1>
+  <a href="{{ url_for('admin.admin_panel') }}" class="btn btn-secondary">
+    {{ t("btn_back_admin") }}
+  </a>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-3">
+    <div class="card">
+      <div class="card-header">
+        {{ t("admin_logs_files") }}
+      </div>
+      <div class="list-group list-group-flush">
+        {% for file in log_files %}
+          <a class="list-group-item list-group-item-action {% if file.path == selected_file %}active{% endif %}"
+             href="{{ url_for('admin.admin_logs', file=file.path) }}">
+            <div class="fw-semibold">{{ file.path }}</div>
+            <div class="small {% if file.path == selected_file %}text-white-50{% else %}text-muted{% endif %}">
+              {{ file.size }} bytes
+            </div>
+          </a>
+        {% else %}
+          <div class="list-group-item text-muted">{{ t("admin_logs_no_files") }}</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-9">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>{{ selected_file or t("admin_logs_no_file_selected") }}</span>
+        <span class="badge bg-secondary">{{ entries|length }}</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle mb-0">
+          <thead>
+            <tr>
+              <th>{{ t("admin_logs_time") }}</th>
+              <th>{{ t("admin_logs_level") }}</th>
+              <th>{{ t("admin_logs_event") }}</th>
+              <th>{{ t("table_email") }}</th>
+              <th>{{ t("table_role") }}</th>
+              <th>{{ t("admin_logs_ip") }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in entries %}
+              <tr>
+                <td class="text-nowrap">{{ entry.timestamp_utc or "" }}</td>
+                <td>{{ entry.level or "" }}</td>
+                <td>{{ entry.event or entry.raw or "" }}</td>
+                <td>{{ entry.email or "" }}</td>
+                <td>{{ entry.role or "" }}</td>
+                <td>{{ entry.remote_addr or "" }}</td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="6" class="text-muted">{{ t("admin_logs_no_entries") }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

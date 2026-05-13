@@ -80,6 +80,7 @@ from auth_utils import (
     register_session_timeout,
     SESSION_LAST_ACTIVE_KEY,
 )
+from audit_logs import write_audit_log
 from routes import create_admin_blueprint
 from models import (
     db,
@@ -1308,6 +1309,7 @@ def login():
         user = User.query.filter_by(email=email).first()
         if user and user.check_password(password):
             login_user(user)
+            write_audit_log(app, "user_login", user=user)
             load_app_settings(app)
             session.permanent = True
             session[SESSION_LAST_ACTIVE_KEY] = datetime.utcnow().isoformat()
@@ -3256,6 +3258,7 @@ def announcement_update():
 @app.route("/logout")
 @login_required
 def logout():
+    write_audit_log(app, "user_logout", user=current_user)
     logout_user()
     session.clear()
     trans = inject_globals().get("t")

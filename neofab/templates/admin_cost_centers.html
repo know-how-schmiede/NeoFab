@@ -29,7 +29,7 @@
         {% for cc in cost_centers %}
             <tr>
                 <td>{{ cc.name }}</td>
-                <td>{{ cc.email or '' }}</td>
+                <td style="white-space: pre-line;">{{ cc.email or '' }}</td>
                 <td>{{ cc.note or '' }}</td>
                 <td>
                     {% if cc.is_active %}

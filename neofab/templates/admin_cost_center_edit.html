@@ -26,12 +26,12 @@
             <!-- EMAIL -->
             <div class="mb-3">
                 <label for="email" class="form-label">{{ t("admin_cost_center_label_email") }}</label>
-                <input type="email"
-                       class="form-control"
-                       id="email"
-                       name="email"
-                       value="{{ cost_center.email if cost_center else '' }}"
-                       placeholder="contact@example.com">
+                <textarea class="form-control"
+                          id="email"
+                          name="email"
+                          rows="3"
+                          placeholder="contact@example.com&#10;team@example.com">{{ cost_center.email if cost_center else '' }}</textarea>
+                <div class="form-text">{{ t("admin_cost_center_email_hint") }}</div>
             </div>
 
             <!-- NOTE -->
