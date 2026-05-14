@@ -559,6 +559,35 @@ def ensure_order_estimation_columns():
         app.logger.exception("Failed to ensure orders estimation columns exist")
 
 
+def ensure_order_archive_columns():
+    """
+    Adds archive columns on orders (lightweight migration).
+    """
+    try:
+        exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='orders'")
+        ).scalar()
+        if not exists:
+            return
+
+        cols = {
+            row[1]
+            for row in db.session.execute(text("PRAGMA table_info(orders)"))
+        }
+        statements = []
+        if "is_archived" not in cols:
+            statements.append("ALTER TABLE orders ADD COLUMN is_archived BOOLEAN NOT NULL DEFAULT 0")
+        if "archived_at" not in cols:
+            statements.append("ALTER TABLE orders ADD COLUMN archived_at DATETIME")
+
+        for stmt in statements:
+            db.session.execute(text(stmt))
+        if statements:
+            db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure orders archive columns exist")
+
+
 def ensure_order_print_jobs_table():
     """
     Ensures the order_print_jobs table and required columns exist.
@@ -814,6 +843,7 @@ with app.app_context():
     ensure_printer_profiles_table()
     ensure_filament_materials_table()
     ensure_order_estimation_columns()
+    ensure_order_archive_columns()
     ensure_order_print_jobs_table()
     ensure_order_read_status_table()
     ensure_announcements_table()
@@ -3208,13 +3238,15 @@ def dashboard():
     if current_user.role == "admin":
         orders = (
             Order.query
+            .filter(Order.is_archived.is_(False))
             .order_by(Order.created_at.desc())
             .all()
         )
     else:
         orders = (
             Order.query
-            .filter_by(user_id=current_user.id)
+            .filter(Order.user_id == current_user.id)
+            .filter(Order.is_archived.is_(False))
             .order_by(Order.created_at.desc())
             .all()
         )

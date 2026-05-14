@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t("admin_orders_title") }} - NeoFab{% endblock %}
+
+{% block content %}
+
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h2 class="h5 mb-0">
+      <i class="bi bi-archive me-1"></i>
+      {{ t("admin_orders_heading") }}
+    </h2>
+    <a href="{{ url_for('admin.admin_panel') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>
+      {{ t("btn_back_admin") }}
+    </a>
+  </div>
+
+  <div class="card-body p-2">
+    {% if orders %}
+      <div class="table-responsive">
+        <table class="table table-striped table-hover table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>{{ t("table_id") }}</th>
+              <th>{{ t("title") }}</th>
+              <th>{{ t("owner") }}</th>
+              <th>{{ t("table_status") }}</th>
+              <th>{{ t("table_created") }}</th>
+              <th>{{ t("admin_orders_archive_state") }}</th>
+              <th class="text-end">{{ t("table_actions") }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for o in orders %}
+              <tr>
+                <td>{{ o.id }}</td>
+                <td>
+                  <a href="{{ url_for('order_detail', order_id=o.id) }}">{{ o.title }}</a>
+                </td>
+                <td>{{ o.user.email if o.user else "" }}</td>
+                <td>
+                  {% set status_style = status_styles.get(o.status, "bg-light text-dark") %}
+                  <span class="badge {{ status_style }}">
+                    {{ status_labels.get(o.status, o.status) }}
+                  </span>
+                </td>
+                <td>{{ o.created_at.strftime('%Y-%m-%d %H:%M') if o.created_at else '' }}</td>
+                <td>
+                  {% if o.is_archived %}
+                    <span class="badge bg-secondary">{{ t("admin_orders_archived") }}</span>
+                    {% if o.archived_at %}
+                      <span class="text-muted small">{{ o.archived_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                    {% endif %}
+                  {% else %}
+                    <span class="badge bg-success">{{ t("admin_orders_active") }}</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  <div class="d-inline-flex flex-wrap justify-content-end gap-1">
+                    {% if not o.is_archived %}
+                      <button type="button"
+                              class="btn btn-outline-warning btn-sm btn-archive-order"
+                              data-order-id="{{ o.id }}"
+                              data-order-title="{{ o.title|e }}">
+                        <i class="bi bi-archive me-1"></i>
+                        {{ t("btn_archive") }}
+                      </button>
+                    {% endif %}
+                    <button type="button"
+                            class="btn btn-outline-danger btn-sm btn-delete-order"
+                            data-order-id="{{ o.id }}"
+                            data-order-title="{{ o.title|e }}">
+                      <i class="bi bi-trash me-1"></i>
+                      {{ t("btn_delete") }}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="mb-0">{{ t("admin_orders_none") }}</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="modal fade" id="archiveOrderModal" tabindex="-1" aria-labelledby="archiveOrderModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="archiveOrderModalLabel">{{ t("admin_order_archive_title") }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('btn_cancel') }}"></button>
+      </div>
+      <div class="modal-body">
+        {{ t("admin_order_archive_confirm") }}
+        <div class="fw-semibold mt-2" id="archiveOrderName"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t("btn_cancel") }}</button>
+        <form method="post" id="archiveOrderForm" class="m-0">
+          <button type="submit" class="btn btn-warning">{{ t("btn_archive") }}</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="deleteOrderModal" tabindex="-1" aria-labelledby="deleteOrderModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteOrderModalLabel">{{ t("admin_order_delete_title") }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('btn_cancel') }}"></button>
+      </div>
+      <div class="modal-body">
+        {{ t("admin_order_delete_confirm") }}
+        <div class="fw-semibold mt-2" id="deleteOrderName"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t("btn_cancel") }}</button>
+        <form method="post" id="deleteOrderForm" class="m-0">
+          <button type="submit" class="btn btn-danger">{{ t("btn_delete") }}</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const archiveModalEl = document.getElementById("archiveOrderModal");
+  const deleteModalEl = document.getElementById("deleteOrderModal");
+
+  if (archiveModalEl) {
+    const archiveModal = new bootstrap.Modal(archiveModalEl);
+    const archiveForm = document.getElementById("archiveOrderForm");
+    const archiveName = document.getElementById("archiveOrderName");
+    document.querySelectorAll(".btn-archive-order").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const orderId = btn.getAttribute("data-order-id") || "";
+        const orderTitle = btn.getAttribute("data-order-title") || "";
+        archiveForm.action = "{{ url_for('admin.admin_order_archive', order_id=0) }}".replace("/0/", "/" + orderId + "/");
+        archiveName.textContent = "#" + orderId + " - " + orderTitle;
+        archiveModal.show();
+      });
+    });
+  }
+
+  if (deleteModalEl) {
+    const deleteModal = new bootstrap.Modal(deleteModalEl);
+    const deleteForm = document.getElementById("deleteOrderForm");
+    const deleteName = document.getElementById("deleteOrderName");
+    document.querySelectorAll(".btn-delete-order").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const orderId = btn.getAttribute("data-order-id") || "";
+        const orderTitle = btn.getAttribute("data-order-title") || "";
+        deleteForm.action = "{{ url_for('admin.admin_order_delete', order_id=0) }}".replace("/0/", "/" + orderId + "/");
+        deleteName.textContent = "#" + orderId + " - " + orderTitle;
+        deleteModal.show();
+      });
+    });
+  }
+});
+</script>
+
+{% endblock %}

@@ -96,6 +96,8 @@ class Order(db.Model):
     # Timestamps
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_archived = db.Column(db.Boolean, nullable=False, default=False)
+    archived_at = db.Column(db.DateTime, nullable=True)
 
     # Beziehungen
     user = db.relationship("User", back_populates="orders")

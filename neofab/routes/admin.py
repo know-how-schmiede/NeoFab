@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 import secrets
 import json
+import shutil
 from typing import Callable, Optional
 from urllib.parse import parse_qs, urlparse
 import smtplib
@@ -45,6 +46,13 @@ from models import (
     AnnouncementRead,
     PrinterProfile,
     FilamentMaterial,
+    Order,
+    OrderFile,
+    OrderImage,
+    OrderMessage,
+    OrderPrintJob,
+    OrderReadStatus,
+    OrderTag,
     db,
 )
 from version import APP_VERSION
@@ -147,6 +155,32 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         except OSError:
             current_app.logger.warning("Could not delete training PDF: %s", filename)
 
+    def _remove_order_upload_folder(config_key: str, order_id: int) -> None:
+        root = Path(current_app.config[config_key]).resolve()
+        target = (root / f"order_{order_id}").resolve()
+        try:
+            if root not in target.parents or target.name != f"order_{order_id}":
+                current_app.logger.warning("Refused to delete unsafe order folder: %s", target)
+                return
+            if target.exists():
+                shutil.rmtree(target)
+        except OSError:
+            current_app.logger.warning("Could not delete order upload folder: %s", target)
+
+    def _delete_order_files(order_id: int) -> None:
+        for config_key in ("UPLOAD_FOLDER", "IMAGE_UPLOAD_FOLDER", "GCODE_UPLOAD_FOLDER"):
+            _remove_order_upload_folder(config_key, order_id)
+
+    def _delete_order_from_database(order: Order) -> None:
+        order_id = order.id
+        OrderReadStatus.query.filter_by(order_id=order_id).delete(synchronize_session=False)
+        OrderMessage.query.filter_by(order_id=order_id).delete(synchronize_session=False)
+        OrderFile.query.filter_by(order_id=order_id).delete(synchronize_session=False)
+        OrderImage.query.filter_by(order_id=order_id).delete(synchronize_session=False)
+        OrderPrintJob.query.filter_by(order_id=order_id).delete(synchronize_session=False)
+        OrderTag.query.filter_by(order_id=order_id).delete(synchronize_session=False)
+        db.session.delete(order)
+
     def normalize_youtube_url(raw_url: str) -> tuple[bool, str]:
         """
         Leichtgewichtige Validierung/Normalisierung f泻r YouTube-Links.
@@ -196,6 +230,60 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
     def admin_panel():
         """Einfache Admin-Startseite."""
         return render_template("admin.html")
+
+    @bp.route("/orders", endpoint="admin_orders")
+    @roles_required("admin")
+    def admin_orders():
+        """Admin order archive/delete management."""
+        orders = (
+            Order.query
+            .order_by(Order.is_archived.asc(), Order.created_at.desc(), Order.id.desc())
+            .all()
+        )
+        return render_template("admin_orders.html", orders=orders)
+
+    @bp.route("/orders/<int:order_id>/archive", methods=["POST"], endpoint="admin_order_archive")
+    @roles_required("admin")
+    def admin_order_archive(order_id: int):
+        trans = t
+        order = Order.query.get_or_404(order_id)
+        if not order.is_archived:
+            order.is_archived = True
+            order.archived_at = datetime.utcnow()
+            db.session.commit()
+            write_audit_log(
+                current_app,
+                "order_archived",
+                user=current_user,
+                details={"order_id": order.id, "title": order.title},
+            )
+            flash(trans("flash_order_archived"), "info")
+        else:
+            flash(trans("flash_order_already_archived"), "warning")
+        return redirect(url_for(".admin_orders"))
+
+    @bp.route("/orders/<int:order_id>/delete", methods=["POST"], endpoint="admin_order_delete")
+    @roles_required("admin")
+    def admin_order_delete(order_id: int):
+        trans = t
+        order = Order.query.get_or_404(order_id)
+        order_title = order.title
+        try:
+            _delete_order_files(order.id)
+            _delete_order_from_database(order)
+            db.session.commit()
+            write_audit_log(
+                current_app,
+                "order_deleted",
+                user=current_user,
+                details={"order_id": order_id, "title": order_title},
+            )
+            flash(trans("flash_order_deleted"), "info")
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Failed to delete order %s", order_id)
+            flash(trans("flash_order_delete_failed"), "danger")
+        return redirect(url_for(".admin_orders"))
 
     @bp.route("/settings", methods=["GET", "POST"], endpoint="admin_settings")
     @roles_required("admin")

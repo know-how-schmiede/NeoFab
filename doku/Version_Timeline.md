@@ -1,5 +1,10 @@
 # Timeline NeoFab
 
+## Version 0.8.0
+
+Admin-Bereich fuer Auftraege mit Archivieren und endgueltigem Loeschen inklusive Datenbank- und Datei-Bereinigung
+Archivierte Auftraege werden im Dashboard nicht mehr angezeigt
+
 ## Version 0.7.12
 
 STL-/3MF-Viewer um schaltbare Achsen und Achsenbeschriftungen erweitert
