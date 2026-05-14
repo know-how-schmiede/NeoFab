@@ -8,7 +8,7 @@ from typing import Any
 from flask import has_request_context, request
 
 
-DEFAULT_LOG_FILE = "audit.log"
+DEFAULT_LOG_FILE = "NeoFab_Log.log"
 
 
 def get_log_root(app) -> Path:
@@ -32,7 +32,7 @@ def write_audit_log(
     """
     Append one structured audit entry.
 
-    Files are stored as JSON lines below logs/YYYY/MM/DD/audit.log so more event
+    Files are stored as JSON lines below logs/YYYY/MM/DD/NeoFab_Log.log so more event
     types and levels can be added without changing the storage format.
     """
     try:

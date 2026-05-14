@@ -1,5 +1,10 @@
 # Timeline NeoFab
 
+## Version 0.7.11
+
+Logfile in NeoFab_Log umbenannt
+STL-/3MF-Viewer um schaltbares Grid und schaltbare Model-Info-Box erweitert
+
 ## Version 0.7.10
 
 Angemeldete Admins koennen ihre eigene Rolle nicht mehr aendern
