@@ -26,6 +26,7 @@
   "admin_cost_centers_none": "Aucun centre de coûts n'a encore été défini.",
   "admin_logs_desc": "Afficher les connexions, deconnexions et futurs evenements dans des fichiers journaux quotidiens.",
   "admin_logs_delete_confirm": "Ce fichier journal sera supprime definitivement.",
+  "admin_logs_delete_log_badge": "Journal suppression",
   "admin_logs_delete_title": "Supprimer le fichier journal",
   "admin_logs_details": "Details",
   "admin_logs_event": "Evenement",

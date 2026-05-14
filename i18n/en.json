@@ -26,6 +26,7 @@
   "admin_cost_centers_none": "No cost centers have been defined yet.",
   "admin_logs_desc": "View login/logout events and future audit events in daily log files.",
   "admin_logs_delete_confirm": "This log file will be permanently deleted.",
+  "admin_logs_delete_log_badge": "Delete log",
   "admin_logs_delete_title": "Delete Log File",
   "admin_logs_details": "Details",
   "admin_logs_event": "Event",

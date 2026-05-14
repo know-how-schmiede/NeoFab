@@ -26,6 +26,7 @@
   "admin_cost_centers_none": "Es sind noch keine Kostenstellen hinterlegt.",
   "admin_logs_desc": "An- und Abmeldungen sowie spaetere Ereignisse in taeglichen Logfiles einsehen.",
   "admin_logs_delete_confirm": "Dieses Logfile wird endgueltig geloescht.",
+  "admin_logs_delete_log_badge": "Loesch-Log",
   "admin_logs_delete_title": "Logfile loeschen",
   "admin_logs_details": "Details",
   "admin_logs_event": "Ereignis",

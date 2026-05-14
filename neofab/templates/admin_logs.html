@@ -18,12 +18,18 @@
       </div>
       <div class="list-group list-group-flush">
         {% for file in log_files %}
-          <div class="list-group-item {% if file.path == selected_file %}active{% endif %}">
+          {% set is_delete_log = file.kind == "delete" %}
+          <div class="list-group-item {% if file.path == selected_file %}{% if is_delete_log %}list-group-item-danger{% else %}active{% endif %}{% elif is_delete_log %}list-group-item-danger{% endif %}">
             <div class="d-flex justify-content-between gap-2 align-items-start">
-              <a class="text-decoration-none flex-grow-1 {% if file.path == selected_file %}text-white{% endif %}"
+              <a class="text-decoration-none flex-grow-1 {% if file.path == selected_file and not is_delete_log %}text-white{% endif %}"
                  href="{{ url_for('admin.admin_logs', file=file.path) }}">
-                <div class="fw-semibold">{{ file.path }}</div>
-                <div class="small {% if file.path == selected_file %}text-white-50{% else %}text-muted{% endif %}">
+                <div class="fw-semibold">
+                  {{ file.path }}
+                  {% if is_delete_log %}
+                    <span class="badge bg-danger ms-1">{{ t("admin_logs_delete_log_badge") }}</span>
+                  {% endif %}
+                </div>
+                <div class="small {% if file.path == selected_file and not is_delete_log %}text-white-50{% else %}text-muted{% endif %}">
                   {{ file.size }} bytes
                 </div>
               </a>

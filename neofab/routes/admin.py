@@ -25,7 +25,7 @@ from sqlalchemy.exc import OperationalError
 from werkzeug.utils import secure_filename
 
 from auth_utils import roles_required
-from audit_logs import delete_log_file, list_log_files, read_log_entries, write_audit_log
+from audit_logs import DELETE_LOG_FILE, delete_log_file, list_log_files, read_log_entries, write_audit_log
 from config import SETTINGS_FILE, coerce_positive_int, load_app_settings, save_app_settings
 from schema_utils import ensure_training_playlist_schema
 from status_messages import (
@@ -187,6 +187,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     user=current_user,
                     level="warning",
                     details=details,
+                    log_file=DELETE_LOG_FILE,
                 )
                 return details
             if target.exists():
@@ -195,13 +196,32 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 details["folder_count"] = folder_count
                 shutil.rmtree(target)
                 details["deleted"] = True
-                write_audit_log(current_app, "order_delete_folder_deleted", user=current_user, details=details)
+                write_audit_log(
+                    current_app,
+                    "order_delete_folder_deleted",
+                    user=current_user,
+                    details=details,
+                    log_file=DELETE_LOG_FILE,
+                )
             else:
-                write_audit_log(current_app, "order_delete_folder_missing", user=current_user, details=details)
+                write_audit_log(
+                    current_app,
+                    "order_delete_folder_missing",
+                    user=current_user,
+                    details=details,
+                    log_file=DELETE_LOG_FILE,
+                )
         except Exception as exc:
             current_app.logger.warning("Could not delete order upload folder: %s", target)
             details["error"] = str(exc)
-            write_audit_log(current_app, "order_delete_folder_failed", user=current_user, level="error", details=details)
+            write_audit_log(
+                current_app,
+                "order_delete_folder_failed",
+                user=current_user,
+                level="error",
+                details=details,
+                log_file=DELETE_LOG_FILE,
+            )
         return details
 
     def _delete_order_files(order_id: int) -> list[dict[str, object]]:
@@ -211,6 +231,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             "order_delete_files_started",
             user=current_user,
             details={"order_id": order_id},
+            log_file=DELETE_LOG_FILE,
         )
         for config_key in ("UPLOAD_FOLDER", "IMAGE_UPLOAD_FOLDER", "GCODE_UPLOAD_FOLDER"):
             results.append(_remove_order_upload_folder(config_key, order_id))
@@ -298,12 +319,6 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
     def admin_order_archive(order_id: int):
         trans = t
         order = Order.query.get_or_404(order_id)
-        write_audit_log(
-            current_app,
-            "order_archive_requested",
-            user=current_user,
-            details={"order_id": order.id, "title": order.title, "already_archived": bool(order.is_archived)},
-        )
         if not order.is_archived:
             order.is_archived = True
             order.archived_at = datetime.utcnow()
@@ -325,19 +340,21 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         trans = t
         order = Order.query.get_or_404(order_id)
         order_title = order.title
-        write_audit_log(
-            current_app,
-            "order_delete_requested",
-            user=current_user,
-            details={"order_id": order_id, "title": order_title, "is_archived": bool(order.is_archived)},
-        )
         try:
+            write_audit_log(
+                current_app,
+                "order_delete_requested",
+                user=current_user,
+                details={"order_id": order_id, "title": order_title, "is_archived": bool(order.is_archived)},
+                log_file=DELETE_LOG_FILE,
+            )
             file_delete_results = _delete_order_files(order.id)
             write_audit_log(
                 current_app,
                 "order_delete_database_started",
                 user=current_user,
                 details={"order_id": order_id, "title": order_title},
+                log_file=DELETE_LOG_FILE,
             )
             deleted_counts = _delete_order_from_database(order)
             db.session.commit()
@@ -345,12 +362,19 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 current_app,
                 "order_deleted",
                 user=current_user,
+                details={"order_id": order_id, "title": order_title},
+            )
+            write_audit_log(
+                current_app,
+                "order_delete_completed",
+                user=current_user,
                 details={
                     "order_id": order_id,
                     "title": order_title,
                     "deleted_counts": deleted_counts,
                     "file_delete_results": file_delete_results,
                 },
+                log_file=DELETE_LOG_FILE,
             )
             flash(trans("flash_order_deleted"), "info")
         except Exception as exc:
@@ -362,6 +386,14 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 user=current_user,
                 level="error",
                 details={"order_id": order_id, "title": order_title, "error": str(exc)},
+            )
+            write_audit_log(
+                current_app,
+                "order_delete_failed",
+                user=current_user,
+                level="error",
+                details={"order_id": order_id, "title": order_title, "error": str(exc)},
+                log_file=DELETE_LOG_FILE,
             )
             flash(trans("flash_order_delete_failed"), "danger")
         return redirect(url_for(".admin_orders"))

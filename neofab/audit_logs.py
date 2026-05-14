@@ -9,6 +9,7 @@ from flask import has_request_context, request
 
 
 DEFAULT_LOG_FILE = "NeoFab_Log.log"
+DELETE_LOG_FILE = "NeoFab_DeleteLog.log"
 
 
 def get_log_root(app) -> Path:
@@ -28,6 +29,7 @@ def write_audit_log(
     user=None,
     level: str = "info",
     details: dict[str, Any] | None = None,
+    log_file: str = DEFAULT_LOG_FILE,
 ) -> None:
     """
     Append one structured audit entry.
@@ -54,7 +56,8 @@ def write_audit_log(
             record["remote_addr"] = request.headers.get("X-Forwarded-For", request.remote_addr or "")
             record["user_agent"] = request.headers.get("User-Agent", "")
 
-        log_path = folder / DEFAULT_LOG_FILE
+        safe_log_file = Path(log_file).name or DEFAULT_LOG_FILE
+        log_path = folder / safe_log_file
         with log_path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
     except Exception:
@@ -71,11 +74,13 @@ def list_log_files(app) -> list[dict[str, Any]]:
         if not path.is_file():
             continue
         stat = path.stat()
+        is_delete_log = path.name == DELETE_LOG_FILE
         files.append(
             {
                 "path": path.relative_to(root).as_posix(),
                 "size": stat.st_size,
                 "modified_at": datetime.fromtimestamp(stat.st_mtime),
+                "kind": "delete" if is_delete_log else "audit",
             }
         )
 
