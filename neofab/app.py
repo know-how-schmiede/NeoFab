@@ -20,6 +20,7 @@ import logging
 import re
 import math
 import struct
+from time import perf_counter
 from urllib.parse import parse_qs, urlparse
 
 from sqlalchemy import func, text
@@ -1375,13 +1376,43 @@ def login():
                 flash(trans("flash_account_inactive"), "warning")
                 return render_template("login.html")
 
+            timing_start = perf_counter()
+            timing_marks = {}
+
             login_user(user)
+            timing_marks["login_user_ms"] = round((perf_counter() - timing_start) * 1000, 1)
+
+            step_start = perf_counter()
             write_audit_log(app, "user_login", user=user)
+            timing_marks["audit_log_ms"] = round((perf_counter() - step_start) * 1000, 1)
+
+            step_start = perf_counter()
             load_app_settings(app)
+            timing_marks["settings_ms"] = round((perf_counter() - step_start) * 1000, 1)
+
             session.permanent = True
             session[SESSION_LAST_ACTIVE_KEY] = datetime.utcnow().isoformat()
             user.last_login_at = datetime.utcnow()
+
+            step_start = perf_counter()
             db.session.commit()
+            timing_marks["db_commit_ms"] = round((perf_counter() - step_start) * 1000, 1)
+            timing_marks["total_ms"] = round((perf_counter() - timing_start) * 1000, 1)
+
+            if timing_marks["total_ms"] >= 750 or timing_marks["audit_log_ms"] >= 250 or timing_marks["db_commit_ms"] >= 250:
+                app.logger.warning(
+                    "Slow login for user_id=%s email=%s timings=%s",
+                    user.id,
+                    user.email,
+                    timing_marks,
+                )
+                write_audit_log(
+                    app,
+                    "login_timing_slow",
+                    user=user,
+                    level="warning",
+                    details=timing_marks,
+                )
 
             flash(trans("flash_login_success"), "success")
             next_page = request.args.get("next")

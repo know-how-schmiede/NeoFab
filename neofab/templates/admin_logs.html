@@ -74,7 +74,12 @@
                 <td>{{ entry.event or entry.raw or "" }}</td>
                 <td class="small">
                   {% if entry.details %}
-                    <code>{{ entry.details|tojson }}</code>
+                    {% set details_json = entry.details|tojson %}
+                    <code class="d-inline-block text-truncate"
+                          style="max-width: 28rem;"
+                          title="{{ details_json|e }}">
+                      {{ details_json }}
+                    </code>
                   {% endif %}
                 </td>
                 <td>{{ entry.email or "" }}</td>
