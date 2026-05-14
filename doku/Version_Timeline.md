@@ -6,6 +6,7 @@ Archivieren und Loeschen von Auftraegen werden detailliert im Logfile protokolli
 Datei- und Ordnerloeschungen beim endgueltigen Loeschen von Auftraegen werden mit Pfad und Anzahl protokolliert
 Langsame Logins werden mit Schrittzeiten im Logfile protokolliert
 Logfile-Details werden gekuerzt angezeigt und vollstaendig per Tooltip eingeblendet
+Tooltip der Logfile-Details auf vollstaendige Bootstrap-Anzeige umgestellt
 
 ## Version 0.8.0
 
