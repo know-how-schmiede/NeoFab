@@ -283,47 +283,50 @@ body {
 .model-viewer-axis-label-icon {
     position: relative;
     display: inline-block;
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 1.2rem;
+    height: 1.2rem;
 }
 
 .model-viewer-axis-icon::before,
 .model-viewer-axis-label-icon::before {
     content: "";
     position: absolute;
-    left: 0.18rem;
+    left: 0.16rem;
     bottom: 0.18rem;
-    width: 0.78rem;
-    height: 0.78rem;
+    width: 0.72rem;
+    height: 0.72rem;
     border-left: 2px solid currentColor;
     border-bottom: 2px solid currentColor;
+    border-radius: 0 0 0 0.08rem;
 }
 
 .model-viewer-axis-icon::after,
 .model-viewer-axis-label-icon::after {
     content: "";
     position: absolute;
-    left: 0.68rem;
-    bottom: 0.66rem;
-    width: 0.56rem;
+    left: 0.62rem;
+    bottom: 0.69rem;
+    width: 0.62rem;
     border-top: 2px solid currentColor;
     transform: rotate(-45deg);
     transform-origin: left center;
+    border-radius: 999px;
 }
 
 .model-viewer-axis-label-icon {
-    width: 1.35rem;
+    width: 1.28rem;
     background:
-        radial-gradient(circle, currentColor 0 0.12rem, transparent 0.13rem) 1.05rem 0.08rem / 0.25rem 0.25rem no-repeat,
-        radial-gradient(circle, currentColor 0 0.12rem, transparent 0.13rem) 0.92rem 0.92rem / 0.25rem 0.25rem no-repeat;
+        radial-gradient(circle, currentColor 0 0.14rem, transparent 0.15rem) 1rem 0.04rem / 0.3rem 0.3rem no-repeat,
+        radial-gradient(circle, currentColor 0 0.14rem, transparent 0.15rem) 0.84rem 0.86rem / 0.3rem 0.3rem no-repeat;
 }
 
 .model-viewer-wireframe-icon {
     position: relative;
     display: inline-block;
-    width: 1.05rem;
-    height: 1.05rem;
+    width: 1.1rem;
+    height: 1.1rem;
     border: 2px solid currentColor;
+    border-radius: 0.08rem;
 }
 
 .model-viewer-wireframe-icon::before,
@@ -331,11 +334,12 @@ body {
     content: "";
     position: absolute;
     left: 50%;
-    top: -0.08rem;
+    top: 0.04rem;
     width: 2px;
-    height: 1.2rem;
+    height: 0.98rem;
     background: currentColor;
     transform-origin: center;
+    border-radius: 999px;
 }
 
 .model-viewer-wireframe-icon::before {
