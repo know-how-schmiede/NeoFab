@@ -1405,6 +1405,9 @@ def apply_gcode_metadata_to_job(job: OrderPrintJob, path: Path) -> bool:
     return changed
 
 
+def current_print_start_time() -> datetime:
+    return datetime.now().replace(second=0, microsecond=0)
+
 
 # ============================================================
 # Blueprints
@@ -2732,6 +2735,8 @@ def order_detail(order_id):
 
             valid_statuses = set(PRINT_JOB_STATUS_VALUES)
             status = status_raw if status_raw in valid_statuses else "upload"
+            if status == "started":
+                started_at = current_print_start_time()
 
             printer_profile_id = request.form.get("printer_profile_id") or None
             filament_material_id = request.form.get("filament_material_id") or None
@@ -2892,6 +2897,9 @@ def order_detail(order_id):
 
             valid_statuses = set(PRINT_JOB_STATUS_VALUES)
             status = status_raw if status_raw in valid_statuses else (job.status or "upload")
+            previous_status = job.status
+            if status == "started" and previous_status != "started":
+                started_at = current_print_start_time()
 
             job.note = note or None
             job.status = status

@@ -1,5 +1,13 @@
 # Timeline NeoFab
 
+## Version 0.8.5
+
+G-Code-Auswertung durchsucht die komplette Datei nach Druckdauer, Filamentlaenge und Filamentgewicht
+Bestehende Druckauftraege koennen fehlende G-Code-Werte beim Oeffnen der Auftragsseite nachtragen
+Printjob-Startzeit wird beim Setzen des Status Print gestartet automatisch auf die aktuelle Zeit gesetzt
+Geplante Startzeiten werden beim Admin-Wechsel auf Print gestartet durch die aktuelle Startzeit ersetzt
+Anleitung zur automatischen G-Code-Druckparameteruebernahme erweitert
+
 ## Version 0.8.4
 
 G-Code-Upload liest Slicer-Kommentare fuer Druckdauer, Filamentlaenge und Filamentgewicht aus

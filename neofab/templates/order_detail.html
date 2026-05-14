@@ -1274,6 +1274,30 @@
 })();
 
 (function() {
+  function formatLocalDateTime(date) {
+    const pad = (value) => String(value).padStart(2, "0");
+    return [
+      date.getFullYear(),
+      pad(date.getMonth() + 1),
+      pad(date.getDate())
+    ].join("-") + "T" + [pad(date.getHours()), pad(date.getMinutes())].join(":");
+  }
+
+  function fillStartTimeWhenStarted(statusSelect, startedInput, overwrite = false) {
+    if (!statusSelect || !startedInput) return;
+    if (statusSelect.value === "started" && (overwrite || !startedInput.value)) {
+      startedInput.value = formatLocalDateTime(new Date());
+    }
+  }
+
+  const uploadStatus = document.getElementById("print_status");
+  const uploadStartedAt = document.getElementById("print_started_at");
+  if (uploadStatus && uploadStartedAt) {
+    uploadStatus.addEventListener("change", () => {
+      fillStartTimeWhenStarted(uploadStatus, uploadStartedAt, true);
+    });
+  }
+
   const editModal = document.getElementById("printJobEditModal");
   if (!editModal) return;
 
@@ -1308,6 +1332,14 @@
     if (noteInput) noteInput.value = note;
     if (fileInput) fileInput.value = filename;
   });
+
+  const editStatus = editModal.querySelector("#edit_print_status");
+  const editStartedAt = editModal.querySelector("#edit_print_started_at");
+  if (editStatus && editStartedAt) {
+    editStatus.addEventListener("change", () => {
+      fillStartTimeWhenStarted(editStatus, editStartedAt, true);
+    });
+  }
 })();
 
 (function() {
