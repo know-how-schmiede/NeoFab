@@ -279,10 +279,71 @@ body {
     border-color: #0d6efd;
 }
 
-.model-viewer-tool-label {
-    font-size: 0.9rem;
-    font-weight: 700;
-    line-height: 1;
+.model-viewer-axis-icon,
+.model-viewer-axis-label-icon {
+    position: relative;
+    display: inline-block;
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.model-viewer-axis-icon::before,
+.model-viewer-axis-label-icon::before {
+    content: "";
+    position: absolute;
+    left: 0.18rem;
+    bottom: 0.18rem;
+    width: 0.78rem;
+    height: 0.78rem;
+    border-left: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+}
+
+.model-viewer-axis-icon::after,
+.model-viewer-axis-label-icon::after {
+    content: "";
+    position: absolute;
+    left: 0.68rem;
+    bottom: 0.66rem;
+    width: 0.56rem;
+    border-top: 2px solid currentColor;
+    transform: rotate(-45deg);
+    transform-origin: left center;
+}
+
+.model-viewer-axis-label-icon {
+    width: 1.35rem;
+    background:
+        radial-gradient(circle, currentColor 0 0.12rem, transparent 0.13rem) 1.05rem 0.08rem / 0.25rem 0.25rem no-repeat,
+        radial-gradient(circle, currentColor 0 0.12rem, transparent 0.13rem) 0.92rem 0.92rem / 0.25rem 0.25rem no-repeat;
+}
+
+.model-viewer-wireframe-icon {
+    position: relative;
+    display: inline-block;
+    width: 1.05rem;
+    height: 1.05rem;
+    border: 2px solid currentColor;
+}
+
+.model-viewer-wireframe-icon::before,
+.model-viewer-wireframe-icon::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: -0.08rem;
+    width: 2px;
+    height: 1.2rem;
+    background: currentColor;
+    transform-origin: center;
+}
+
+.model-viewer-wireframe-icon::before {
+    transform: translateX(-50%) rotate(45deg);
+}
+
+.model-viewer-wireframe-icon::after {
+    transform: translateX(-50%) rotate(-45deg);
 }
 
 @media (max-width: 576px) {

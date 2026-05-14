@@ -1151,17 +1151,31 @@
                     data-model-axes-toggle
                     aria-pressed="true"
                     title="Achsen">
-              <i class="bi bi-signpost-split"></i>
+              <span class="model-viewer-axis-icon" aria-hidden="true"></span>
             </button>
             <button type="button"
                     class="model-viewer-tool is-active"
                     data-model-axis-labels-toggle
                     aria-pressed="true"
                     title="Achsenbeschriftungen">
-              <span class="model-viewer-tool-label">X</span>
+              <span class="model-viewer-axis-label-icon" aria-hidden="true"></span>
+            </button>
+            <button type="button"
+                    class="model-viewer-tool"
+                    data-model-wireframe-toggle
+                    aria-pressed="false"
+                    title="Wireframe">
+              <span class="model-viewer-wireframe-icon" aria-hidden="true"></span>
             </button>
           </div>
           <div class="model-viewer-toolbar model-viewer-toolbar-side">
+            <button type="button"
+                    class="model-viewer-tool"
+                    data-model-view-reset
+                    aria-label="Ansicht zuruecksetzen"
+                    title="Ansicht zuruecksetzen">
+              <i class="bi bi-house-door-fill"></i>
+            </button>
             <button type="button"
                     class="model-viewer-tool is-active"
                     data-model-info-toggle
@@ -1376,6 +1390,8 @@ if (modalEl && previewButtons.length) {
   const gridToggle = modalEl.querySelector("[data-model-grid-toggle]");
   const axesToggle = modalEl.querySelector("[data-model-axes-toggle]");
   const axisLabelsToggle = modalEl.querySelector("[data-model-axis-labels-toggle]");
+  const wireframeToggle = modalEl.querySelector("[data-model-wireframe-toggle]");
+  const viewResetButton = modalEl.querySelector("[data-model-view-reset]");
   const infoToggle = modalEl.querySelector("[data-model-info-toggle]");
   const infoBox = modalEl.querySelector("[data-model-info-box]");
   const infoFileSizeEl = modalEl.querySelector("[data-model-info-filesize]");
@@ -1418,9 +1434,11 @@ if (modalEl && previewButtons.length) {
   let resizeObserver = null;
   let gridHelper = null;
   let axesGroup = null;
+  let initialView = null;
   let gridVisible = true;
   let axesVisible = true;
   let axisLabelsVisible = true;
+  let wireframeVisible = false;
   let infoVisible = true;
 
   function setStatus(text) {
@@ -1479,6 +1497,21 @@ if (modalEl && previewButtons.length) {
       if (child.userData && child.userData.axisLabel) {
         child.visible = axisLabelsVisible;
       }
+    });
+  }
+
+  function setWireframeVisible(isVisible) {
+    wireframeVisible = isVisible;
+    setToolState(wireframeToggle, wireframeVisible);
+    if (!currentObject) return;
+    currentObject.traverse((child) => {
+      if (!child.isMesh || !child.material) return;
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      materials.forEach((mat) => {
+        if (!mat || !("wireframe" in mat)) return;
+        mat.wireframe = wireframeVisible;
+        mat.needsUpdate = true;
+      });
     });
   }
 
@@ -1893,6 +1926,28 @@ if (modalEl && previewButtons.length) {
     camera.updateProjectionMatrix();
   }
 
+  function rememberInitialView() {
+    if (!camera || !controls) return;
+    initialView = {
+      position: camera.position.clone(),
+      target: controls.target.clone(),
+      zoom: camera.zoom,
+      near: camera.near,
+      far: camera.far
+    };
+  }
+
+  function resetView() {
+    if (!camera || !controls || !initialView) return;
+    camera.position.copy(initialView.position);
+    camera.zoom = initialView.zoom;
+    camera.near = initialView.near;
+    camera.far = initialView.far;
+    camera.updateProjectionMatrix();
+    controls.target.copy(initialView.target);
+    controls.update();
+  }
+
   function startRender() {
     if (animationId || !renderer || !scene || !camera) return;
     const renderLoop = () => {
@@ -1962,6 +2017,7 @@ if (modalEl && previewButtons.length) {
     camera.updateProjectionMatrix();
     controls.target.set(0, 0, 0);
     controls.update();
+    rememberInitialView();
   }
 
   function finishModelLoad(object) {
@@ -1972,6 +2028,7 @@ if (modalEl && previewButtons.length) {
     updateAxesForObject(object);
     setModelInfo(object);
     applyColorToObject(currentColorHex);
+    setWireframeVisible(wireframeVisible);
     setStatus("");
     setPoster("");
     modelReady = true;
@@ -2103,6 +2160,7 @@ if (modalEl && previewButtons.length) {
     currentFileSize = "";
     currentThumbnailReady = false;
     currentColorHex = defaultColorHex;
+    initialView = null;
     if (colorSelect) {
       colorSelect.value = "";
     }
@@ -2139,6 +2197,16 @@ if (modalEl && previewButtons.length) {
     });
   }
 
+  if (wireframeToggle) {
+    wireframeToggle.addEventListener("click", () => {
+      setWireframeVisible(!wireframeVisible);
+    });
+  }
+
+  if (viewResetButton) {
+    viewResetButton.addEventListener("click", resetView);
+  }
+
   if (infoToggle) {
     infoToggle.addEventListener("click", () => {
       setInfoVisible(!infoVisible);
@@ -2148,6 +2216,7 @@ if (modalEl && previewButtons.length) {
   setGridVisible(gridVisible);
   setAxesVisible(axesVisible);
   setAxisLabelsVisible(axisLabelsVisible);
+  setWireframeVisible(wireframeVisible);
   setInfoVisible(infoVisible);
 }
 </script>

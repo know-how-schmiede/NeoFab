@@ -3,6 +3,8 @@
 ## Version 0.7.12
 
 STL-/3MF-Viewer um schaltbare Achsen und Achsenbeschriftungen erweitert
+STL-/3MF-Viewer um schaltbare Wireframe-Darstellung erweitert
+STL-/3MF-Viewer um Button zum Zuruecksetzen der Ansicht erweitert
 
 ## Version 0.7.11
 
