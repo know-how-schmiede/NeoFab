@@ -1146,6 +1146,20 @@
                     title="Grid">
               <i class="bi bi-grid-3x3"></i>
             </button>
+            <button type="button"
+                    class="model-viewer-tool is-active"
+                    data-model-axes-toggle
+                    aria-pressed="true"
+                    title="Achsen">
+              <i class="bi bi-signpost-split"></i>
+            </button>
+            <button type="button"
+                    class="model-viewer-tool is-active"
+                    data-model-axis-labels-toggle
+                    aria-pressed="true"
+                    title="Achsenbeschriftungen">
+              <span class="model-viewer-tool-label">X</span>
+            </button>
           </div>
           <div class="model-viewer-toolbar model-viewer-toolbar-side">
             <button type="button"
@@ -1360,6 +1374,8 @@ if (modalEl && previewButtons.length) {
   const colorSelect = modalEl.querySelector("[data-model-color-select]");
   const feedbackEl = modalEl.querySelector("[data-model-feedback]");
   const gridToggle = modalEl.querySelector("[data-model-grid-toggle]");
+  const axesToggle = modalEl.querySelector("[data-model-axes-toggle]");
+  const axisLabelsToggle = modalEl.querySelector("[data-model-axis-labels-toggle]");
   const infoToggle = modalEl.querySelector("[data-model-info-toggle]");
   const infoBox = modalEl.querySelector("[data-model-info-box]");
   const infoFileSizeEl = modalEl.querySelector("[data-model-info-filesize]");
@@ -1401,7 +1417,10 @@ if (modalEl && previewButtons.length) {
   let animationId = null;
   let resizeObserver = null;
   let gridHelper = null;
+  let axesGroup = null;
   let gridVisible = true;
+  let axesVisible = true;
+  let axisLabelsVisible = true;
   let infoVisible = true;
 
   function setStatus(text) {
@@ -1442,6 +1461,25 @@ if (modalEl && previewButtons.length) {
     if (gridHelper) {
       gridHelper.visible = gridVisible;
     }
+  }
+
+  function setAxesVisible(isVisible) {
+    axesVisible = isVisible;
+    setToolState(axesToggle, axesVisible);
+    if (axesGroup) {
+      axesGroup.visible = axesVisible;
+    }
+  }
+
+  function setAxisLabelsVisible(isVisible) {
+    axisLabelsVisible = isVisible;
+    setToolState(axisLabelsToggle, axisLabelsVisible);
+    if (!axesGroup) return;
+    axesGroup.traverse((child) => {
+      if (child.userData && child.userData.axisLabel) {
+        child.visible = axisLabelsVisible;
+      }
+    });
   }
 
   function setInfoVisible(isVisible) {
@@ -1553,6 +1591,75 @@ if (modalEl && previewButtons.length) {
     scene.add(gridHelper);
   }
 
+  function makeAxisLabel(text, color, position, scale) {
+    const canvas = document.createElement("canvas");
+    const size = 96;
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, size, size);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, size * 0.32, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "700 42px Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, size / 2, size / 2 + 1);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const material = new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      depthTest: false
+    });
+    const sprite = new THREE.Sprite(material);
+    sprite.position.copy(position);
+    sprite.scale.setScalar(scale);
+    sprite.renderOrder = 10;
+    sprite.userData.axisLabel = true;
+    sprite.visible = axisLabelsVisible;
+    return sprite;
+  }
+
+  function addAxis(group, direction, length, color, label) {
+    const lineMaterial = new THREE.LineBasicMaterial({ color });
+    const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, 0),
+      direction.clone().multiplyScalar(length)
+    ]);
+    group.add(new THREE.Line(lineGeometry, lineMaterial));
+
+    const arrowGeometry = new THREE.ConeGeometry(length * 0.045, length * 0.14, 24);
+    const arrowMaterial = new THREE.MeshBasicMaterial({ color });
+    const arrow = new THREE.Mesh(arrowGeometry, arrowMaterial);
+    arrow.position.copy(direction.clone().multiplyScalar(length));
+    arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().normalize());
+    group.add(arrow);
+
+    const labelPosition = direction.clone().multiplyScalar(length * 1.09);
+    group.add(makeAxisLabel(label, `#${color.toString(16).padStart(6, "0")}`, labelPosition, length * 0.11));
+  }
+
+  function updateAxesForObject(object) {
+    if (!scene || !object) return;
+    disposeAxesGroup();
+    const box = new THREE.Box3().setFromObject(object);
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z, 10);
+    const length = maxDim * 0.9;
+
+    axesGroup = new THREE.Group();
+    axesGroup.position.set(box.min.x, box.min.y, box.min.z);
+    addAxis(axesGroup, new THREE.Vector3(1, 0, 0), length, 0x2f80ed, "X");
+    addAxis(axesGroup, new THREE.Vector3(0, 0, 1), length, 0x21a366, "Y");
+    addAxis(axesGroup, new THREE.Vector3(0, 1, 0), length, 0xff4d4f, "Z");
+    axesGroup.visible = axesVisible;
+    scene.add(axesGroup);
+    setAxisLabelsVisible(axisLabelsVisible);
+  }
+
   function getSelectedColorHex() {
     if (!colorSelect) return "";
     const selected = colorSelect.options[colorSelect.selectedIndex];
@@ -1615,9 +1722,13 @@ if (modalEl && previewButtons.length) {
     }
     const originalZoom = camera.zoom;
     const originalGridVisible = gridHelper ? gridHelper.visible : false;
+    const originalAxesVisible = axesGroup ? axesGroup.visible : false;
     try {
       if (gridHelper) {
         gridHelper.visible = false;
+      }
+      if (axesGroup) {
+        axesGroup.visible = false;
       }
       camera.zoom = thumbnailZoom;
       camera.updateProjectionMatrix();
@@ -1648,6 +1759,9 @@ if (modalEl && previewButtons.length) {
     } finally {
       if (gridHelper) {
         gridHelper.visible = originalGridVisible;
+      }
+      if (axesGroup) {
+        axesGroup.visible = originalAxesVisible;
       }
       camera.zoom = originalZoom;
       camera.updateProjectionMatrix();
@@ -1734,6 +1848,25 @@ if (modalEl && previewButtons.length) {
     });
   }
 
+  function disposeAxesGroup() {
+    if (!axesGroup) return;
+    axesGroup.traverse((child) => {
+      if (child.geometry) {
+        child.geometry.dispose();
+      }
+      if (child.material) {
+        if (child.material.map) {
+          child.material.map.dispose();
+        }
+        disposeMaterial(child.material);
+      }
+    });
+    if (scene) {
+      scene.remove(axesGroup);
+    }
+    axesGroup = null;
+  }
+
   function clearScene() {
     if (scene && currentObject) {
       scene.remove(currentObject);
@@ -1746,6 +1879,7 @@ if (modalEl && previewButtons.length) {
       disposeMaterial(gridHelper.material);
       gridHelper = null;
     }
+    disposeAxesGroup();
     setModelInfo(null);
   }
 
@@ -1835,6 +1969,7 @@ if (modalEl && previewButtons.length) {
     scene.add(object);
     frameObject(object);
     updateGridForObject(object);
+    updateAxesForObject(object);
     setModelInfo(object);
     applyColorToObject(currentColorHex);
     setStatus("");
@@ -1992,6 +2127,18 @@ if (modalEl && previewButtons.length) {
     });
   }
 
+  if (axesToggle) {
+    axesToggle.addEventListener("click", () => {
+      setAxesVisible(!axesVisible);
+    });
+  }
+
+  if (axisLabelsToggle) {
+    axisLabelsToggle.addEventListener("click", () => {
+      setAxisLabelsVisible(!axisLabelsVisible);
+    });
+  }
+
   if (infoToggle) {
     infoToggle.addEventListener("click", () => {
       setInfoVisible(!infoVisible);
@@ -1999,6 +2146,8 @@ if (modalEl && previewButtons.length) {
   }
 
   setGridVisible(gridVisible);
+  setAxesVisible(axesVisible);
+  setAxisLabelsVisible(axisLabelsVisible);
   setInfoVisible(infoVisible);
 }
 </script>

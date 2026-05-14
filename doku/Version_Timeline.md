@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.7.12
+
+STL-/3MF-Viewer um schaltbare Achsen und Achsenbeschriftungen erweitert
+
 ## Version 0.7.11
 
 Logfile in NeoFab_Log umbenannt
