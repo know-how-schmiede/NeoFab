@@ -1346,6 +1346,13 @@ def extract_gcode_metadata(path: Path) -> dict[str, float | int]:
                 metadata["duration_min"] = duration
 
         if "filament_m" not in metadata:
+            filament_bracket_m_match = re.search(r"filament\s+used\s*\[(mm|m)\]\s*=\s*(\d+(?:[.,]\d+)?)", lower)
+            if filament_bracket_m_match:
+                value = _parse_float_token(filament_bracket_m_match.group(2))
+                if value is not None:
+                    metadata["filament_m"] = value / 1000 if filament_bracket_m_match.group(1) == "mm" else value
+
+        if "filament_m" not in metadata:
             filament_m_match = re.search(r"filament\s+used.*?(\d+(?:[.,]\d+)?)\s*m\b", lower)
             if filament_m_match:
                 value = _parse_float_token(filament_m_match.group(1))
@@ -1358,6 +1365,16 @@ def extract_gcode_metadata(path: Path) -> dict[str, float | int]:
                 value = _parse_float_token(filament_mm_match.group(1))
                 if value is not None:
                     metadata["filament_m"] = value / 1000
+
+        if "filament_g" not in metadata:
+            filament_bracket_g_match = re.search(
+                r"(?:filament\s+used|total\s+filament\s+used)\s*\[g\]\s*=\s*(\d+(?:[.,]\d+)?)",
+                lower,
+            )
+            if filament_bracket_g_match:
+                value = _parse_float_token(filament_bracket_g_match.group(1))
+                if value is not None:
+                    metadata["filament_g"] = value
 
         if "filament_g" not in metadata:
             filament_g_match = re.search(
