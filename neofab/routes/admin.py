@@ -155,31 +155,82 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         except OSError:
             current_app.logger.warning("Could not delete training PDF: %s", filename)
 
-    def _remove_order_upload_folder(config_key: str, order_id: int) -> None:
+    def _count_folder_entries(folder: Path) -> tuple[int, int]:
+        file_count = 0
+        folder_count = 0
+        if not folder.exists():
+            return file_count, folder_count
+        for child in folder.rglob("*"):
+            if child.is_file():
+                file_count += 1
+            elif child.is_dir():
+                folder_count += 1
+        return file_count, folder_count
+
+    def _remove_order_upload_folder(config_key: str, order_id: int) -> dict[str, object]:
         root = Path(current_app.config[config_key]).resolve()
         target = (root / f"order_{order_id}").resolve()
+        details: dict[str, object] = {
+            "order_id": order_id,
+            "config_key": config_key,
+            "path": str(target),
+            "exists": target.exists(),
+            "deleted": False,
+        }
         try:
             if root not in target.parents or target.name != f"order_{order_id}":
                 current_app.logger.warning("Refused to delete unsafe order folder: %s", target)
-                return
+                details["error"] = "unsafe_path"
+                write_audit_log(
+                    current_app,
+                    "order_delete_folder_refused",
+                    user=current_user,
+                    level="warning",
+                    details=details,
+                )
+                return details
             if target.exists():
+                file_count, folder_count = _count_folder_entries(target)
+                details["file_count"] = file_count
+                details["folder_count"] = folder_count
                 shutil.rmtree(target)
-        except OSError:
+                details["deleted"] = True
+                write_audit_log(current_app, "order_delete_folder_deleted", user=current_user, details=details)
+            else:
+                write_audit_log(current_app, "order_delete_folder_missing", user=current_user, details=details)
+        except Exception as exc:
             current_app.logger.warning("Could not delete order upload folder: %s", target)
+            details["error"] = str(exc)
+            write_audit_log(current_app, "order_delete_folder_failed", user=current_user, level="error", details=details)
+        return details
 
-    def _delete_order_files(order_id: int) -> None:
+    def _delete_order_files(order_id: int) -> list[dict[str, object]]:
+        results = []
+        write_audit_log(
+            current_app,
+            "order_delete_files_started",
+            user=current_user,
+            details={"order_id": order_id},
+        )
         for config_key in ("UPLOAD_FOLDER", "IMAGE_UPLOAD_FOLDER", "GCODE_UPLOAD_FOLDER"):
-            _remove_order_upload_folder(config_key, order_id)
+            results.append(_remove_order_upload_folder(config_key, order_id))
+        errors = [result for result in results if result.get("error")]
+        if errors:
+            raise RuntimeError(f"File deletion failed for order {order_id}: {errors}")
+        return results
 
-    def _delete_order_from_database(order: Order) -> None:
+    def _delete_order_from_database(order: Order) -> dict[str, int]:
         order_id = order.id
-        OrderReadStatus.query.filter_by(order_id=order_id).delete(synchronize_session=False)
-        OrderMessage.query.filter_by(order_id=order_id).delete(synchronize_session=False)
-        OrderFile.query.filter_by(order_id=order_id).delete(synchronize_session=False)
-        OrderImage.query.filter_by(order_id=order_id).delete(synchronize_session=False)
-        OrderPrintJob.query.filter_by(order_id=order_id).delete(synchronize_session=False)
-        OrderTag.query.filter_by(order_id=order_id).delete(synchronize_session=False)
+        deleted_counts = {
+            "order_read_status": OrderReadStatus.query.filter_by(order_id=order_id).delete(synchronize_session=False),
+            "order_messages": OrderMessage.query.filter_by(order_id=order_id).delete(synchronize_session=False),
+            "order_files": OrderFile.query.filter_by(order_id=order_id).delete(synchronize_session=False),
+            "order_images": OrderImage.query.filter_by(order_id=order_id).delete(synchronize_session=False),
+            "order_print_jobs": OrderPrintJob.query.filter_by(order_id=order_id).delete(synchronize_session=False),
+            "order_tags": OrderTag.query.filter_by(order_id=order_id).delete(synchronize_session=False),
+        }
         db.session.delete(order)
+        return deleted_counts
 
     def normalize_youtube_url(raw_url: str) -> tuple[bool, str]:
         """
@@ -247,6 +298,12 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
     def admin_order_archive(order_id: int):
         trans = t
         order = Order.query.get_or_404(order_id)
+        write_audit_log(
+            current_app,
+            "order_archive_requested",
+            user=current_user,
+            details={"order_id": order.id, "title": order.title, "already_archived": bool(order.is_archived)},
+        )
         if not order.is_archived:
             order.is_archived = True
             order.archived_at = datetime.utcnow()
@@ -268,20 +325,44 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         trans = t
         order = Order.query.get_or_404(order_id)
         order_title = order.title
+        write_audit_log(
+            current_app,
+            "order_delete_requested",
+            user=current_user,
+            details={"order_id": order_id, "title": order_title, "is_archived": bool(order.is_archived)},
+        )
         try:
-            _delete_order_files(order.id)
-            _delete_order_from_database(order)
+            file_delete_results = _delete_order_files(order.id)
+            write_audit_log(
+                current_app,
+                "order_delete_database_started",
+                user=current_user,
+                details={"order_id": order_id, "title": order_title},
+            )
+            deleted_counts = _delete_order_from_database(order)
             db.session.commit()
             write_audit_log(
                 current_app,
                 "order_deleted",
                 user=current_user,
-                details={"order_id": order_id, "title": order_title},
+                details={
+                    "order_id": order_id,
+                    "title": order_title,
+                    "deleted_counts": deleted_counts,
+                    "file_delete_results": file_delete_results,
+                },
             )
             flash(trans("flash_order_deleted"), "info")
-        except Exception:
+        except Exception as exc:
             db.session.rollback()
             current_app.logger.exception("Failed to delete order %s", order_id)
+            write_audit_log(
+                current_app,
+                "order_delete_failed",
+                user=current_user,
+                level="error",
+                details={"order_id": order_id, "title": order_title, "error": str(exc)},
+            )
             flash(trans("flash_order_delete_failed"), "danger")
         return redirect(url_for(".admin_orders"))
 

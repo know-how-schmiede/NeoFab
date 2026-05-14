@@ -54,6 +54,7 @@
               <th>{{ t("admin_logs_time") }}</th>
               <th>{{ t("admin_logs_level") }}</th>
               <th>{{ t("admin_logs_event") }}</th>
+              <th>{{ t("admin_logs_details") }}</th>
               <th>{{ t("table_email") }}</th>
               <th>{{ t("table_role") }}</th>
               <th>{{ t("admin_logs_ip") }}</th>
@@ -65,13 +66,18 @@
                 <td class="text-nowrap">{{ entry.timestamp_utc or "" }}</td>
                 <td>{{ entry.level or "" }}</td>
                 <td>{{ entry.event or entry.raw or "" }}</td>
+                <td class="small">
+                  {% if entry.details %}
+                    <code>{{ entry.details|tojson }}</code>
+                  {% endif %}
+                </td>
                 <td>{{ entry.email or "" }}</td>
                 <td>{{ entry.role or "" }}</td>
                 <td>{{ entry.remote_addr or "" }}</td>
               </tr>
             {% else %}
               <tr>
-                <td colspan="6" class="text-muted">{{ t("admin_logs_no_entries") }}</td>
+                <td colspan="7" class="text-muted">{{ t("admin_logs_no_entries") }}</td>
               </tr>
             {% endfor %}
           </tbody>

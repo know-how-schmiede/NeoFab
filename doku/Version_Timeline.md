@@ -1,5 +1,10 @@
 # Timeline NeoFab
 
+## Version 0.8.1
+
+Archivieren und Loeschen von Auftraegen werden detailliert im Logfile protokolliert
+Datei- und Ordnerloeschungen beim endgueltigen Loeschen von Auftraegen werden mit Pfad und Anzahl protokolliert
+
 ## Version 0.8.0
 
 Admin-Bereich fuer Auftraege mit Archivieren und endgueltigem Loeschen inklusive Datenbank- und Datei-Bereinigung

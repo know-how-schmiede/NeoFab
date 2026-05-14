@@ -27,6 +27,7 @@
   "admin_logs_desc": "Afficher les connexions, deconnexions et futurs evenements dans des fichiers journaux quotidiens.",
   "admin_logs_delete_confirm": "Ce fichier journal sera supprime definitivement.",
   "admin_logs_delete_title": "Supprimer le fichier journal",
+  "admin_logs_details": "Details",
   "admin_logs_event": "Evenement",
   "admin_logs_files": "Fichiers journaux",
   "admin_logs_ip": "Adresse IP",
