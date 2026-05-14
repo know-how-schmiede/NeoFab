@@ -1,5 +1,10 @@
 # Timeline NeoFab
 
+## Version 0.8.4
+
+G-Code-Upload liest Slicer-Kommentare fuer Druckdauer, Filamentlaenge und Filamentgewicht aus
+Automatisch ausgelesene G-Code-Werte bleiben im Druckauftrag manuell editierbar
+
 ## Version 0.8.3
 
 Material und Farbe werden nicht mehr am Auftrag, sondern pro 3D-Modell gespeichert

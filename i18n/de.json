@@ -253,7 +253,7 @@
   "print_jobs_label_status": "Status",
   "print_jobs_label_started_at": "Startdatum/Uhrzeit",
   "print_jobs_label_duration": "Druckdauer (Minuten)",
-  "print_jobs_hint_auto": "Wird später von NeoFab befüllt.",
+  "print_jobs_hint_auto": "Wird beim Upload aus dem G-Code ausgelesen, sofern der Slicer die Werte als Kommentar mitliefert.",
   "print_jobs_label_filament_m": "Filamentlänge (m)",
   "print_jobs_label_filament_g": "Filamentgewicht (g)",
   "print_jobs_label_note": "Bemerkung",
