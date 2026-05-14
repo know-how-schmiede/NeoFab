@@ -188,7 +188,7 @@ body {
 .model-preview-status {
     position: absolute;
     left: 0.75rem;
-    bottom: 0.75rem;
+    bottom: 3.65rem;
     padding: 0.25rem 0.6rem;
     background: rgba(33, 37, 41, 0.7);
     color: #fff;
@@ -204,6 +204,81 @@ body {
     font-style: italic;
 }
 
+.model-info-box {
+    position: absolute;
+    top: 0.9rem;
+    left: 0.9rem;
+    z-index: 4;
+    width: min(230px, calc(100% - 5rem));
+    padding: 0.75rem 0.8rem;
+    color: #17365d;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #9fb9dd;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.4rem 1rem rgba(31, 65, 112, 0.16);
+    font-size: 0.82rem;
+}
+
+.model-info-list > div {
+    display: grid;
+    grid-template-columns: minmax(84px, 1fr) auto;
+    gap: 0.75rem;
+    align-items: baseline;
+}
+
+.model-info-list dt {
+    font-weight: 600;
+}
+
+.model-info-list dd {
+    margin: 0;
+    text-align: right;
+}
+
+.model-viewer-toolbar {
+    position: absolute;
+    z-index: 5;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.model-viewer-toolbar-bottom {
+    left: 0.75rem;
+    bottom: 0.75rem;
+}
+
+.model-viewer-toolbar-side {
+    right: 0.75rem;
+    top: 50%;
+    flex-direction: column;
+    transform: translateY(-50%);
+}
+
+.model-viewer-tool {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    color: #17365d;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #b8c9e6;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.25rem 0.75rem rgba(31, 65, 112, 0.14);
+}
+
+.model-viewer-tool:hover,
+.model-viewer-tool:focus {
+    color: #0d6efd;
+    border-color: #78a8ef;
+}
+
+.model-viewer-tool.is-active {
+    color: #0d6efd;
+    background: #eaf2ff;
+    border-color: #0d6efd;
+}
+
 @media (max-width: 576px) {
     .model-preview-wrap {
         height: 50vh;
@@ -214,5 +289,14 @@ body {
     .model-thumb-placeholder {
         width: 80px;
         height: 80px;
+    }
+
+    .model-info-box {
+        width: min(220px, calc(100% - 4.5rem));
+        font-size: 0.78rem;
+    }
+
+    .model-viewer-toolbar-side {
+        right: 0.5rem;
     }
 }

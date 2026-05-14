@@ -419,6 +419,7 @@
                         data-preview-thumb-lg="{{ thumb_lg_url }}"
                         data-preview-thumbnail-ready="{{ 'true' if f.thumb_sm_path or f.thumb_lg_path else 'false' }}"
                         data-preview-color-id="{{ f.color_id or '' }}"
+                        data-preview-filesize="{{ f.filesize or '' }}"
                         aria-label="{{ preview_tooltip }}"
                         title="{{ preview_tooltip }}"
                       >
@@ -1112,6 +1113,49 @@
         <div class="model-preview-wrap">
           <img class="model-preview-poster d-none" data-model-poster alt="{{ t('files_preview_title') }}">
           <div class="model-preview-canvas" data-model-canvas></div>
+          <div class="model-info-box" data-model-info-box>
+            <div class="fw-semibold mb-2">Model info</div>
+            <dl class="model-info-list mb-0">
+              <div>
+                <dt>File size</dt>
+                <dd data-model-info-filesize>-</dd>
+              </div>
+              <div>
+                <dt>Bounding box</dt>
+                <dd data-model-info-bounds>-</dd>
+              </div>
+              <div>
+                <dt>Triangles</dt>
+                <dd data-model-info-triangles>-</dd>
+              </div>
+              <div>
+                <dt>Volume</dt>
+                <dd data-model-info-volume>-</dd>
+              </div>
+              <div>
+                <dt>Surface</dt>
+                <dd data-model-info-surface>-</dd>
+              </div>
+            </dl>
+          </div>
+          <div class="model-viewer-toolbar model-viewer-toolbar-bottom">
+            <button type="button"
+                    class="model-viewer-tool is-active"
+                    data-model-grid-toggle
+                    aria-pressed="true"
+                    title="Grid">
+              <i class="bi bi-grid-3x3"></i>
+            </button>
+          </div>
+          <div class="model-viewer-toolbar model-viewer-toolbar-side">
+            <button type="button"
+                    class="model-viewer-tool is-active"
+                    data-model-info-toggle
+                    aria-pressed="true"
+                    title="Model info">
+              <i class="bi bi-info-circle"></i>
+            </button>
+          </div>
           <div class="model-preview-status" data-model-status>{{ t("files_preview_loading") }}</div>
         </div>
       </div>
@@ -1315,6 +1359,14 @@ if (modalEl && previewButtons.length) {
   const noteEl = modalEl.querySelector("[data-model-note]");
   const colorSelect = modalEl.querySelector("[data-model-color-select]");
   const feedbackEl = modalEl.querySelector("[data-model-feedback]");
+  const gridToggle = modalEl.querySelector("[data-model-grid-toggle]");
+  const infoToggle = modalEl.querySelector("[data-model-info-toggle]");
+  const infoBox = modalEl.querySelector("[data-model-info-box]");
+  const infoFileSizeEl = modalEl.querySelector("[data-model-info-filesize]");
+  const infoBoundsEl = modalEl.querySelector("[data-model-info-bounds]");
+  const infoTrianglesEl = modalEl.querySelector("[data-model-info-triangles]");
+  const infoVolumeEl = modalEl.querySelector("[data-model-info-volume]");
+  const infoSurfaceEl = modalEl.querySelector("[data-model-info-surface]");
   const baseTitle = titleEl ? titleEl.textContent : "";
 
   const labels = {
@@ -1341,12 +1393,16 @@ if (modalEl && previewButtons.length) {
   let currentOrderId = null;
   let currentThumbSmUrl = "";
   let currentThumbLgUrl = "";
+  let currentFileSize = "";
   let currentThumbnailReady = false;
   let currentColorHex = defaultColorHex;
   let colorSaveTimer = null;
   let modelReady = false;
   let animationId = null;
   let resizeObserver = null;
+  let gridHelper = null;
+  let gridVisible = true;
+  let infoVisible = true;
 
   function setStatus(text) {
     if (!statusEl) return;
@@ -1372,6 +1428,129 @@ if (modalEl && previewButtons.length) {
   function setFeedback(text) {
     if (!feedbackEl) return;
     feedbackEl.textContent = text || "";
+  }
+
+  function setToolState(button, isActive) {
+    if (!button) return;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+  }
+
+  function setGridVisible(isVisible) {
+    gridVisible = isVisible;
+    setToolState(gridToggle, gridVisible);
+    if (gridHelper) {
+      gridHelper.visible = gridVisible;
+    }
+  }
+
+  function setInfoVisible(isVisible) {
+    infoVisible = isVisible;
+    setToolState(infoToggle, infoVisible);
+    if (infoBox) {
+      infoBox.classList.toggle("d-none", !infoVisible);
+    }
+  }
+
+  function formatNumber(value, fractionDigits = 2) {
+    if (!Number.isFinite(value)) return "-";
+    return new Intl.NumberFormat("de-DE", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: fractionDigits
+    }).format(value);
+  }
+
+  function formatFileSize(bytesValue) {
+    const bytes = Number(bytesValue);
+    if (!Number.isFinite(bytes) || bytes <= 0) return "-";
+    if (bytes >= 1024 * 1024) return `${formatNumber(bytes / (1024 * 1024), 2)} MB`;
+    return `${formatNumber(bytes / 1024, 2)} KB`;
+  }
+
+  function triangleArea(a, b, c) {
+    const ab = new THREE.Vector3().subVectors(b, a);
+    const ac = new THREE.Vector3().subVectors(c, a);
+    return new THREE.Vector3().crossVectors(ab, ac).length() * 0.5;
+  }
+
+  function signedTriangleVolume(a, b, c) {
+    return a.dot(new THREE.Vector3().crossVectors(b, c)) / 6;
+  }
+
+  function getTrianglePoints(geometry, index, matrixWorld) {
+    const position = geometry.attributes.position;
+    const indices = geometry.index ? geometry.index.array : null;
+    const ai = indices ? indices[index * 3] : index * 3;
+    const bi = indices ? indices[index * 3 + 1] : index * 3 + 1;
+    const ci = indices ? indices[index * 3 + 2] : index * 3 + 2;
+    return [
+      new THREE.Vector3().fromBufferAttribute(position, ai).applyMatrix4(matrixWorld),
+      new THREE.Vector3().fromBufferAttribute(position, bi).applyMatrix4(matrixWorld),
+      new THREE.Vector3().fromBufferAttribute(position, ci).applyMatrix4(matrixWorld)
+    ];
+  }
+
+  function collectModelInfo(object) {
+    object.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(object);
+    const size = box.getSize(new THREE.Vector3());
+    let triangles = 0;
+    let surfaceArea = 0;
+    let volume = 0;
+
+    object.traverse((child) => {
+      if (!child.isMesh || !child.geometry || !child.geometry.attributes.position) return;
+      const geometry = child.geometry;
+      const triangleCount = geometry.index
+        ? Math.floor(geometry.index.count / 3)
+        : Math.floor(geometry.attributes.position.count / 3);
+      triangles += triangleCount;
+      for (let i = 0; i < triangleCount; i += 1) {
+        const [a, b, c] = getTrianglePoints(geometry, i, child.matrixWorld);
+        surfaceArea += triangleArea(a, b, c);
+        volume += signedTriangleVolume(a, b, c);
+      }
+    });
+
+    return {
+      size,
+      triangles,
+      surfaceArea,
+      volume: Math.abs(volume)
+    };
+  }
+
+  function setModelInfo(object) {
+    const info = object ? collectModelInfo(object) : null;
+    if (infoFileSizeEl) infoFileSizeEl.textContent = formatFileSize(currentFileSize);
+    if (infoBoundsEl) {
+      infoBoundsEl.textContent = info
+        ? `${formatNumber(info.size.x)} x ${formatNumber(info.size.y)} x ${formatNumber(info.size.z)}`
+        : "-";
+    }
+    if (infoTrianglesEl) infoTrianglesEl.textContent = info ? formatNumber(info.triangles, 0) : "-";
+    if (infoVolumeEl) infoVolumeEl.textContent = info ? `${formatNumber(info.volume, 2)} mm³` : "-";
+    if (infoSurfaceEl) infoSurfaceEl.textContent = info ? `${formatNumber(info.surfaceArea, 2)} mm²` : "-";
+  }
+
+  function updateGridForObject(object) {
+    if (!scene || !object) return;
+    const box = new THREE.Box3().setFromObject(object);
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z, 10);
+    const gridSize = Math.ceil((maxDim * 1.8) / 10) * 10;
+    const divisions = Math.max(10, Math.min(80, Math.ceil(gridSize / 5)));
+
+    if (gridHelper) {
+      scene.remove(gridHelper);
+      gridHelper.geometry.dispose();
+      disposeMaterial(gridHelper.material);
+    }
+    gridHelper = new THREE.GridHelper(gridSize, divisions, 0x5f84bd, 0xb8c9e6);
+    gridHelper.position.y = box.min.y;
+    styleGridMaterial(gridHelper.material);
+    gridHelper.visible = gridVisible;
+    scene.add(gridHelper);
   }
 
   function getSelectedColorHex() {
@@ -1435,7 +1614,11 @@ if (modalEl && previewButtons.length) {
       return null;
     }
     const originalZoom = camera.zoom;
+    const originalGridVisible = gridHelper ? gridHelper.visible : false;
     try {
+      if (gridHelper) {
+        gridHelper.visible = false;
+      }
       camera.zoom = thumbnailZoom;
       camera.updateProjectionMatrix();
       if (controls) {
@@ -1463,6 +1646,9 @@ if (modalEl && previewButtons.length) {
     } catch (err) {
       return false;
     } finally {
+      if (gridHelper) {
+        gridHelper.visible = originalGridVisible;
+      }
       camera.zoom = originalZoom;
       camera.updateProjectionMatrix();
       if (controls) {
@@ -1531,12 +1717,36 @@ if (modalEl && previewButtons.length) {
     });
   }
 
+  function disposeMaterial(material) {
+    if (Array.isArray(material)) {
+      material.forEach((mat) => mat.dispose && mat.dispose());
+    } else if (material && material.dispose) {
+      material.dispose();
+    }
+  }
+
+  function styleGridMaterial(material) {
+    const materials = Array.isArray(material) ? material : [material];
+    materials.forEach((mat) => {
+      if (!mat) return;
+      mat.transparent = true;
+      mat.opacity = 0.65;
+    });
+  }
+
   function clearScene() {
     if (scene && currentObject) {
       scene.remove(currentObject);
       disposeObject(currentObject);
       currentObject = null;
     }
+    if (scene && gridHelper) {
+      scene.remove(gridHelper);
+      gridHelper.geometry.dispose();
+      disposeMaterial(gridHelper.material);
+      gridHelper = null;
+    }
+    setModelInfo(null);
   }
 
   function updateRendererSize() {
@@ -1624,6 +1834,8 @@ if (modalEl && previewButtons.length) {
     currentObject = object;
     scene.add(object);
     frameObject(object);
+    updateGridForObject(object);
+    setModelInfo(object);
     applyColorToObject(currentColorHex);
     setStatus("");
     setPoster("");
@@ -1704,6 +1916,7 @@ if (modalEl && previewButtons.length) {
       currentOrderId = btn.getAttribute("data-preview-order-id") || "";
       currentThumbSmUrl = btn.getAttribute("data-preview-thumb-sm") || "";
       currentThumbLgUrl = btn.getAttribute("data-preview-thumb-lg") || "";
+      currentFileSize = btn.getAttribute("data-preview-filesize") || "";
       currentThumbnailReady = btn.getAttribute("data-preview-thumbnail-ready") === "true";
 
       if (titleEl) {
@@ -1752,6 +1965,7 @@ if (modalEl && previewButtons.length) {
     currentOrderId = null;
     currentThumbSmUrl = "";
     currentThumbLgUrl = "";
+    currentFileSize = "";
     currentThumbnailReady = false;
     currentColorHex = defaultColorHex;
     if (colorSelect) {
@@ -1771,6 +1985,21 @@ if (modalEl && previewButtons.length) {
       titleEl.textContent = baseTitle;
     }
   });
+
+  if (gridToggle) {
+    gridToggle.addEventListener("click", () => {
+      setGridVisible(!gridVisible);
+    });
+  }
+
+  if (infoToggle) {
+    infoToggle.addEventListener("click", () => {
+      setInfoVisible(!infoVisible);
+    });
+  }
+
+  setGridVisible(gridVisible);
+  setInfoVisible(infoVisible);
 }
 </script>
 {% endblock %}
