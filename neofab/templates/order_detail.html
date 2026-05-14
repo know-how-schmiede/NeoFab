@@ -193,8 +193,36 @@
             <i class="bi bi-person-circle me-1"></i>
             {{ t("order_owner_label") }}
           </label>
-          <div class="form-control-plaintext">
-            {{ order.user.email }}
+          <div class="form-control-plaintext pt-0">
+            {% set owner = order.user %}
+            {% if owner %}
+              <div class="fw-semibold">{{ owner.email }}</div>
+              <div class="small text-muted mt-1">
+                {% if owner.salutation %}
+                  <div>{{ t("label_salutation") }}: {{ owner.salutation }}</div>
+                {% endif %}
+                {% if owner.first_name or owner.last_name %}
+                  <div>{{ t("label_first_name") }} / {{ t("label_last_name") }}: {{ [owner.first_name, owner.last_name]|select|join(" ") }}</div>
+                {% endif %}
+                {% if owner.position %}
+                  <div>{{ t("label_position") }}: {{ owner.position }}</div>
+                {% endif %}
+                {% if owner.cost_center %}
+                  <div>{{ t("label_cost_center") }}: {{ owner.cost_center }}</div>
+                {% endif %}
+                {% if owner.study_program %}
+                  <div>{{ t("label_study_program") }}: {{ owner.study_program }}</div>
+                {% endif %}
+                {% if owner.address %}
+                  <div>{{ t("label_address") }}: {{ owner.address }}</div>
+                {% endif %}
+                {% if owner.note %}
+                  <div>{{ t("label_note") }}: {{ owner.note }}</div>
+                {% endif %}
+              </div>
+            {% else %}
+              -
+            {% endif %}
           </div>
         </div>
 

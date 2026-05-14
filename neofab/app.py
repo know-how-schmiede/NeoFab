@@ -1849,8 +1849,6 @@ def new_order():
     ensure_order_archive_columns()
 
     cost_centers = CostCenter.query.order_by(CostCenter.name.asc()).all()
-    printer_profiles = PrinterProfile.query.filter_by(active=True).order_by(PrinterProfile.name.asc()).all()
-    filament_materials = FilamentMaterial.query.filter_by(active=True).order_by(FilamentMaterial.name.asc()).all()
     trans = inject_globals().get("t")
     status_context = get_status_context(trans)
 
@@ -1878,10 +1876,7 @@ def new_order():
         # --- Status-Handling ---
         if current_user.role == "admin":
             # Admin darf initialen Status w├ñhlen
-            status = request.form.get("status", "new")
-            valid_status_values = ORDER_STATUS_VALUES
-            if status not in valid_status_values:
-                status = "new"
+            status = "new"
         else:
             # Normale Nutzer starten immer mit "new"
             status = "new"
@@ -1889,8 +1884,6 @@ def new_order():
 
         # Kostenstelle / Druckerprofil / Filament (optional)
         cost_center_id = request.form.get("cost_center_id") or None
-        printer_profile_id = request.form.get("printer_profile_id") or None
-        filament_material_id = request.form.get("filament_material_id") or None
 
         # ├ûffentlichkeits-Felder
         def _default_public_flag(field_name: str) -> bool:
@@ -1923,10 +1916,7 @@ def new_order():
             return render_template(
                 "orders_new.html",
                 form_token=form_token,
-                order_statuses=status_context["order_statuses"],
                 cost_centers=cost_centers,
-                printer_profiles=printer_profiles,
-                filament_materials=filament_materials,
             )
 
         order = Order(
@@ -1947,16 +1937,6 @@ def new_order():
             project_url=project_url,
         )
 
-        def _select_active_id(model, raw_id):
-            if not raw_id:
-                return None
-            try:
-                raw_int = int(raw_id)
-            except ValueError:
-                return None
-            entry = model.query.filter_by(id=raw_int, active=True).first()
-            return entry.id if entry else None
-
         def _select_id(model, raw_id):
             if not raw_id:
                 return None
@@ -1973,8 +1953,6 @@ def new_order():
                 order.cost_center_id = int(cost_center_id)
             except ValueError:
                 pass
-        order.printer_profile_id = _select_active_id(PrinterProfile, printer_profile_id)
-        order.filament_material_id = _select_active_id(FilamentMaterial, filament_material_id)
 
         db.session.add(order)
         db.session.commit()
@@ -2067,8 +2045,7 @@ def new_order():
 
         app.logger.debug(
             f"[new_order] Created order id={order.id}, title={order.title!r}, "
-            f"status={order.status!r}, user={current_user.email}, "
-            f"printer_profile_id={order.printer_profile_id}, filament_material_id={order.filament_material_id}"
+            f"status={order.status!r}, user={current_user.email}"
         )
 
         send_admin_order_notification(app, order, status_context["order_status_labels"])
@@ -2081,10 +2058,7 @@ def new_order():
     return render_template(
         "orders_new.html",
         form_token=form_token,
-        order_statuses=status_context["order_statuses"],
         cost_centers=cost_centers,
-        printer_profiles=printer_profiles,
-        filament_materials=filament_materials,
     )
 
 
