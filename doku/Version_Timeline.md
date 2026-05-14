@@ -1,5 +1,11 @@
 # Timeline NeoFab
 
+## Version 0.8.3
+
+Material und Farbe werden nicht mehr am Auftrag, sondern pro 3D-Modell gespeichert
+3D-Modell-Upload und Modell-Bearbeitung um Material- und Farbauswahl erweitert
+Bestehende Auftragswerte fuer Material und Farbe werden einmalig auf vorhandene 3D-Modelle uebernommen
+
 ## Version 0.8.2
 
 Doppeltes Erstellen von Auftraegen durch Submit-Sperre und einmaliges Formular-Token verhindert

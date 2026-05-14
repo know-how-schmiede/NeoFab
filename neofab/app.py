@@ -328,10 +328,13 @@ def ensure_order_file_columns():
             for row in db.session.execute(text("PRAGMA table_info(order_files)"))
         }
         statements = []
+        should_migrate_order_file_defaults = "material_id" not in cols
         if "note" not in cols:
             statements.append("ALTER TABLE order_files ADD COLUMN note VARCHAR(255)")
         if "quantity" not in cols:
             statements.append("ALTER TABLE order_files ADD COLUMN quantity INTEGER NOT NULL DEFAULT 1")
+        if "material_id" not in cols:
+            statements.append("ALTER TABLE order_files ADD COLUMN material_id INTEGER")
         if "color_id" not in cols:
             statements.append("ALTER TABLE order_files ADD COLUMN color_id INTEGER")
         if "thumb_sm_path" not in cols:
@@ -347,6 +350,33 @@ def ensure_order_file_columns():
             db.session.execute(text(stmt))
         if statements:
             db.session.commit()
+        if should_migrate_order_file_defaults:
+            order_cols = {
+                row[1]
+                for row in db.session.execute(text("PRAGMA table_info(orders)"))
+            }
+            if "material_id" in order_cols:
+                db.session.execute(text("""
+                    UPDATE order_files
+                    SET material_id = (
+                        SELECT orders.material_id
+                        FROM orders
+                        WHERE orders.id = order_files.order_id
+                    )
+                    WHERE material_id IS NULL
+                """))
+            if "color_id" in order_cols:
+                db.session.execute(text("""
+                    UPDATE order_files
+                    SET color_id = (
+                        SELECT orders.color_id
+                        FROM orders
+                        WHERE orders.id = order_files.order_id
+                    )
+                    WHERE color_id IS NULL
+                """))
+            if "material_id" in order_cols or "color_id" in order_cols:
+                db.session.commit()
     except Exception:
         app.logger.exception("Failed to ensure order_files columns exist")
 
@@ -1818,8 +1848,6 @@ def new_order():
     ensure_order_estimation_columns()
     ensure_order_archive_columns()
 
-    materials = Material.query.order_by(Material.name.asc()).all()
-    colors = Color.query.order_by(Color.name.asc()).all()
     cost_centers = CostCenter.query.order_by(CostCenter.name.asc()).all()
     printer_profiles = PrinterProfile.query.filter_by(active=True).order_by(PrinterProfile.name.asc()).all()
     filament_materials = FilamentMaterial.query.filter_by(active=True).order_by(FilamentMaterial.name.asc()).all()
@@ -1859,9 +1887,7 @@ def new_order():
             status = "new"
         # ------------------------
 
-        # Material / Farbe / Kostenstelle / Druckerprofil / Filament (optional)
-        material_id = request.form.get("material_id") or None
-        color_id = request.form.get("color_id") or None
+        # Kostenstelle / Druckerprofil / Filament (optional)
         cost_center_id = request.form.get("cost_center_id") or None
         printer_profile_id = request.form.get("printer_profile_id") or None
         filament_material_id = request.form.get("filament_material_id") or None
@@ -1898,8 +1924,6 @@ def new_order():
                 "orders_new.html",
                 form_token=form_token,
                 order_statuses=status_context["order_statuses"],
-                materials=materials,
-                colors=colors,
                 cost_centers=cost_centers,
                 printer_profiles=printer_profiles,
                 filament_materials=filament_materials,
@@ -1933,18 +1957,17 @@ def new_order():
             entry = model.query.filter_by(id=raw_int, active=True).first()
             return entry.id if entry else None
 
-        # Nur sinnvolle IDs setzen
-        if material_id:
+        def _select_id(model, raw_id):
+            if not raw_id:
+                return None
             try:
-                order.material_id = int(material_id)
+                raw_int = int(raw_id)
             except ValueError:
-                pass
+                return None
+            entry = model.query.get(raw_int)
+            return entry.id if entry else None
 
-        if color_id:
-            try:
-                order.color_id = int(color_id)
-            except ValueError:
-                pass
+        # Nur sinnvolle IDs setzen
         if cost_center_id:
             try:
                 order.cost_center_id = int(cost_center_id)
@@ -1964,8 +1987,6 @@ def new_order():
                 "title": order.title,
                 "status": order.status,
                 "cost_center_id": order.cost_center_id,
-                "material_id": order.material_id,
-                "color_id": order.color_id,
             },
         )
 
@@ -1994,6 +2015,8 @@ def new_order():
                     original_name=original_name,
                     stored_name="",
                     file_type=ext,
+                    material_id=_select_id(Material, request.form.get("file_material_id")),
+                    color_id=_select_id(Color, request.form.get("file_color_id")),
                 )
                 db.session.add(order_file)
                 db.session.flush()  # gibt uns eine ID, ohne zu committen
@@ -2031,6 +2054,8 @@ def new_order():
                         "stored_name": order_file.stored_name,
                         "file_type": order_file.file_type,
                         "filesize": order_file.filesize,
+                        "material_id": order_file.material_id,
+                        "color_id": order_file.color_id,
                     },
                 )
 
@@ -2043,7 +2068,6 @@ def new_order():
         app.logger.debug(
             f"[new_order] Created order id={order.id}, title={order.title!r}, "
             f"status={order.status!r}, user={current_user.email}, "
-            f"material_id={order.material_id}, color_id={order.color_id}, "
             f"printer_profile_id={order.printer_profile_id}, filament_material_id={order.filament_material_id}"
         )
 
@@ -2058,8 +2082,6 @@ def new_order():
         "orders_new.html",
         form_token=form_token,
         order_statuses=status_context["order_statuses"],
-        materials=materials,
-        colors=colors,
         cost_centers=cost_centers,
         printer_profiles=printer_profiles,
         filament_materials=filament_materials,
@@ -2135,28 +2157,10 @@ def order_detail(order_id):
                 order.title = title
                 order.description = description or None
 
-                # Material / Farbe / Kostenstelle aktualisieren (f├╝r alle Rollen erlaubt)
-                material_id = request.form.get("material_id") or None
-                color_id = request.form.get("color_id") or None
+                # Kostenstelle aktualisieren (f├╝r alle Rollen erlaubt)
                 cost_center_id = request.form.get("cost_center_id") or None
                 current_printer_profile_id = order.printer_profile_id
                 current_filament_material_id = order.filament_material_id
-
-                if material_id:
-                    try:
-                        order.material_id = int(material_id)
-                    except ValueError:
-                        order.material_id = None
-                else:
-                    order.material_id = None
-
-                if color_id:
-                    try:
-                        order.color_id = int(color_id)
-                    except ValueError:
-                        order.color_id = None
-                else:
-                    order.color_id = None
 
                 if cost_center_id:
                     try:
@@ -2307,6 +2311,8 @@ def order_detail(order_id):
         elif action == "upload_file":
             file = request.files.get("model_file")
             file_note = request.form.get("file_note", "").strip() or None
+            file_material_id = request.form.get("file_material_id") or None
+            file_color_id = request.form.get("file_color_id") or None
             file_quantity_raw = request.form.get("file_quantity", "").strip()
             try:
                 file_quantity = max(1, int(file_quantity_raw or "1"))
@@ -2337,6 +2343,20 @@ def order_detail(order_id):
                 note=file_note,
                 quantity=file_quantity,
             )
+            if file_material_id:
+                try:
+                    material_id_int = int(file_material_id)
+                    if Material.query.get(material_id_int):
+                        order_file.material_id = material_id_int
+                except ValueError:
+                    pass
+            if file_color_id:
+                try:
+                    color_id_int = int(file_color_id)
+                    if Color.query.get(color_id_int):
+                        order_file.color_id = color_id_int
+                except ValueError:
+                    pass
             db.session.add(order_file)
             db.session.flush()  # gibt eine ID ohne Commit
 
@@ -2372,6 +2392,8 @@ def order_detail(order_id):
                     "file_type": order_file.file_type,
                     "filesize": order_file.filesize,
                     "quantity": order_file.quantity,
+                    "material_id": order_file.material_id,
+                    "color_id": order_file.color_id,
                 },
             )
 
@@ -2405,6 +2427,8 @@ def order_detail(order_id):
 
             file_note_raw = request.form.get("file_note", "").strip()
             file_note = file_note_raw[:255] if file_note_raw else None
+            file_material_id = request.form.get("file_material_id") or None
+            file_color_id = request.form.get("file_color_id") or None
             file_quantity_raw = request.form.get("file_quantity", "").strip()
             try:
                 file_quantity = max(1, int(file_quantity_raw or "1"))
@@ -2413,10 +2437,26 @@ def order_detail(order_id):
 
             order_file.note = file_note
             order_file.quantity = file_quantity
+            order_file.material_id = None
+            if file_material_id:
+                try:
+                    material_id_int = int(file_material_id)
+                    if Material.query.get(material_id_int):
+                        order_file.material_id = material_id_int
+                except ValueError:
+                    pass
+            order_file.color_id = None
+            if file_color_id:
+                try:
+                    color_id_int = int(file_color_id)
+                    if Color.query.get(color_id_int):
+                        order_file.color_id = color_id_int
+                except ValueError:
+                    pass
             db.session.commit()
 
             flash(trans("flash_file_updated"), "success")
-            return redirect(url_for("order_detail", order_id=order.id))
+            return order_detail_redirect("files")
 
         # --- 5) Projektbild hochladen --------------------------------------
         elif action == "upload_image":
@@ -2960,7 +3000,7 @@ def order_detail(order_id):
     status_context = get_status_context(inject_globals().get("t"))
     app.logger.debug(
         f"[order_detail] Render detail for order {order.id}: status={order.status!r}, "
-        f"messages_count={len(messages)}, material_id={order.material_id}, color_id={order.color_id}"
+        f"messages_count={len(messages)}, files_count={len(order.files)}"
     )
     return render_template(
         "order_detail.html",
@@ -3671,8 +3711,6 @@ def build_order_context(order, translator) -> dict:
             "address": order.user.address if order.user else "",
             "position": order.user.position if order.user else "",
             "study_program": order.user.study_program if order.user else "",
-            "material": order.material.name if order.material else "",
-            "color": order.color.name if order.color else "",
             "cost_center": order.cost_center.name if order.cost_center else "",
             "created_at": fmt_dt(order.created_at),
             "updated_at": fmt_dt(order.updated_at),
@@ -3706,6 +3744,8 @@ def build_order_context(order, translator) -> dict:
                 "uploaded_at": fmt_dt(f.uploaded_at),
                 "note": f.note or "",
                 "quantity": f.quantity or 1,
+                "material": f.material.name if f.material else "",
+                "color": f.color.name if f.color else "",
                 "thumb_data_uri": model_thumb_data_uri(f),
             }
             for f in order.files
@@ -3784,8 +3824,6 @@ def _build_order_pdf(order, translator) -> bytes:
     add(translator("order_title_label"), order.title)
     add(translator("order_status_label"), status_labels.get(order.status, order.status))
     add(translator("order_owner_label"), order.user.email if order.user else "")
-    add(translator("order_material_label"), order.material.name if order.material else "")
-    add(translator("order_color_label"), order.color.name if order.color else "")
     add(translator("order_cost_center_label"), order.cost_center.name if order.cost_center else "")
     add(translator("order_created_label"), order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else "")
     add(translator("order_updated_label"), order.updated_at.strftime("%Y-%m-%d %H:%M") if order.updated_at else "")
@@ -3823,6 +3861,10 @@ def _build_order_pdf(order, translator) -> bytes:
             parts.append(f.file_type.upper())
         qty = f.quantity or 1
         parts.append(f"qty {qty}")
+        if f.material:
+            parts.append(f"{translator('files_material_label')}: {f.material.name}")
+        if f.color:
+            parts.append(f"{translator('files_color_label')}: {f.color.name}")
         if f.note:
             parts.append(f.note)
         add(f"ÔÇó {f.original_name}", " | ".join(parts))

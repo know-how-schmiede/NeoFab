@@ -229,6 +229,7 @@
   "files_preview_note_label": "Bemerkung",
   "files_preview_note_empty": "Keine Bemerkung vorhanden.",
   "files_preview_hint": "Nur zur Information, ggf. nicht druckrelevant.",
+  "files_material_label": "Material",
   "files_color_label": "Farbe",
   "files_color_none": "Keine Farbe",
   "files_color_saving": "Speichern...",

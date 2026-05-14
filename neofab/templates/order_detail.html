@@ -188,68 +188,6 @@
           </select>
         </div>
 
-        <!-- Material -->
-        <div class="col-md-6">
-          <label for="material_id" class="form-label">
-            <i class="bi bi-box-seam me-1"></i>
-            {{ t("order_material_label") }}
-          </label>
-          <select
-            id="material_id"
-            name="material_id"
-            class="form-select"
-          >
-            <option value="">{{ t("select_placeholder") }}</option>
-            {% for m in materials %}
-              <option value="{{ m.id }}"
-                      {% if order.material_id == m.id %}selected{% endif %}>
-                {{ m.name }}
-              </option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <!-- Farbe + Vorschau -->
-        <div class="col-md-6">
-          <label for="color_id" class="form-label">
-            <i class="bi bi-palette me-1"></i>
-            {{ t("order_color_label") }}
-          </label>
-          <div class="input-group">
-            <select
-              id="color_id"
-              name="color_id"
-              class="form-select"
-              onchange="updateColorPreview()"
-            >
-              <option value="">{{ t("select_placeholder") }}</option>
-              {% for c in colors %}
-                <option value="{{ c.id }}"
-                        data-hex="{{ c.hex_code if c.hex_code else '' }}"
-                        {% if order.color_id == c.id %}selected{% endif %}>
-                  {{ c.name }}{% if c.hex_code %} ({{ c.hex_code }}){% endif %}
-                </option>
-              {% endfor %}
-            </select>
-            <span class="input-group-text p-0">
-              <div id="colorPreview"
-                   style="
-                     width: 32px;
-                     height: 32px;
-                     border-radius: 4px;
-                     border: 1px solid #ccc;
-                     background-color:
-                       {% if order.color and order.color.hex_code %}
-                         {{ order.color.hex_code }}
-                       {% else %}
-                         transparent
-                       {% endif %};
-                   ">
-              </div>
-            </span>
-          </div>
-        </div>
-
         <div class="col-md-4">
           <label class="form-label">
             <i class="bi bi-person-circle me-1"></i>
@@ -477,6 +415,18 @@
                       {% endif %}
                       {{ " | ".join(parts) }}
                     </small>
+                    <div class="small mt-1">
+                      {% if f.material %}
+                        <span class="badge bg-light text-dark border">
+                          <i class="bi bi-box-seam me-1"></i>{{ f.material.name }}
+                        </span>
+                      {% endif %}
+                      {% if f.color %}
+                        <span class="badge bg-light text-dark border">
+                          <i class="bi bi-palette me-1"></i>{{ f.color.name }}
+                        </span>
+                      {% endif %}
+                    </div>
                   </div>
                 </div>
 
@@ -488,6 +438,8 @@
                           data-file-id="{{ f.id }}"
                           data-file-name="{{ f.original_name }}"
                           data-file-note="{{ f.note or '' }}"
+                          data-file-material-id="{{ f.material_id or '' }}"
+                          data-file-color-id="{{ f.color_id or '' }}"
                           data-file-quantity="{{ f.quantity or 1 }}">
                     <i class="bi bi-pencil me-1"></i>
                     {{ t("btn_edit") }}
@@ -544,6 +496,24 @@
           </div>
 
           <div class="row g-2">
+            <div class="col-md-6">
+              <label for="file_material_id" class="form-label">{{ t("files_material_label") }}</label>
+              <select id="file_material_id" name="file_material_id" class="form-select">
+                <option value="">{{ t("select_placeholder") }}</option>
+                {% for m in materials %}
+                  <option value="{{ m.id }}">{{ m.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label for="file_color_id" class="form-label">{{ t("files_color_label") }}</label>
+              <select id="file_color_id" name="file_color_id" class="form-select">
+                <option value="">{{ t("select_placeholder") }}</option>
+                {% for c in colors %}
+                  <option value="{{ c.id }}">{{ c.name }}{% if c.hex_code %} ({{ c.hex_code }}){% endif %}</option>
+                {% endfor %}
+              </select>
+            </div>
             <div class="col-md-8">
               <label for="file_note" class="form-label">{{ t("files_label_note") }}</label>
               <input
@@ -922,6 +892,24 @@
               <label for="edit_file_name" class="form-label">{{ t("files_preview_filename") }}</label>
               <input class="form-control" type="text" id="edit_file_name" value="" readonly>
             </div>
+            <div class="col-md-6">
+              <label for="edit_file_material_id" class="form-label">{{ t("files_material_label") }}</label>
+              <select id="edit_file_material_id" name="file_material_id" class="form-select">
+                <option value="">{{ t("select_placeholder") }}</option>
+                {% for m in materials %}
+                  <option value="{{ m.id }}">{{ m.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label for="edit_file_color_id" class="form-label">{{ t("files_color_label") }}</label>
+              <select id="edit_file_color_id" name="file_color_id" class="form-select">
+                <option value="">{{ t("select_placeholder") }}</option>
+                {% for c in colors %}
+                  <option value="{{ c.id }}">{{ c.name }}{% if c.hex_code %} ({{ c.hex_code }}){% endif %}</option>
+                {% endfor %}
+              </select>
+            </div>
             <div class="col-md-8">
               <label for="edit_file_note" class="form-label">{{ t("files_label_note") }}</label>
               <input class="form-control"
@@ -1230,24 +1218,6 @@
 {% block scripts %}
 {{ super() }}
 <script>
-function updateColorPreview() {
-  const select = document.getElementById("color_id");
-  const preview = document.getElementById("colorPreview");
-
-  if (!select || !preview) return;
-
-  const selected = select.options[select.selectedIndex];
-  const hex = selected.getAttribute("data-hex");
-
-  if (hex && /^#([0-9A-Fa-f]{6})$/.test(hex)) {
-    preview.style.backgroundColor = hex;
-    preview.style.border = "1px solid #ccc";
-  } else {
-    preview.style.backgroundColor = "transparent";
-    preview.style.border = "1px solid #ccc";
-  }
-}
-
 (function() {
   const containers = document.querySelectorAll("[data-messages-container]");
   const fetchUrl = "{{ url_for('order_messages_fragment', order_id=order.id) }}";
@@ -1319,16 +1289,22 @@ function updateColorPreview() {
     const fileId = button.getAttribute("data-file-id") || "";
     const fileName = button.getAttribute("data-file-name") || "";
     const fileNote = button.getAttribute("data-file-note") || "";
+    const fileMaterialId = button.getAttribute("data-file-material-id") || "";
+    const fileColorId = button.getAttribute("data-file-color-id") || "";
     const fileQuantity = button.getAttribute("data-file-quantity") || "1";
 
     const idInput = fileEditModal.querySelector("#edit_file_id");
     const nameInput = fileEditModal.querySelector("#edit_file_name");
     const noteInput = fileEditModal.querySelector("#edit_file_note");
+    const materialInput = fileEditModal.querySelector("#edit_file_material_id");
+    const colorInput = fileEditModal.querySelector("#edit_file_color_id");
     const quantityInput = fileEditModal.querySelector("#edit_file_quantity");
 
     if (idInput) idInput.value = fileId;
     if (nameInput) nameInput.value = fileName;
     if (noteInput) noteInput.value = fileNote;
+    if (materialInput) materialInput.value = fileMaterialId;
+    if (colorInput) colorInput.value = fileColorId;
     if (quantityInput) quantityInput.value = fileQuantity;
   });
 })();

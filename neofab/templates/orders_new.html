@@ -65,24 +65,6 @@
           </select>
         </div>
 
-        <!-- Material -->
-        <div class="col-md-6">
-          <label for="material_id" class="form-label">
-            <i class="bi bi-box-seam me-1"></i>
-            {{ t("new_order_material_label") }}
-          </label>
-          <select
-            id="material_id"
-            name="material_id"
-            class="form-select"
-          >
-            <option value="">{{ t("select_placeholder") }}</option>
-            {% for m in materials %}
-              <option value="{{ m.id }}">{{ m.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
         <!-- Printer Profile -->
         <div class="col-md-6">
           <label for="printer_profile_id" class="form-label">
@@ -117,36 +99,6 @@
               <option value="{{ f.id }}">{{ f.name }}</option>
             {% endfor %}
           </select>
-        </div>
-
-        <!-- Color mit Vorschau -->
-        <div class="col-md-6">
-          <label for="color_id" class="form-label">
-            <i class="bi bi-palette me-1"></i>
-            {{ t("new_order_color_label") }}
-          </label>
-          <div class="input-group">
-            <select
-              id="color_id"
-              name="color_id"
-              class="form-select"
-              onchange="updateColorPreview()"
-            >
-              <option value="">{{ t("select_placeholder") }}</option>
-              {% for c in colors %}
-                <option value="{{ c.id }}"
-                        data-hex="{{ c.hex_code if c.hex_code else '' }}">
-                  {{ c.name }}{% if c.hex_code %} ({{ c.hex_code }}){% endif %}
-                </option>
-              {% endfor %}
-            </select>
-            <span class="input-group-text p-0">
-              <div id="colorPreview"
-                   style="width: 32px; height: 32px; border-radius: 4px;
-                          border: 1px solid #ccc; background-color: transparent;">
-              </div>
-            </span>
-          </div>
         </div>
 
         {% if current_user.role == 'admin' %}
@@ -190,24 +142,6 @@
 
 {% block scripts %}
 <script>
-function updateColorPreview() {
-  const select = document.getElementById("color_id");
-  const preview = document.getElementById("colorPreview");
-
-  if (!select || !preview) return;
-
-  const selected = select.options[select.selectedIndex];
-  const hex = selected.getAttribute("data-hex");
-
-  if (hex && /^#([0-9A-Fa-f]{6})$/.test(hex)) {
-    preview.style.backgroundColor = hex;
-    preview.style.border = "1px solid #ccc";
-  } else {
-    preview.style.backgroundColor = "transparent";
-    preview.style.border = "1px solid #ccc";
-  }
-}
-
 document.addEventListener("DOMContentLoaded", function() {
   document.querySelectorAll("[data-single-submit-form]").forEach((form) => {
     form.addEventListener("submit", function(event) {

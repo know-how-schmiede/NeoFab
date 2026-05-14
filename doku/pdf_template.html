@@ -149,18 +149,8 @@
     </div>
   </div>
 
-  <!-- Material + Farbe + Kostenstelle -->
+  <!-- Kostenstelle -->
   <div class="row">
-    <div class="field">
-      <span class="label">{{ t("order_material_label") }}:</span><br>
-      <span class="value">{{ order_dict.material }}</span>
-    </div>
-
-    <div class="field">
-      <span class="label">{{ t("order_color_label") }}:</span><br>
-      <span class="value">{{ order_dict.color }}</span>
-    </div>
-
     <div class="field">
       <span class="label">{{ t("order_cost_center_label") }}:</span><br>
       <span class="value">{{ order_dict.cost_center }}</span>
@@ -239,6 +229,8 @@
               <img src="{{ f.thumb_data_uri }}" alt="{{ f.name }}" class="image-thumb">
             {% endif %}
             <br> {{ t("files_label_quantity") }}: {{ f.quantity }}
+            {% if f.material %} <br> {{ t("files_material_label") }}: {{ f.material }}{% endif %}
+            {% if f.color %} <br> {{ t("files_color_label") }}: {{ f.color }}{% endif %}
             {% if f.note %} <br> {{ t("files_label_note") }}: {{ f.note }}{% endif %}
             {% if f.uploaded_at %} – {{ f.uploaded_at }}{% endif %}
           </li>

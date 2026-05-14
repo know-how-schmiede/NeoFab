@@ -205,6 +205,7 @@ class OrderFile(db.Model):
 
     # Metadaten
     file_type = db.Column(db.String(20))   # z.B. 'stl' oder '3mf'
+    material_id = db.Column(db.Integer, db.ForeignKey("materials.id"))
     color_id = db.Column(db.Integer, db.ForeignKey("colors.id"))
     filesize = db.Column(db.Integer)       # in Bytes
     note = db.Column(db.String(255))       # Bemerkung zum Modell
@@ -217,6 +218,7 @@ class OrderFile(db.Model):
 
     # Beziehung zurück zum Order
     order = db.relationship("Order", back_populates="files")
+    material = db.relationship("Material")
     color = db.relationship("Color")
 
 
