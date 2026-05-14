@@ -257,9 +257,10 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('btn_cancel') }}"></button>
         </div>
         <div class="modal-body">
-        <form method="post" action="{{ url_for('announcement_update') }}">
+        <form method="post" action="{{ url_for('announcement_update') }}" data-single-submit-form>
           <input type="hidden" name="next" value="{{ url_for('profile') }}">
           <input type="hidden" name="announcement_id" id="announcement_id" value="">
+          <input type="hidden" name="form_token" value="{{ announcement_form_token }}">
             <div class="mb-3">
               <label for="announcement_title" class="form-label">{{ t("announcement_title_label") }}</label>
               <input class="form-control"
@@ -308,8 +309,8 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                   {{ t("btn_cancel") }}
                 </button>
-                <button type="submit" class="btn btn-primary">
-                  <i class="bi bi-save me-1"></i>{{ t("btn_save_changes") }}
+                <button type="submit" class="btn btn-primary" data-submit-once>
+                  <i class="bi bi-save me-1"></i><span data-submit-label>{{ t("btn_save_changes") }}</span>
                 </button>
               </div>
             </div>
@@ -349,6 +350,23 @@
     if (bodyInput) bodyInput.value = body;
     if (priorityInput) priorityInput.value = priority;
   });
+
+  const form = modalEl.querySelector("[data-single-submit-form]");
+  if (form) {
+    form.addEventListener("submit", (event) => {
+      if (form.dataset.submitted === "true") {
+        event.preventDefault();
+        return;
+      }
+      form.dataset.submitted = "true";
+      const button = form.querySelector("[data-submit-once]");
+      if (button) {
+        button.disabled = true;
+        const label = button.querySelector("[data-submit-label]");
+        if (label) label.textContent = "{{ t('btn_saving') }}";
+      }
+    });
+  }
 })();
 </script>
 {% endif %}

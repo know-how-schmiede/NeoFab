@@ -4,6 +4,8 @@
 
 Doppeltes Erstellen von Auftraegen durch Submit-Sperre und einmaliges Formular-Token verhindert
 Admin-Nachrichten zeigen den konkreten Admin-Namen bzw. die Admin-E-Mail an
+Doppeltes Speichern von Mitteilungen durch Submit-Sperre und einmaliges Formular-Token verhindert
+Fehlende Projekt- und Freigabe-Spalten der Auftragsdatenbank werden automatisch nachgezogen
 
 ## Version 0.8.1
 

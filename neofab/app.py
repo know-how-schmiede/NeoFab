@@ -105,6 +105,32 @@ from models import (
     TrainingVideo,
 )
 
+ANNOUNCEMENT_FORM_TOKEN_KEY = "announcement_form_token"
+
+
+def _new_announcement_form_token() -> str:
+    form_token = secrets.token_urlsafe(24)
+    session[ANNOUNCEMENT_FORM_TOKEN_KEY] = form_token
+    return form_token
+
+
+def _consume_announcement_form_token() -> bool:
+    form_token = (request.form.get("form_token") or "").strip()
+    expected_token = session.pop(ANNOUNCEMENT_FORM_TOKEN_KEY, None)
+    return bool(form_token and expected_token and form_token == expected_token)
+
+
+def _reject_duplicate_announcement_submission(next_url: str | None = None):
+    trans = inject_globals().get("t")
+    write_audit_log(
+        app,
+        "announcement_duplicate_ignored",
+        details={"path": request.path},
+        user=current_user,
+    )
+    flash(trans("flash_duplicate_submission_ignored"), "warning")
+    return redirect(next_url or request.form.get("next") or url_for("dashboard"))
+
 XHTML2PDF_IMPORT_ERR = None
 pisa = None
 XHTML2PDF_AVAILABLE = False
@@ -561,6 +587,53 @@ def ensure_order_estimation_columns():
         app.logger.exception("Failed to ensure orders estimation columns exist")
 
 
+def ensure_order_project_columns():
+    """
+    Adds missing project/publication-related columns on orders (lightweight migration).
+    """
+    try:
+        exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='orders'")
+        ).scalar()
+        if not exists:
+            return
+
+        cols = {
+            row[1]
+            for row in db.session.execute(text("PRAGMA table_info(orders)"))
+        }
+        statements = []
+        if "public_allow_poster" not in cols:
+            statements.append("ALTER TABLE orders ADD COLUMN public_allow_poster BOOLEAN NOT NULL DEFAULT 1")
+        if "public_allow_web" not in cols:
+            statements.append("ALTER TABLE orders ADD COLUMN public_allow_web BOOLEAN NOT NULL DEFAULT 1")
+        if "public_allow_social" not in cols:
+            statements.append("ALTER TABLE orders ADD COLUMN public_allow_social BOOLEAN NOT NULL DEFAULT 1")
+        if "public_display_name" not in cols:
+            statements.append("ALTER TABLE orders ADD COLUMN public_display_name VARCHAR(200)")
+        if "summary_short" not in cols:
+            statements.append("ALTER TABLE orders ADD COLUMN summary_short VARCHAR(255)")
+        if "summary_long" not in cols:
+            statements.append("ALTER TABLE orders ADD COLUMN summary_long TEXT")
+        if "project_purpose" not in cols:
+            statements.append("ALTER TABLE orders ADD COLUMN project_purpose VARCHAR(255)")
+        if "project_use_case" not in cols:
+            statements.append("ALTER TABLE orders ADD COLUMN project_use_case VARCHAR(255)")
+        if "learning_points" not in cols:
+            statements.append("ALTER TABLE orders ADD COLUMN learning_points TEXT")
+        if "background_info" not in cols:
+            statements.append("ALTER TABLE orders ADD COLUMN background_info TEXT")
+        if "project_url" not in cols:
+            statements.append("ALTER TABLE orders ADD COLUMN project_url VARCHAR(500)")
+
+        for stmt in statements:
+            db.session.execute(text(stmt))
+        if statements:
+            db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure orders project columns exist")
+
+
 def ensure_order_archive_columns():
     """
     Adds archive columns on orders (lightweight migration).
@@ -844,6 +917,7 @@ with app.app_context():
     ensure_training_videos_table()
     ensure_printer_profiles_table()
     ensure_filament_materials_table()
+    ensure_order_project_columns()
     ensure_order_estimation_columns()
     ensure_order_archive_columns()
     ensure_order_print_jobs_table()
@@ -1584,6 +1658,7 @@ def profile():
         user=user,
         announcements_read=announcements_read,
         announcement_priority_meta=ANNOUNCEMENT_PRIORITY_META,
+        announcement_form_token=_new_announcement_form_token() if current_user.role == "admin" else "",
     )
 
 
@@ -1739,6 +1814,10 @@ def new_order():
     Optional: direkter Upload einer 3D-Datei (STL/3MF) beim Erstellen.
     """
     # Stammdaten laden (f├╝r GET und POST)
+    ensure_order_project_columns()
+    ensure_order_estimation_columns()
+    ensure_order_archive_columns()
+
     materials = Material.query.order_by(Material.name.asc()).all()
     colors = Color.query.order_by(Color.name.asc()).all()
     cost_centers = CostCenter.query.order_by(CostCenter.name.asc()).all()
@@ -3200,6 +3279,8 @@ def dashboard():
         if action == "create_announcement":
             if current_user.role != "admin":
                 abort(403)
+            if not _consume_announcement_form_token():
+                return _reject_duplicate_announcement_submission(url_for("dashboard"))
             title = (request.form.get("announcement_title") or "").strip()
             body = (request.form.get("announcement_body") or "").strip()
             priority = (request.form.get("announcement_priority") or "info").strip()
@@ -3224,6 +3305,8 @@ def dashboard():
         if action == "update_announcement":
             if current_user.role != "admin":
                 abort(403)
+            if not _consume_announcement_form_token():
+                return _reject_duplicate_announcement_submission(url_for("dashboard"))
             try:
                 announcement_id = int(request.form.get("announcement_id", "0"))
             except ValueError:
@@ -3409,6 +3492,7 @@ def dashboard():
         announcements_read=announcements_read,
         announcement_reads=read_by_announcement,
         announcement_priority_meta=ANNOUNCEMENT_PRIORITY_META,
+        announcement_form_token=_new_announcement_form_token() if current_user.role == "admin" else "",
     )
 
 
@@ -3418,6 +3502,8 @@ def announcement_update():
     trans = inject_globals().get("t")
     if current_user.role != "admin":
         abort(403)
+    if not _consume_announcement_form_token():
+        return _reject_duplicate_announcement_submission()
 
     try:
         announcement_id = int(request.form.get("announcement_id", "0"))

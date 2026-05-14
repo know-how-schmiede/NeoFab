@@ -17,6 +17,7 @@ from flask import (
     redirect,
     render_template,
     request,
+    session,
     url_for,
 )
 from flask_login import current_user
@@ -67,12 +68,33 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
     bp = Blueprint("admin", __name__, url_prefix="/admin")
 
     t = lambda key: _translator(get_translator)(key)
+    admin_announcement_form_token_key = "admin_announcement_form_token"
     announcement_priority_meta = {
         "info": {"label": "announcement_priority_info", "icon": "bi-info-circle", "class": "text-primary"},
         "notice": {"label": "announcement_priority_notice", "icon": "bi-exclamation-circle", "class": "text-info"},
         "important": {"label": "announcement_priority_important", "icon": "bi-exclamation-triangle", "class": "text-warning"},
         "warning": {"label": "announcement_priority_warning", "icon": "bi-exclamation-octagon", "class": "text-danger"},
     }
+
+    def new_admin_announcement_form_token() -> str:
+        form_token = secrets.token_urlsafe(24)
+        session[admin_announcement_form_token_key] = form_token
+        return form_token
+
+    def consume_admin_announcement_form_token() -> bool:
+        form_token = (request.form.get("form_token") or "").strip()
+        expected_token = session.pop(admin_announcement_form_token_key, None)
+        return bool(form_token and expected_token and form_token == expected_token)
+
+    def reject_duplicate_admin_announcement_submission():
+        write_audit_log(
+            current_app,
+            "announcement_duplicate_ignored",
+            details={"path": request.path},
+            user=current_user,
+        )
+        flash(t("flash_duplicate_submission_ignored"), "warning")
+        return redirect(url_for(".admin_announcement_list"))
 
     def normalize_training_video_order() -> None:
         """Ensure sequential sort_order without gaps."""
@@ -719,12 +741,15 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             "admin_announcements.html",
             announcements=announcements,
             announcement_priority_meta=announcement_priority_meta,
+            announcement_form_token=new_admin_announcement_form_token(),
         )
 
     @bp.route("/announcements/<int:announcement_id>/update", methods=["POST"], endpoint="admin_announcement_update")
     @roles_required("admin")
     def admin_announcement_update(announcement_id):
         trans = t
+        if not consume_admin_announcement_form_token():
+            return reject_duplicate_admin_announcement_submission()
         announcement = Announcement.query.get_or_404(announcement_id)
         title = (request.form.get("title") or "").strip()
         body = (request.form.get("body") or "").strip()
