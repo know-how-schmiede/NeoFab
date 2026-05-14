@@ -8,7 +8,7 @@ Damit die automatische Uebernahme funktioniert:
 
 - Die Datei muss als `.gcode`, `.gco` oder `.gc` hochgeladen werden.
 - Die Slicer-Kommentare duerfen beim Export nicht entfernt werden.
-- Die relevanten Werte muessen am Anfang oder Ende der G-Code-Datei stehen. NeoFab durchsucht zur Performance-Optimierung die ersten und letzten 500 Zeilen.
+- Die relevanten Werte muessen als Kommentarzeilen in der G-Code-Datei enthalten sein. NeoFab durchsucht die Datei beim Upload nach bekannten Statistik-Zeilen.
 - Die Werte muessen nach dem Slicen bereits als konkrete Zahlen in der Datei stehen, nicht als Platzhalter wie `{print_time}`.
 - Druckdauer, Filamentlaenge und Filamentgewicht bleiben nach dem Upload manuell editierbar.
 
@@ -135,6 +135,40 @@ Vor dem Upload nach NeoFab reicht eine einfache Textsuche in der G-Code-Datei:
 - Suche nach `total filament used`
 
 Wenn mindestens Druckzeit und Filamentwerte als konkrete Zahlen vorhanden sind, sollte NeoFab die Felder beim Upload automatisch fuellen.
+
+## Wenn die Felder leer bleiben
+
+Wenn nach dem Upload keine Werte in Druckdauer, Filamentlaenge oder Filamentgewicht angezeigt werden, liegt es meistens an einem der folgenden Punkte:
+
+- Die G-Code-Datei enthaelt die Werte nicht als Kommentarzeilen.
+- Die Werte stehen nur als Platzhalter in der Datei, z. B. `{print_time}` statt `43m 40s`.
+- Ein Post-Processing-Skript oder ein Drucker-/Cloud-Export hat Kommentare entfernt.
+- Der Slicer verwendet ein anderes Kommentarformat, das NeoFab noch nicht erkennt.
+- Beim Upload wurden die Felder manuell leer gelassen und der Upload lief mit einer aelteren NeoFab-Version, die das Format noch nicht erkannt hat.
+
+Pruefung:
+
+1. G-Code-Datei in einem Texteditor oeffnen.
+2. Nach `estimated printing time`, `filament used` oder `total filament used` suchen.
+3. Pruefen, ob hinter dem Gleichheitszeichen konkrete Zahlen stehen.
+4. Datei erneut in NeoFab hochladen.
+
+Ein gueltiger OrcaSlicer-Ausschnitt sieht z. B. so aus:
+
+```gcode
+; filament used [mm] = 6045.38
+; filament used [g] = 18.18
+; total filament used [g] = 18.18
+; estimated printing time (normal mode) = 43m 40s
+```
+
+NeoFab uebernimmt daraus:
+
+- Druckdauer: `44`
+- Filamentlaenge (m): `6.05`
+- Filamentgewicht (g): `18.18`
+
+Falls bestehende Druckauftraege aus einer aelteren Version noch leere Felder zeigen, die Auftragsseite erneut oeffnen. NeoFab versucht fehlende Werte aus vorhandenen G-Code-Dateien nachzutragen, sofern die Datei noch gespeichert ist und die Kommentarzeilen erkannt werden.
 
 ## Quellen
 

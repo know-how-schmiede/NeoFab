@@ -5,6 +5,7 @@
 G-Code-Upload liest Slicer-Kommentare fuer Druckdauer, Filamentlaenge und Filamentgewicht aus
 Automatisch ausgelesene G-Code-Werte bleiben im Druckauftrag manuell editierbar
 OrcaSlicer-Format mit Einheiten in eckigen Klammern fuer Filamentlaenge und Filamentgewicht wird erkannt
+Dokumentation zur automatischen G-Code-Druckparameteruebernahme inklusive Fehleranalyse ergaenzt
 
 ## Version 0.8.3
 
