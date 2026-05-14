@@ -13,7 +13,8 @@
   </div>
 
   <div class="card-body">
-    <form method="post" enctype="multipart/form-data">
+    <form method="post" enctype="multipart/form-data" data-single-submit-form>
+      <input type="hidden" name="form_token" value="{{ form_token }}">
 
       <div class="row g-3">
 
@@ -171,9 +172,9 @@
 
       <!-- Buttons -->
       <div class="d-flex gap-2 mt-3">
-        <button type="submit" class="btn btn-primary">
+        <button type="submit" class="btn btn-primary" data-submit-once>
           <i class="bi bi-save me-1"></i>
-          {{ t("btn_create_order") }}
+          <span data-submit-label>{{ t("btn_create_order") }}</span>
         </button>
         <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
           <i class="bi bi-arrow-left me-1"></i>
@@ -206,5 +207,30 @@ function updateColorPreview() {
     preview.style.border = "1px solid #ccc";
   }
 }
+
+document.addEventListener("DOMContentLoaded", function() {
+  document.querySelectorAll("[data-single-submit-form]").forEach((form) => {
+    form.addEventListener("submit", function(event) {
+      const submitButton = form.querySelector("[data-submit-once]");
+      if (!submitButton) return;
+
+      if (submitButton.disabled) {
+        event.preventDefault();
+        return;
+      }
+
+      submitButton.disabled = true;
+      submitButton.classList.add("disabled");
+      const label = submitButton.querySelector("[data-submit-label]");
+      if (label) {
+        label.textContent = "{{ t('btn_saving') }}";
+      }
+      const icon = submitButton.querySelector("i");
+      if (icon) {
+        icon.className = "spinner-border spinner-border-sm me-1";
+      }
+    });
+  });
+});
 </script>
 {% endblock %}

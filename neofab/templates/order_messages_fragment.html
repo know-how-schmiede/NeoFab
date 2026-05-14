@@ -7,11 +7,12 @@
             <div class="neo-chat-bubble
                         {% if is_admin %}neo-chat-bubble-admin{% else %}neo-chat-bubble-user{% endif %}">
                 <div class="neo-chat-meta small mb-1">
+                    {% set user_name = ((msg.user.first_name or '') ~ ' ' ~ (msg.user.last_name or '')).strip() %}
                     <strong>
                         {% if is_admin %}
-                            Admin
+                            Admin{% if user_name %} - {{ user_name }}{% else %} - {{ msg.user.email }}{% endif %}
                         {% else %}
-                            {{ msg.user.email }}
+                            {{ user_name if user_name else msg.user.email }}
                         {% endif %}
                     </strong>
                     — {{ msg.created_at.strftime("%Y-%m-%d %H:%M") }}

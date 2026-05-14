@@ -20,6 +20,7 @@ import logging
 import re
 import math
 import struct
+import secrets
 from time import perf_counter
 from urllib.parse import parse_qs, urlparse
 
@@ -1747,6 +1748,23 @@ def new_order():
     status_context = get_status_context(trans)
 
     if request.method == "POST":
+        form_token = (request.form.get("form_token") or "").strip()
+        expected_token = session.pop("new_order_form_token", None)
+        if not form_token or not expected_token or form_token != expected_token:
+            app.logger.warning(
+                "[new_order] Duplicate or invalid form submission ignored for user=%s",
+                current_user.email,
+            )
+            write_audit_log(
+                app,
+                "order_create_duplicate_ignored",
+                user=current_user,
+                level="warning",
+                details={"title": request.form.get("title", "").strip()},
+            )
+            flash(trans("flash_duplicate_submission_ignored"), "warning")
+            return redirect(url_for("dashboard"))
+
         title = request.form.get("title", "").strip()
         description = request.form.get("description", "").strip()
 
@@ -1794,9 +1812,12 @@ def new_order():
             language = "en"
 
         if not title:
+            form_token = secrets.token_urlsafe(24)
+            session["new_order_form_token"] = form_token
             flash(trans("flash_title_required"), "danger")
             return render_template(
                 "orders_new.html",
+                form_token=form_token,
                 order_statuses=status_context["order_statuses"],
                 materials=materials,
                 colors=colors,
@@ -1952,8 +1973,11 @@ def new_order():
         return redirect(url_for("dashboard"))
 
     # GET
+    form_token = secrets.token_urlsafe(24)
+    session["new_order_form_token"] = form_token
     return render_template(
         "orders_new.html",
+        form_token=form_token,
         order_statuses=status_context["order_statuses"],
         materials=materials,
         colors=colors,

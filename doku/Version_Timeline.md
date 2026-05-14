@@ -1,5 +1,10 @@
 # Timeline NeoFab
 
+## Version 0.8.2
+
+Doppeltes Erstellen von Auftraegen durch Submit-Sperre und einmaliges Formular-Token verhindert
+Admin-Nachrichten zeigen den konkreten Admin-Namen bzw. die Admin-E-Mail an
+
 ## Version 0.8.1
 
 Archivieren und Loeschen von Auftraegen werden detailliert im Logfile protokolliert
