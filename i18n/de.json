@@ -238,6 +238,7 @@
   "files_thumbnail_updated": "Thumbnail aktualisiert.",
   "files_thumbnail_failed": "Thumbnail konnte nicht aktualisiert werden.",
   "print_jobs_header": "Druckaufträge",
+  "print_jobs_summary_title": "Gesamt / im Druck / abgeschlossen / Fehler",
   "print_jobs_table_file": "G-Code-Datei",
   "print_jobs_table_status": "Status",
   "print_jobs_table_started_at": "Startzeit",

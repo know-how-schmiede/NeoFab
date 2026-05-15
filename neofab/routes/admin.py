@@ -334,7 +334,29 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             .order_by(Order.is_archived.asc(), Order.created_at.desc(), Order.id.desc())
             .all()
         )
-        return render_template("admin_orders.html", orders=orders)
+        order_ids = [order.id for order in orders]
+        print_job_counts = {}
+        if order_ids:
+            print_job_rows = (
+                db.session.query(
+                    OrderPrintJob.order_id,
+                    OrderPrintJob.status,
+                    func.count(OrderPrintJob.id),
+                )
+                .filter(OrderPrintJob.order_id.in_(order_ids))
+                .group_by(OrderPrintJob.order_id, OrderPrintJob.status)
+                .all()
+            )
+            for order_id, status, count in print_job_rows:
+                summary = print_job_counts.setdefault(
+                    order_id,
+                    {"total": 0, "started": 0, "finished": 0, "error": 0},
+                )
+                summary["total"] += count
+                if status in ("started", "finished", "error"):
+                    summary[status] += count
+
+        return render_template("admin_orders.html", orders=orders, print_job_counts=print_job_counts)
 
     @bp.route("/orders/<int:order_id>/archive", methods=["POST"], endpoint="admin_order_archive")
     @roles_required("admin")

@@ -69,6 +69,17 @@
     outline: none !important;
 }
 
+/* === Compact print job status summary in order lists === */
+.print-job-summary {
+    display: inline-flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.25rem;
+    min-width: 5.75rem;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
 /* === Layout: Sticky Footer === */
 html, body {
     height: 100%;

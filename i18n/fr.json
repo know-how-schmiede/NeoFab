@@ -238,6 +238,7 @@
   "files_thumbnail_updated": "Miniature mise à jour.",
   "files_thumbnail_failed": "Échec de la mise à jour de la miniature.",
   "print_jobs_header": "Tâches d'impression",
+  "print_jobs_summary_title": "Total / en impression / terminées / erreur",
   "print_jobs_table_file": "Fichier G-Code",
   "print_jobs_table_status": "Statut",
   "print_jobs_table_started_at": "Heure de départ",

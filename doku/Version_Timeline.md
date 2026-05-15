@@ -1,5 +1,10 @@
 # Timeline NeoFab
 
+## Version 0.8.6
+
+Auftragslisten zeigen Druckauftraege als Status-Zusammenfassung gesamt / im Druck / abgeschlossen / Fehler
+Statuszahlen der Druckauftraege sind farblich markiert fuer schnellen Ueberblick
+
 ## Version 0.8.5
 
 G-Code-Auswertung durchsucht die komplette Datei nach Druckdauer, Filamentlaenge und Filamentgewicht

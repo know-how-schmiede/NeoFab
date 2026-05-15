@@ -27,6 +27,7 @@
               <th>{{ t("owner") }}</th>
               <th>{{ t("table_status") }}</th>
               <th>{{ t("table_created") }}</th>
+              <th class="text-center">{{ t("print_jobs_header") }}</th>
               <th>{{ t("admin_orders_archive_state") }}</th>
               <th class="text-end">{{ t("table_actions") }}</th>
             </tr>
@@ -46,6 +47,20 @@
                   </span>
                 </td>
                 <td>{{ o.created_at.strftime('%Y-%m-%d %H:%M') if o.created_at else '' }}</td>
+                <td class="text-center">
+                  {% set job_counts = print_job_counts.get(o.id, {}) %}
+                  <span class="print-job-summary"
+                        title="{{ t('print_jobs_summary_title') }}"
+                        aria-label="{{ t('print_jobs_summary_title') }}">
+                    <span class="text-secondary fw-semibold">{{ job_counts.get('total', 0) }}</span>
+                    <span class="text-muted">/</span>
+                    <span class="text-primary fw-semibold">{{ job_counts.get('started', 0) }}</span>
+                    <span class="text-muted">/</span>
+                    <span class="text-success fw-semibold">{{ job_counts.get('finished', 0) }}</span>
+                    <span class="text-muted">/</span>
+                    <span class="text-danger fw-semibold">{{ job_counts.get('error', 0) }}</span>
+                  </span>
+                </td>
                 <td>
                   {% if o.is_archived %}
                     <span class="badge bg-secondary">{{ t("admin_orders_archived") }}</span>

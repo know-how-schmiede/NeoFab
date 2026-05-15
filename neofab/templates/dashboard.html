@@ -65,7 +65,18 @@
               </td>
 
               <td class="text-center">
-                {{ print_job_counts.get(o.id, 0) }}
+                {% set job_counts = print_job_counts.get(o.id, {}) %}
+                <span class="print-job-summary"
+                      title="{{ t('print_jobs_summary_title') }}"
+                      aria-label="{{ t('print_jobs_summary_title') }}">
+                  <span class="text-secondary fw-semibold">{{ job_counts.get('total', 0) }}</span>
+                  <span class="text-muted">/</span>
+                  <span class="text-primary fw-semibold">{{ job_counts.get('started', 0) }}</span>
+                  <span class="text-muted">/</span>
+                  <span class="text-success fw-semibold">{{ job_counts.get('finished', 0) }}</span>
+                  <span class="text-muted">/</span>
+                  <span class="text-danger fw-semibold">{{ job_counts.get('error', 0) }}</span>
+                </span>
               </td>
 
               <td class="text-end">

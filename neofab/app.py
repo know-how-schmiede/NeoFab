@@ -3587,13 +3587,21 @@ def dashboard():
         print_job_rows = (
             db.session.query(
                 OrderPrintJob.order_id,
+                OrderPrintJob.status,
                 func.count(OrderPrintJob.id),
             )
             .filter(OrderPrintJob.order_id.in_(order_ids))
-            .group_by(OrderPrintJob.order_id)
+            .group_by(OrderPrintJob.order_id, OrderPrintJob.status)
             .all()
         )
-        print_job_counts = {order_id: count for order_id, count in print_job_rows}
+        for order_id, status, count in print_job_rows:
+            summary = print_job_counts.setdefault(
+                order_id,
+                {"total": 0, "started": 0, "finished": 0, "error": 0},
+            )
+            summary["total"] += count
+            if status in ("started", "finished", "error"):
+                summary[status] += count
 
     app.logger.debug(f"[dashboard] print_job_counts: {print_job_counts}")
 
