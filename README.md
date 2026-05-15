@@ -71,3 +71,18 @@ neofab/<br>
 
 Installations-Scripte unter /script
 Zuerst /script/README.md lesen !!!
+
+## Screenshots V0.8.6
+
+![Home NeoFab](../NeoFab/images/NeoFab_V0-8-6_-00.jpg)
+![STL/3MF-Viewer](../NeoFab/images/NeoFab_V0-8-6_-01.jpg)
+![Systemeinstellungen](../NeoFab/images/NeoFab_V0-8-6_-02.jpg)
+![Admin Panel](../NeoFab/images/NeoFab_V0-8-6_-03.jpg)
+![User-Profil](../NeoFab/images/NeoFab_V0-8-6_-04.jpg)
+![Komunikation - Chatfunktion](../NeoFab/images/NeoFab_V0-8-6_-05.jpg)
+![Auftrag - Druckaufträge](../NeoFab/images/NeoFab_V0-8-6_-06.jpg)
+![Auftrag - 3D-Modelle](../NeoFab/images/NeoFab_V0-8-6_-07.jpg)
+![Auftrag - Dokumentation](../NeoFab/images/NeoFab_V0-8-6_-08.jpg)
+![Auftrag - Allgemein](../NeoFab/images/NeoFab_V0-8-6_-09.jpg)
+![Auftragsliste](../NeoFab/images/NeoFab_V0-8-6_-10.jpg)
+![LogIn](../NeoFab/images/NeoFab_V0-8-6_-11.jpg)
