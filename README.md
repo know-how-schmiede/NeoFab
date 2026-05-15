@@ -99,9 +99,9 @@ The main scripts are:
 
 ## Current Version
 
-Current application version: **0.8.6**
+Current application version: **0.8.7**
 
-Recent changes include print job status summaries in order lists, colored status badges, improved G-code metadata extraction, automatic print start time handling, and per-model material and color handling.
+Recent changes include an enlarged lightbox view for project image thumbnails, print job status summaries in order lists, colored status badges, improved G-code metadata extraction, automatic print start time handling, and per-model material and color handling.
 
 See [Version_Timeline.md](doku/Version_Timeline.md) for the detailed project history.
 

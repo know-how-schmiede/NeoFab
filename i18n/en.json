@@ -411,6 +411,8 @@
   "images_none": "No images uploaded yet.",
   "images_upload_label": "Add image (png, jpg, jpeg, gif, webp)",
   "images_edit_title": "Edit image",
+  "images_lightbox_title": "Project image",
+  "images_open_lightbox": "Open enlarged image view",
   "images_label_note": "Note",
   "images_note_placeholder": "Optional note for this image",
   "label_active": "Active",

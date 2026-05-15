@@ -394,6 +394,8 @@
   "images_none": "Aucune image n'a encore été téléversée.",
   "images_upload_label": "Ajouter une image (png, jpg, jpeg, gif, webp)",
   "images_edit_title": "Modifier l'image",
+  "images_lightbox_title": "Image du projet",
+  "images_open_lightbox": "Ouvrir la vue agrandie de l'image",
   "images_label_note": "Remarque",
   "images_note_placeholder": "Remarque optionnelle pour cette image",
   "label_active": "Actif",

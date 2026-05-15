@@ -3198,6 +3198,28 @@ def order_image_thumbnail(order_id, image_id):
     abort(404)
 
 
+@app.route("/orders/<int:order_id>/images/<int:image_id>/view")
+@login_required
+def order_image_view(order_id, image_id):
+    order = Order.query.get_or_404(order_id)
+    if current_user.role != "admin" and order.user_id != current_user.id:
+        abort(403)
+
+    image_entry = OrderImage.query.filter_by(id=image_id, order_id=order.id).first_or_404()
+
+    image_folder = Path(app.config["IMAGE_UPLOAD_FOLDER"]) / f"order_{order.id}"
+    image_path = image_folder / image_entry.stored_name
+
+    if image_path.exists():
+        return send_from_directory(
+            directory=str(image_folder),
+            path=image_entry.stored_name,
+            as_attachment=False,
+        )
+
+    abort(404)
+
+
 @app.route("/orders/<int:order_id>/files/<int:file_id>/thumbnail/<size>", methods=["GET", "POST"])
 @login_required
 def order_file_thumbnail(order_id, file_id, size):

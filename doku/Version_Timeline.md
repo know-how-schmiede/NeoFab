@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.8.7
+
+Projektbilder koennen per Klick auf das Thumbnail in einer vergroesserten Lightbox-Ansicht angezeigt werden
+
 ## Version 0.8.6
 
 Auftragslisten zeigen Druckauftraege als Status-Zusammenfassung gesamt / im Druck / abgeschlossen / Fehler

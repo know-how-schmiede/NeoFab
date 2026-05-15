@@ -592,13 +592,22 @@
                 <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
                   <div class="d-flex gap-3 align-items-start">
                     <div class="flex-shrink-0">
-                      <img
-                        src="{{ url_for('order_image_thumbnail', order_id=order.id, image_id=img.id) }}"
-                        alt="{{ img.original_name }}"
-                        class="img-thumbnail"
-                        style="max-width: 200px; height: auto;"
-                        loading="lazy"
-                      >
+                      {% set image_url = url_for('order_image_view', order_id=order.id, image_id=img.id) %}
+                      <button type="button"
+                              class="project-image-thumb-button"
+                              data-bs-toggle="modal"
+                              data-bs-target="#imageLightboxModal"
+                              data-image-url="{{ image_url }}"
+                              data-image-name="{{ img.original_name }}"
+                              data-image-note="{{ img.note or '' }}"
+                              aria-label="{{ t('images_open_lightbox') }}: {{ img.original_name }}">
+                        <img
+                          src="{{ url_for('order_image_thumbnail', order_id=order.id, image_id=img.id) }}"
+                          alt="{{ img.original_name }}"
+                          class="img-thumbnail project-image-thumb"
+                          loading="lazy"
+                        >
+                      </button>
                     </div>
                     <div>
                       <strong>{{ img.original_name }}</strong>
@@ -968,6 +977,21 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="imageLightboxModal" tabindex="-1" aria-labelledby="imageLightboxLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content project-image-lightbox">
+      <div class="modal-header">
+        <h5 class="modal-title" id="imageLightboxLabel">{{ t("images_lightbox_title") }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('btn_cancel') }}"></button>
+      </div>
+      <div class="modal-body">
+        <img alt="" class="project-image-lightbox-img" data-lightbox-image>
+        <p class="text-muted small mt-3 mb-0 d-none" data-lightbox-note></p>
       </div>
     </div>
   </div>
@@ -1370,6 +1394,46 @@
     if (materialInput) materialInput.value = fileMaterialId;
     if (colorInput) colorInput.value = fileColorId;
     if (quantityInput) quantityInput.value = fileQuantity;
+  });
+})();
+
+(function() {
+  const lightboxModal = document.getElementById("imageLightboxModal");
+  if (!lightboxModal) return;
+
+  const titleEl = lightboxModal.querySelector("#imageLightboxLabel");
+  const imageEl = lightboxModal.querySelector("[data-lightbox-image]");
+  const noteEl = lightboxModal.querySelector("[data-lightbox-note]");
+  const fallbackTitle = titleEl ? titleEl.textContent : "";
+
+  lightboxModal.addEventListener("show.bs.modal", (event) => {
+    const button = event.relatedTarget;
+    if (!button || !imageEl) return;
+
+    const imageUrl = button.getAttribute("data-image-url") || "";
+    const imageName = button.getAttribute("data-image-name") || fallbackTitle;
+    const imageNote = button.getAttribute("data-image-note") || "";
+
+    imageEl.src = imageUrl;
+    imageEl.alt = imageName;
+    if (titleEl) titleEl.textContent = imageName;
+
+    if (noteEl) {
+      noteEl.textContent = imageNote;
+      noteEl.classList.toggle("d-none", !imageNote);
+    }
+  });
+
+  lightboxModal.addEventListener("hidden.bs.modal", () => {
+    if (imageEl) {
+      imageEl.removeAttribute("src");
+      imageEl.alt = "";
+    }
+    if (titleEl) titleEl.textContent = fallbackTitle;
+    if (noteEl) {
+      noteEl.textContent = "";
+      noteEl.classList.add("d-none");
+    }
   });
 })();
 
