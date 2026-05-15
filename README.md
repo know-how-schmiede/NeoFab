@@ -1,88 +1,160 @@
 ![NeoFab Logo](images/Logo_NeoFab.png)
 
+# NeoFab - Multilingual 3D Print Order Management System
 
-# NeoFab – Multilingual 3D Print Order Management System
+NeoFab is a Flask-based web application for managing 3D printing orders in labs, workshops, maker spaces, and research environments. It supports the full workflow from order submission and file upload to print job tracking, communication, documentation, and administrative review.
 
-NeoFab is a modern, multilingual web application designed for managing 3D printing orders in academic, maker, and research environments.  
-The system provides a streamlined workflow for submitting, reviewing, tracking, and communicating about 3D printing projects – fully integrated with file uploads, messaging, and administrative tools.
+The application is built for multilingual use with English as the default language and German support through the included translation files.
 
-NeoFab is developed bilingual from the start, with **English (default)** and **German** support.  
-All UI elements, status texts, and system emails are fully internationalized.
+## Features
 
----
+- **User accounts and roles**  
+  Registration, login, password reset, user profiles, admin users, disabled users, and deleted-user handling.
 
-## 🚀 Features
+- **3D print order management**  
+  Structured order data, project metadata, deadlines, approval information, cost centers, and status tracking.
 
-- **Multilingual UI (EN/DE)**  
-  Fully internationalized via gettext/Babel.
+- **Model and file handling**  
+  Upload and manage 3D models, G-code files, and documentation attachments per order.
 
-- **User Accounts & Authentication**  
-  Registration, login, password reset, user roles.
+- **STL and 3MF viewer**  
+  Browser-based model preview with reset, grid, axes, labels, wireframe mode, model information, and thumbnail support.
 
-- **3D Print Order Management**  
-  Project metadata, 3D model uploads (STL/STEP), G-Code, priorities & deadlines.
+- **Print job tracking**  
+  Create and manage print jobs with printer, material, color, print status, start time, and print parameters.
 
-- **Integrated Messaging System**  
-  Built-in communication between submitter and admin/operator.  
-  Email notifications only as short hints — full content stored in NeoFab.
+- **G-code metadata extraction**  
+  G-code uploads can extract print duration, filament length, and filament weight from slicer comments. Missing values can also be filled later when opening an order.
 
-- **Admin Dashboard**  
-  Manage materials, colors, printers, printer profiles, departments, status values, and user accounts.
+- **Order list summaries**  
+  Order lists show compact print job status badges for total jobs, jobs in progress, completed jobs, and failed jobs.
 
-- **File Management**  
-  Project-based storage for models, G-Code, and additional attachments.
+- **Integrated messaging**  
+  Built-in communication between users and admins, persistent read status, and optional email notifications.
 
-- **Status Tracking & History**  
-  Complete audit trail for project and print job state changes.
+- **Admin area**  
+  Manage users, materials, colors, printer profiles, cost centers, announcements, training playlists, training videos, logs, and orders.
 
-- **Bootstrap-based Responsive UI**  
-  Clean, modern interface using Bootstrap 5 and Jinja templates.
+- **Archiving and cleanup**  
+  Admins can archive orders and permanently delete orders including database records and related files.
 
----
+- **Audit and log support**  
+  Logs include user activity, order changes, archive/delete operations, file cleanup details, and login timing diagnostics.
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-- **Python 3 + Flask**
-- **SQLAlchemy** (database ORM)
-- **Flask-Login + Werkzeug Security**
-- **Flask-Babel** for i18n
-- **Bootstrap 5** (UI)
-- **SQLite / MariaDB / PostgreSQL**
-- **Nginx / Gunicorn (optional for production)**
+- Python 3
+- Flask
+- SQLAlchemy
+- Flask-Login
+- Werkzeug Security
+- Bootstrap 5
+- Jinja templates
+- SQLite, MariaDB, or PostgreSQL
+- Gunicorn and systemd for production deployments
 
----
+## Project Structure
 
-## 📦 Project Structure (planned)
-
-neofab/<br>
-├─ app/<br>
-│ ├─ models/<br>
-│ ├─ routes/<br>
-│ ├─ templates/<br>
-│ ├─ static/<br>
-│ ├─ i18n/ # language files (en, de)<br>
-│ └─ utils/<br>
-├─ migrations/<br>
-├─ tests/<br>
-├─ README.md<br>
-└─ run.py<br>
+```text
+neofab/
+  app.py
+  models.py
+  notifications.py
+  routes/
+  static/
+  templates/
+  version.py
+i18n/
+  de.json
+  en.json
+  fr.json
+doku/
+  SETUP.md
+  Version_Timeline.md
+script/
+  setupNeoFab
+  setupNeoFabService
+  upDateNeoFabService
+  resetAdminPassword
+images/
+  Logo_NeoFab.png
+  NeoFab_V0-8-6_*.jpg
+```
 
 ## Setup
 
-Installations-Scripte unter /script
-Zuerst /script/README.md lesen !!!
+Installation and maintenance scripts are available in the `script/` directory.
+
+Start with the setup documentation:
+
+- [Script setup guide](script/README.md)
+- [General setup notes](doku/SETUP.md)
+
+The main scripts are:
+
+- `script/setupNeoFab` - base installation and optional development server start
+- `script/setupNeoFabService` - systemd service setup with Gunicorn
+- `script/upDateNeoFabService` - update an existing service installation
+- `script/resetAdminPassword` - emergency admin password reset
+
+## Current Version
+
+Current application version: **0.8.6**
+
+Recent changes include print job status summaries in order lists, colored status badges, improved G-code metadata extraction, automatic print start time handling, and per-model material and color handling.
+
+See [Version_Timeline.md](doku/Version_Timeline.md) for the detailed project history.
 
 ## Screenshots V0.8.6
 
-![Home NeoFab](images/NeoFab_V0-8-6_-00.jpg)
-![STL/3MF-Viewer](images/NeoFab_V0-8-6_-01.jpg)
-![Systemeinstellungen](images/NeoFab_V0-8-6_-02.jpg)
-![Admin Panel](images/NeoFab_V0-8-6_-03.jpg)
-![User-Profil](images/NeoFab_V0-8-6_-04.jpg)
-![Komunikation - Chatfunktion](images/NeoFab_V0-8-6_-05.jpg)
-![Auftrag - Druckaufträge](images/NeoFab_V0-8-6_-06.jpg)
-![Auftrag - 3D-Modelle](images/NeoFab_V0-8-6_-07.jpg)
-![Auftrag - Dokumentation](images/NeoFab_V0-8-6_-08.jpg)
-![Auftrag - Allgemein](images/NeoFab_V0-8-6_-09.jpg)
-![Auftragsliste](images/NeoFab_V0-8-6_-10.jpg)
-![LogIn](images/NeoFab_V0-8-6_-11.jpg)
+### NeoFab Home
+
+![NeoFab home](images/NeoFab_V0-8-6_-00.jpg)
+
+### STL and 3MF Viewer
+
+![STL and 3MF viewer](images/NeoFab_V0-8-6_-01.jpg)
+
+### System Settings
+
+![System settings](images/NeoFab_V0-8-6_-02.jpg)
+
+### Admin Panel
+
+![Admin panel](images/NeoFab_V0-8-6_-03.jpg)
+
+### User Profile
+
+![User profile](images/NeoFab_V0-8-6_-04.jpg)
+
+### Communication and Chat
+
+![Communication and chat](images/NeoFab_V0-8-6_-05.jpg)
+
+### Order Print Jobs
+
+![Order print jobs](images/NeoFab_V0-8-6_-06.jpg)
+
+### Order 3D Models
+
+![Order 3D models](images/NeoFab_V0-8-6_-07.jpg)
+
+### Order Documentation
+
+![Order documentation](images/NeoFab_V0-8-6_-08.jpg)
+
+### Order Overview
+
+![Order overview](images/NeoFab_V0-8-6_-09.jpg)
+
+### Order List
+
+![Order list](images/NeoFab_V0-8-6_-10.jpg)
+
+### Login
+
+![Login](images/NeoFab_V0-8-6_-11.jpg)
+
+## License
+
+See the included license files for licensing information.
