@@ -27,7 +27,16 @@ from werkzeug.utils import secure_filename
 
 from auth_utils import roles_required
 from audit_logs import DELETE_LOG_FILE, delete_log_file, list_log_files, read_log_entries, write_audit_log
-from config import SETTINGS_FILE, coerce_positive_int, load_app_settings, save_app_settings
+from config import (
+    EMAIL_ACTION_KEYS,
+    EMAIL_ACTION_STATE_DISABLED,
+    EMAIL_ACTION_STATE_ENABLED,
+    SETTINGS_FILE,
+    coerce_positive_int,
+    load_app_settings,
+    normalize_email_actions,
+    save_app_settings,
+)
 from schema_utils import ensure_training_playlist_schema
 from status_messages import (
     STATUS_GROUP_DEFS,
@@ -544,6 +553,22 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     except Exception as exc:
                         current_app.logger.exception("Failed to send test email")
                         flash(trans("flash_email_test_failed").format(error=exc), "danger")
+            elif form_type == "email_actions":
+                email_actions = {}
+                for action_key in EMAIL_ACTION_KEYS:
+                    field_value = (request.form.get(f"email_action_{action_key}") or "").strip()
+                    if field_value not in (EMAIL_ACTION_STATE_ENABLED, EMAIL_ACTION_STATE_DISABLED):
+                        field_value = EMAIL_ACTION_STATE_ENABLED
+                    email_actions[action_key] = field_value
+                try:
+                    updated_settings = settings.copy()
+                    updated_settings["email_actions"] = email_actions
+                    save_app_settings(current_app, updated_settings)
+                    flash(trans("flash_email_actions_saved"), "success")
+                    return redirect(url_for(".admin_settings"))
+                except Exception:
+                    current_app.logger.exception("Failed to save email actions")
+                    flash(trans("flash_settings_save_error"), "danger")
             elif form_type == "status_messages":
                 allowed_styles = {value for value, _ in STATUS_STYLE_OPTIONS}
                 status_messages = {}
@@ -624,6 +649,25 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             {"value": value, "label": trans(label_key)}
             for value, label_key in STATUS_STYLE_OPTIONS
         ]
+        email_action_values = normalize_email_actions(settings.get("email_actions"))
+        email_actions = [
+            {
+                "key": "new_order",
+                "label": trans("email_action_new_order"),
+                "description": trans("email_action_new_order_desc"),
+                "value": email_action_values.get("new_order", EMAIL_ACTION_STATE_ENABLED),
+            },
+            {
+                "key": "order_status_changed",
+                "label": trans("email_action_order_status_changed"),
+                "description": trans("email_action_order_status_changed_desc"),
+                "value": email_action_values.get("order_status_changed", EMAIL_ACTION_STATE_ENABLED),
+            },
+        ]
+        email_action_state_options = [
+            {"value": EMAIL_ACTION_STATE_ENABLED, "label": trans("email_action_enabled")},
+            {"value": EMAIL_ACTION_STATE_DISABLED, "label": trans("email_action_disabled")},
+        ]
 
         return render_template(
             "admin_settings.html",
@@ -631,6 +675,8 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             settings_path=str(SETTINGS_FILE),
             status_message_groups=status_groups,
             status_style_options=status_style_options,
+            email_actions=email_actions,
+            email_action_state_options=email_action_state_options,
         )
 
     @bp.route("/logs", endpoint="admin_logs")
@@ -681,6 +727,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 "smtp_user": settings.get("smtp_user", ""),
                 "smtp_password": settings.get("smtp_password", ""),
                 "smtp_from_address": settings.get("smtp_from_address", ""),
+                "email_actions": normalize_email_actions(settings.get("email_actions")),
                 "status_messages": {
                     "order": {
                         item["key"]: {"label": item["label"], "style": item["style"]}
@@ -738,6 +785,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 "smtp_user",
                 "smtp_password",
                 "smtp_from_address",
+                "email_actions",
                 "imprint_markdown",
                 "privacy_markdown",
             ):

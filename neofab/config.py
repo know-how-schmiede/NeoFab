@@ -13,6 +13,14 @@ BASE_DIR = Path(__file__).resolve().parent
 INSTANCE_DIR = BASE_DIR / "instance"
 SETTINGS_FILE = INSTANCE_DIR / "config.json"
 
+EMAIL_ACTION_KEYS = ("new_order", "order_status_changed")
+EMAIL_ACTION_STATE_ENABLED = "enabled"
+EMAIL_ACTION_STATE_DISABLED = "disabled"
+DEFAULT_EMAIL_ACTION_SETTINGS = {
+    key: EMAIL_ACTION_STATE_ENABLED
+    for key in EMAIL_ACTION_KEYS
+}
+
 DEFAULT_SETTINGS = {
     "session_timeout_minutes": 30,
     "smtp_host": "",
@@ -23,6 +31,7 @@ DEFAULT_SETTINGS = {
     "smtp_password": "",
     "smtp_password_enc": "",
     "smtp_from_address": "",
+    "email_actions": DEFAULT_EMAIL_ACTION_SETTINGS.copy(),
     "status_messages": {},
     "imprint_markdown": "",
     "privacy_markdown": "",
@@ -42,6 +51,21 @@ def coerce_positive_int(value: Any, fallback: int) -> int:
     except (TypeError, ValueError):
         pass
     return fallback
+
+
+def normalize_email_actions(value: Any) -> Dict[str, str]:
+    actions = DEFAULT_EMAIL_ACTION_SETTINGS.copy()
+    if isinstance(value, dict):
+        for key in EMAIL_ACTION_KEYS:
+            state = str(value.get(key, actions[key]) or "").strip()
+            if state in (EMAIL_ACTION_STATE_ENABLED, EMAIL_ACTION_STATE_DISABLED):
+                actions[key] = state
+    return actions
+
+
+def is_email_action_enabled(settings: Dict[str, Any], action_key: str) -> bool:
+    actions = normalize_email_actions(settings.get("email_actions"))
+    return actions.get(action_key) == EMAIL_ACTION_STATE_ENABLED
 
 
 def _apply_session_timeout_setting(app, timeout_minutes: int) -> int:
@@ -137,6 +161,9 @@ def load_app_settings(app, force_reload: bool = False) -> Dict[str, Any]:
                     else str(loaded.get("smtp_password", "") or "")
                 )
                 settings["smtp_from_address"] = str(loaded.get("smtp_from_address", "") or "").strip()
+                settings["email_actions"] = normalize_email_actions(
+                    loaded.get("email_actions", DEFAULT_SETTINGS.get("email_actions"))
+                )
                 settings["status_messages"] = normalize_status_messages(
                     loaded.get("status_messages", DEFAULT_SETTINGS.get("status_messages"))
                 )
@@ -175,6 +202,9 @@ def save_app_settings(app, new_settings: Dict[str, Any]) -> Dict[str, Any]:
         settings["smtp_user"] = str(new_settings.get("smtp_user", "") or "").strip()
         settings["smtp_password"] = str(new_settings.get("smtp_password", "") or "")
         settings["smtp_from_address"] = str(new_settings.get("smtp_from_address", "") or "").strip()
+        settings["email_actions"] = normalize_email_actions(
+            new_settings.get("email_actions", DEFAULT_SETTINGS.get("email_actions"))
+        )
         settings["status_messages"] = normalize_status_messages(
             new_settings.get("status_messages", DEFAULT_SETTINGS.get("status_messages"))
         )

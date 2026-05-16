@@ -8,7 +8,7 @@ from typing import Mapping
 from flask import url_for
 from flask_login import current_user
 
-from config import load_app_settings
+from config import is_email_action_enabled, load_app_settings
 from models import Order, User
 
 
@@ -63,6 +63,10 @@ def send_admin_order_notification(app, order: Order, status_labels: Mapping[str,
     """
     try:
         settings = load_app_settings(app, force_reload=True)
+        if not is_email_action_enabled(settings, "new_order"):
+            app.logger.info("New order notification disabled, skipping email.")
+            return False
+
         smtp_host = settings.get("smtp_host")
         smtp_port = settings.get("smtp_port")
         smtp_use_tls = bool(settings.get("smtp_use_tls"))
@@ -151,6 +155,10 @@ def send_order_status_change_notification(
     """
     try:
         settings = load_app_settings(app, force_reload=True)
+        if not is_email_action_enabled(settings, "order_status_changed"):
+            app.logger.info("Order status notification disabled, skipping email.")
+            return False
+
         smtp_host = settings.get("smtp_host")
         smtp_port = settings.get("smtp_port")
         smtp_use_tls = bool(settings.get("smtp_use_tls"))

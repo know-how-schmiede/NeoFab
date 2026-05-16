@@ -1,5 +1,10 @@
 # Timeline NeoFab
 
+## Version 0.8.8
+
+Systemeinstellungen / E-Mail zeigt unter dem Test-Empfaenger eine Liste der Aktionen, bei denen E-Mails versendet werden
+Mail-Aktionen fuer neue Bestellungen und Statusaenderungen koennen per Auswahlfeld aktiviert oder deaktiviert werden
+
 ## Version 0.8.7
 
 Projektbilder koennen per Klick auf das Thumbnail in einer vergroesserten Lightbox-Ansicht angezeigt werden

@@ -143,6 +143,45 @@
             </button>
           </div>
         </form>
+
+        <hr>
+        <form method="post" class="row g-3">
+          <input type="hidden" name="form_type" value="email_actions">
+          <div class="col-12">
+            <h2 class="h5 mb-3">{{ t("email_actions_title") }}</h2>
+            <div class="table-responsive">
+              <table class="table table-striped align-middle">
+                <thead>
+                  <tr>
+                    <th>{{ t("email_actions_action") }}</th>
+                    <th>{{ t("email_actions_description") }}</th>
+                    <th style="width: 220px;">{{ t("email_actions_setting") }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for action in email_actions %}
+                    <tr>
+                      <td class="fw-semibold">{{ action.label }}</td>
+                      <td>{{ action.description }}</td>
+                      <td>
+                        <select class="form-select" name="email_action_{{ action.key }}">
+                          {% for option in email_action_state_options %}
+                            <option value="{{ option.value }}" {% if option.value == action.value %}selected{% endif %}>
+                              {{ option.label }}
+                            </option>
+                          {% endfor %}
+                        </select>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="col-12">
+            <button type="submit" class="btn btn-primary">{{ t("btn_save") }}</button>
+          </div>
+        </form>
         {{ settings_export_import() }}
       </div>
 
