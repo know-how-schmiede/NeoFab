@@ -1,5 +1,11 @@
 # Timeline NeoFab
 
+## Version 0.8.9
+
+Mitteilungen koennen mit der neuen Prioritaet Achtung eMail erstellt werden
+Beim Erstellen einer Mitteilung mit Prioritaet Achtung eMail wird eine E-Mail an alle aktiven Benutzer versendet
+Die E-Mail-Aktion fuer Mitteilungen mit Prioritaet Achtung eMail ist in den Systemeinstellungen / E-Mail konfigurierbar
+
 ## Version 0.8.8
 
 Systemeinstellungen / E-Mail zeigt unter dem Test-Empfaenger eine Liste der Aktionen, bei denen E-Mails versendet werden

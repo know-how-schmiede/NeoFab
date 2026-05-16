@@ -13,7 +13,7 @@ BASE_DIR = Path(__file__).resolve().parent
 INSTANCE_DIR = BASE_DIR / "instance"
 SETTINGS_FILE = INSTANCE_DIR / "config.json"
 
-EMAIL_ACTION_KEYS = ("new_order", "order_status_changed")
+EMAIL_ACTION_KEYS = ("new_order", "order_status_changed", "announcement_attention_email")
 EMAIL_ACTION_STATE_ENABLED = "enabled"
 EMAIL_ACTION_STATE_DISABLED = "disabled"
 DEFAULT_EMAIL_ACTION_SETTINGS = {

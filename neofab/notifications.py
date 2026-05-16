@@ -9,7 +9,7 @@ from flask import url_for
 from flask_login import current_user
 
 from config import is_email_action_enabled, load_app_settings
-from models import Order, User
+from models import Announcement, Order, User
 
 
 def _split_email_recipients(raw: str | None) -> list[str]:
@@ -56,6 +56,39 @@ def _collect_order_recipients(
     return recipients
 
 
+def _collect_active_user_recipients() -> list[str]:
+    recipients: list[str] = []
+    seen: set[str] = set()
+    users = User.query.filter_by(is_active=True, deleted_at=None).all()
+    for user in users:
+        _add_recipients(recipients, seen, _split_email_recipients(user.email))
+    return recipients
+
+
+def _send_message(settings: Mapping[str, object], msg: EmailMessage) -> None:
+    smtp_host = settings.get("smtp_host")
+    smtp_port = settings.get("smtp_port")
+    smtp_use_tls = bool(settings.get("smtp_use_tls"))
+    smtp_use_ssl = bool(settings.get("smtp_use_ssl"))
+    smtp_user = settings.get("smtp_user")
+    smtp_password = settings.get("smtp_password")
+    smtp_from = settings.get("smtp_from_address")
+
+    if smtp_use_ssl:
+        server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10)
+    else:
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+
+    with server:
+        server.ehlo()
+        if smtp_use_tls and not smtp_use_ssl:
+            server.starttls()
+            server.ehlo()
+        if smtp_user:
+            server.login(smtp_user, smtp_password or "")
+        server.send_message(msg, from_addr=smtp_user or smtp_from)
+
+
 def send_admin_order_notification(app, order: Order, status_labels: Mapping[str, str] | None = None) -> bool:
     """
     Send a notification email to all admin users (plus order creator) for a newly created order.
@@ -69,10 +102,6 @@ def send_admin_order_notification(app, order: Order, status_labels: Mapping[str,
 
         smtp_host = settings.get("smtp_host")
         smtp_port = settings.get("smtp_port")
-        smtp_use_tls = bool(settings.get("smtp_use_tls"))
-        smtp_use_ssl = bool(settings.get("smtp_use_ssl"))
-        smtp_user = settings.get("smtp_user")
-        smtp_password = settings.get("smtp_password")
         smtp_from = settings.get("smtp_from_address")
 
         if not smtp_host or not smtp_port or not smtp_from:
@@ -115,19 +144,7 @@ def send_admin_order_notification(app, order: Order, status_labels: Mapping[str,
 
         msg.set_content("\n".join(body_lines))
 
-        if smtp_use_ssl:
-            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10)
-        else:
-            server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
-
-        with server:
-            server.ehlo()
-            if smtp_use_tls and not smtp_use_ssl:
-                server.starttls()
-                server.ehlo()
-            if smtp_user:
-                server.login(smtp_user, smtp_password or "")
-            server.send_message(msg, from_addr=smtp_user or smtp_from)
+        _send_message(settings, msg)
 
         app.logger.info(
             "Sent admin notification for order %s to %s",
@@ -161,10 +178,6 @@ def send_order_status_change_notification(
 
         smtp_host = settings.get("smtp_host")
         smtp_port = settings.get("smtp_port")
-        smtp_use_tls = bool(settings.get("smtp_use_tls"))
-        smtp_use_ssl = bool(settings.get("smtp_use_ssl"))
-        smtp_user = settings.get("smtp_user")
-        smtp_password = settings.get("smtp_password")
         smtp_from = settings.get("smtp_from_address")
 
         if not smtp_host or not smtp_port or not smtp_from:
@@ -210,19 +223,7 @@ def send_order_status_change_notification(
 
         msg.set_content("\n".join(body_lines))
 
-        if smtp_use_ssl:
-            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10)
-        else:
-            server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
-
-        with server:
-            server.ehlo()
-            if smtp_use_tls and not smtp_use_ssl:
-                server.starttls()
-                server.ehlo()
-            if smtp_user:
-                server.login(smtp_user, smtp_password or "")
-            server.send_message(msg, from_addr=smtp_user or smtp_from)
+        _send_message(settings, msg)
 
         app.logger.info(
             "Sent status change notification for order %s to %s",
@@ -233,5 +234,71 @@ def send_order_status_change_notification(
     except Exception:
         app.logger.exception(
             "Failed to send status change notification for order %s", getattr(order, "id", "?")
+        )
+        return False
+
+
+def send_announcement_attention_notification(app, announcement: Announcement) -> bool:
+    """
+    Notify all active users about an announcement with priority "Achtung eMail".
+    Never raises; returns True on success, False otherwise.
+    """
+    try:
+        settings = load_app_settings(app, force_reload=True)
+        if not is_email_action_enabled(settings, "announcement_attention_email"):
+            app.logger.info("Announcement attention notification disabled, skipping email.")
+            return False
+
+        smtp_host = settings.get("smtp_host")
+        smtp_port = settings.get("smtp_port")
+        smtp_from = settings.get("smtp_from_address")
+
+        if not smtp_host or not smtp_port or not smtp_from:
+            app.logger.info("SMTP not configured, skipping announcement notification.")
+            return False
+
+        recipients = _collect_active_user_recipients()
+        if not recipients:
+            app.logger.info("No recipients found, skipping announcement notification.")
+            return False
+
+        try:
+            dashboard_url = url_for("dashboard", _external=True)
+        except Exception:
+            dashboard_url = url_for("dashboard")
+
+        created_by = current_user.email if current_user.is_authenticated else ""
+
+        msg = EmailMessage()
+        msg["Subject"] = f"NeoFab: Achtung eMail - {announcement.title}"
+        msg["From"] = smtp_from
+        msg["To"] = smtp_from
+        msg["Bcc"] = ", ".join(recipients)
+        if created_by:
+            msg["Reply-To"] = created_by
+
+        body_lines = [
+            "Eine neue NeoFab-Mitteilung mit der Prioritaet 'Achtung eMail' wurde erstellt.",
+            f"Titel: {announcement.title}",
+            f"Erstellt von: {created_by}",
+            f"Link: {dashboard_url}",
+            "",
+            "Mitteilung:",
+            announcement.body,
+        ]
+        msg.set_content("\n".join(body_lines))
+
+        _send_message(settings, msg)
+
+        app.logger.info(
+            "Sent announcement attention notification for announcement %s to %s",
+            announcement.id,
+            ", ".join(recipients),
+        )
+        return True
+    except Exception:
+        app.logger.exception(
+            "Failed to send announcement notification for announcement %s",
+            getattr(announcement, "id", "?"),
         )
         return False

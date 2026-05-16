@@ -83,6 +83,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         "notice": {"label": "announcement_priority_notice", "icon": "bi-exclamation-circle", "class": "text-info"},
         "important": {"label": "announcement_priority_important", "icon": "bi-exclamation-triangle", "class": "text-warning"},
         "warning": {"label": "announcement_priority_warning", "icon": "bi-exclamation-octagon", "class": "text-danger"},
+        "attention_email": {"label": "announcement_priority_attention_email", "icon": "bi-envelope-exclamation", "class": "text-danger fw-semibold"},
     }
 
     def new_admin_announcement_form_token() -> str:
@@ -662,6 +663,12 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 "label": trans("email_action_order_status_changed"),
                 "description": trans("email_action_order_status_changed_desc"),
                 "value": email_action_values.get("order_status_changed", EMAIL_ACTION_STATE_ENABLED),
+            },
+            {
+                "key": "announcement_attention_email",
+                "label": trans("email_action_announcement_attention_email"),
+                "description": trans("email_action_announcement_attention_email_desc"),
+                "value": email_action_values.get("announcement_attention_email", EMAIL_ACTION_STATE_ENABLED),
             },
         ]
         email_action_state_options = [

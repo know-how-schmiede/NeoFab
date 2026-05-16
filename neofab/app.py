@@ -68,6 +68,7 @@ from config import (
 from i18n_utils import DEFAULT_LANG, SUPPORTED_LANGS, get_translations
 from legal_markdown import render_legal_markdown
 from notifications import (
+    send_announcement_attention_notification,
     send_admin_order_notification,
     send_order_status_change_notification,
 )
@@ -225,6 +226,7 @@ ANNOUNCEMENT_PRIORITY_META = {
     "notice": {"label": "announcement_priority_notice", "icon": "bi-exclamation-circle", "class": "text-info"},
     "important": {"label": "announcement_priority_important", "icon": "bi-exclamation-triangle", "class": "text-warning"},
     "warning": {"label": "announcement_priority_warning", "icon": "bi-exclamation-octagon", "class": "text-danger"},
+    "attention_email": {"label": "announcement_priority_attention_email", "icon": "bi-envelope-exclamation", "class": "text-danger fw-semibold"},
 }
 
 # Secret Key & Datenbank-Config
@@ -3490,6 +3492,8 @@ def dashboard():
             )
             db.session.add(announcement)
             db.session.commit()
+            if priority == "attention_email":
+                send_announcement_attention_notification(app, announcement)
             flash(trans("flash_announcement_created"), "success")
             return redirect(url_for("dashboard"))
 
