@@ -547,6 +547,10 @@ def ensure_filament_materials_table():
                         filament_diameter_mm FLOAT NOT NULL DEFAULT 1.75,
                         density_g_cm3 FLOAT NOT NULL DEFAULT 1.0,
                         description TEXT,
+                        price_per_kg FLOAT NOT NULL DEFAULT 0.0,
+                        markup_percent FLOAT NOT NULL DEFAULT 0.0,
+                        drying_fee FLOAT NOT NULL DEFAULT 0.0,
+                        handling_fee FLOAT NOT NULL DEFAULT 0.0,
                         active BOOLEAN NOT NULL DEFAULT 1,
                         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -570,6 +574,14 @@ def ensure_filament_materials_table():
             statements.append("ALTER TABLE filament_materials ADD COLUMN density_g_cm3 FLOAT NOT NULL DEFAULT 1.0")
         if "description" not in cols:
             statements.append("ALTER TABLE filament_materials ADD COLUMN description TEXT")
+        if "price_per_kg" not in cols:
+            statements.append("ALTER TABLE filament_materials ADD COLUMN price_per_kg FLOAT NOT NULL DEFAULT 0.0")
+        if "markup_percent" not in cols:
+            statements.append("ALTER TABLE filament_materials ADD COLUMN markup_percent FLOAT NOT NULL DEFAULT 0.0")
+        if "drying_fee" not in cols:
+            statements.append("ALTER TABLE filament_materials ADD COLUMN drying_fee FLOAT NOT NULL DEFAULT 0.0")
+        if "handling_fee" not in cols:
+            statements.append("ALTER TABLE filament_materials ADD COLUMN handling_fee FLOAT NOT NULL DEFAULT 0.0")
         if "active" not in cols:
             statements.append("ALTER TABLE filament_materials ADD COLUMN active BOOLEAN NOT NULL DEFAULT 1")
         if "created_at" not in cols:

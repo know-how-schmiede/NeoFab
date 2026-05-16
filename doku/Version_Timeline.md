@@ -7,6 +7,7 @@ Kostenstelle bearbeiten zeigt unter dem Formular eine Liste der Auftraege, die d
 Kostenstellen-Auswahl in Auftraegen zeigt nur aktive Kostenstellen
 Druckauftrag bearbeiten enthaelt die Auswahlfelder Drucker-Typ und Filament-Material
 Drucker-Typen enthalten Kostenfelder fuer Maschinenstundensatz, Wartung pro Stunde und Ruestkostenpauschale
+Filament-Materialien enthalten Preis pro kg, Materialaufschlag, Trocknungspauschale, Handlingpauschale und berechneten Preis pro Gramm
 
 ## Version 0.8.9
 

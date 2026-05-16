@@ -73,6 +73,16 @@ def _translator(get_translator: Callable[[], Optional[Callable[[str], str]]]) ->
     return trans or (lambda key: key)
 
 
+def _parse_nonnegative_float(value, default=None):
+    if value in (None, ""):
+        return default
+    try:
+        parsed = float(str(value).replace(",", "."))
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed >= 0 else None
+
+
 def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str], str]]]) -> Blueprint:
     bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -1672,6 +1682,10 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             description = request.form.get("description", "").strip() or None
             diameter_raw = request.form.get("filament_diameter_mm", "").strip()
             density_raw = request.form.get("density_g_cm3", "").strip()
+            price_per_kg = _parse_nonnegative_float(request.form.get("price_per_kg"), 0.0)
+            markup_percent = _parse_nonnegative_float(request.form.get("markup_percent"), 0.0)
+            drying_fee = _parse_nonnegative_float(request.form.get("drying_fee"), 0.0)
+            handling_fee = _parse_nonnegative_float(request.form.get("handling_fee"), 0.0)
             is_active = bool(request.form.get("is_active"))
 
             has_errors = False
@@ -1702,6 +1716,9 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             if density_g_cm3 is None or density_g_cm3 <= 0:
                 flash(trans("flash_filament_material_density_invalid"), "danger")
                 has_errors = True
+            if None in (price_per_kg, markup_percent, drying_fee, handling_fee):
+                flash(trans("flash_filament_material_costs_invalid"), "danger")
+                has_errors = True
 
             if not has_errors:
                 material = FilamentMaterial(
@@ -1709,6 +1726,10 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     description=description,
                     filament_diameter_mm=filament_diameter_mm,
                     density_g_cm3=density_g_cm3,
+                    price_per_kg=price_per_kg,
+                    markup_percent=markup_percent,
+                    drying_fee=drying_fee,
+                    handling_fee=handling_fee,
                     active=is_active,
                 )
                 db.session.add(material)
@@ -1733,6 +1754,10 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             description = request.form.get("description", "").strip() or None
             diameter_raw = request.form.get("filament_diameter_mm", "").strip()
             density_raw = request.form.get("density_g_cm3", "").strip()
+            price_per_kg = _parse_nonnegative_float(request.form.get("price_per_kg"), 0.0)
+            markup_percent = _parse_nonnegative_float(request.form.get("markup_percent"), 0.0)
+            drying_fee = _parse_nonnegative_float(request.form.get("drying_fee"), 0.0)
+            handling_fee = _parse_nonnegative_float(request.form.get("handling_fee"), 0.0)
             is_active = bool(request.form.get("is_active"))
 
             has_errors = False
@@ -1763,12 +1788,19 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             if density_g_cm3 is None or density_g_cm3 <= 0:
                 flash(trans("flash_filament_material_density_invalid"), "danger")
                 has_errors = True
+            if None in (price_per_kg, markup_percent, drying_fee, handling_fee):
+                flash(trans("flash_filament_material_costs_invalid"), "danger")
+                has_errors = True
 
             if not has_errors:
                 material.name = name
                 material.description = description
                 material.filament_diameter_mm = filament_diameter_mm
                 material.density_g_cm3 = density_g_cm3
+                material.price_per_kg = price_per_kg
+                material.markup_percent = markup_percent
+                material.drying_fee = drying_fee
+                material.handling_fee = handling_fee
                 material.active = is_active
                 db.session.commit()
                 flash(trans("flash_filament_material_updated"), "success")

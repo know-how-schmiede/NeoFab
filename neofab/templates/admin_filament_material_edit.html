@@ -55,6 +55,63 @@
                        value="{{ material.description if material else '' }}">
             </div>
 
+            <div class="mb-3">
+                <label for="price_per_kg" class="form-label">{{ t("admin_filament_material_label_price_per_kg") }}</label>
+                <input type="number"
+                       class="form-control"
+                       id="price_per_kg"
+                       name="price_per_kg"
+                       min="0"
+                       step="0.01"
+                       value="{{ material.price_per_kg if material else '0' }}">
+                <div class="form-text">{{ t("admin_filament_material_help_price_per_kg") }}</div>
+            </div>
+
+            <div class="mb-3">
+                <label for="markup_percent" class="form-label">{{ t("admin_filament_material_label_markup_percent") }}</label>
+                <input type="number"
+                       class="form-control"
+                       id="markup_percent"
+                       name="markup_percent"
+                       min="0"
+                       step="0.01"
+                       value="{{ material.markup_percent if material else '0' }}">
+                <div class="form-text">{{ t("admin_filament_material_help_markup_percent") }}</div>
+            </div>
+
+            <div class="mb-3">
+                <label for="drying_fee" class="form-label">{{ t("admin_filament_material_label_drying_fee") }}</label>
+                <input type="number"
+                       class="form-control"
+                       id="drying_fee"
+                       name="drying_fee"
+                       min="0"
+                       step="0.01"
+                       value="{{ material.drying_fee if material else '0' }}">
+                <div class="form-text">{{ t("admin_filament_material_help_drying_fee") }}</div>
+            </div>
+
+            <div class="mb-3">
+                <label for="handling_fee" class="form-label">{{ t("admin_filament_material_label_handling_fee") }}</label>
+                <input type="number"
+                       class="form-control"
+                       id="handling_fee"
+                       name="handling_fee"
+                       min="0"
+                       step="0.01"
+                       value="{{ material.handling_fee if material else '0' }}">
+                <div class="form-text">{{ t("admin_filament_material_help_handling_fee") }}</div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">{{ t("admin_filament_material_label_price_per_g") }}</label>
+                <input type="text"
+                       class="form-control"
+                       readonly
+                       value="{{ '%.4f'|format(material.price_per_g) if material else '0.0000' }}">
+                <div class="form-text">{{ t("admin_filament_material_help_price_per_g") }}</div>
+            </div>
+
             <div class="form-check mb-3">
                 <input class="form-check-input"
                        type="checkbox"

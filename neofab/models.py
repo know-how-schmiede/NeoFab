@@ -349,9 +349,17 @@ class FilamentMaterial(db.Model):
     filament_diameter_mm = db.Column(db.Float, nullable=False, default=1.75)
     density_g_cm3 = db.Column(db.Float, nullable=False)
     description = db.Column(db.Text)
+    price_per_kg = db.Column(db.Float, nullable=False, default=0.0)
+    markup_percent = db.Column(db.Float, nullable=False, default=0.0)
+    drying_fee = db.Column(db.Float, nullable=False, default=0.0)
+    handling_fee = db.Column(db.Float, nullable=False, default=0.0)
     active = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    @property
+    def price_per_g(self) -> float:
+        return (self.price_per_kg or 0.0) / 1000.0
 
     def __repr__(self):
         return f"<FilamentMaterial {self.name}>"

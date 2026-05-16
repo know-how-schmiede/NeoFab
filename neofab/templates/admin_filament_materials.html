@@ -18,12 +18,17 @@
     <table class="table table-striped align-middle">
         <thead>
             <tr>
-                <th style="width: 18%;">{{ t("table_name") }}</th>
-                <th style="width: 14%;">{{ t("table_diameter") }}</th>
-                <th style="width: 14%;">{{ t("table_density") }}</th>
+                <th style="width: 14%;">{{ t("table_name") }}</th>
+                <th style="width: 9%;">{{ t("table_diameter") }}</th>
+                <th style="width: 9%;">{{ t("table_density") }}</th>
                 <th>{{ t("table_description") }}</th>
-                <th style="width: 10%;">{{ t("table_active") }}</th>
-                <th class="text-end" style="width: 18%;">{{ t("table_actions") }}</th>
+                <th style="width: 9%;">{{ t("table_price_per_kg") }}</th>
+                <th style="width: 9%;">{{ t("table_price_per_g") }}</th>
+                <th style="width: 9%;">{{ t("table_markup_percent") }}</th>
+                <th style="width: 9%;">{{ t("table_drying_fee") }}</th>
+                <th style="width: 9%;">{{ t("table_handling_fee") }}</th>
+                <th style="width: 8%;">{{ t("table_active") }}</th>
+                <th class="text-end" style="width: 14%;">{{ t("table_actions") }}</th>
             </tr>
         </thead>
         <tbody>
@@ -33,6 +38,11 @@
                 <td>{{ "%.2f"|format(m.filament_diameter_mm or 0) }}</td>
                 <td>{{ "%.2f"|format(m.density_g_cm3 or 0) }}</td>
                 <td>{{ m.description or '' }}</td>
+                <td>{{ "%.2f"|format(m.price_per_kg or 0) }}</td>
+                <td>{{ "%.4f"|format(m.price_per_g) }}</td>
+                <td>{{ "%.2f"|format(m.markup_percent or 0) }}</td>
+                <td>{{ "%.2f"|format(m.drying_fee or 0) }}</td>
+                <td>{{ "%.2f"|format(m.handling_fee or 0) }}</td>
                 <td>
                     <span class="badge {% if m.active %}bg-success{% else %}bg-secondary{% endif %}">
                         {{ m.active and t("badge_yes") or t("badge_no") }}
