@@ -99,9 +99,9 @@ The main scripts are:
 
 ## Current Version
 
-Current application version: **0.8.9**
+Current application version: **0.8.10**
 
-Recent changes include email notifications for announcements with priority "Achtung eMail", configurable email actions in the admin system settings, an enlarged lightbox view for project image thumbnails, print job status summaries in order lists, colored status badges, improved G-code metadata extraction, automatic print start time handling, and per-model material and color handling.
+Recent changes include order counts and linked order lists for cost centers, email notifications for announcements with priority "Achtung eMail", configurable email actions in the admin system settings, and improved order and print job overviews.
 
 See [Version_Timeline.md](doku/Version_Timeline.md) for the detailed project history.
 

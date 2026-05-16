@@ -1,5 +1,11 @@
 # Timeline NeoFab
 
+## Version 0.8.10
+
+Kostenstellenliste zeigt die Anzahl der Auftraege je Kostenstelle direkt nach der Spalte Aktiv
+Kostenstelle bearbeiten zeigt unter dem Formular eine Liste der Auftraege, die diese Kostenstelle verwenden
+Kostenstellen-Auswahl in Auftraegen zeigt nur aktive Kostenstellen
+
 ## Version 0.8.9
 
 Mitteilungen koennen mit der neuen Prioritaet Achtung eMail erstellt werden

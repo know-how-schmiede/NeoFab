@@ -18,10 +18,11 @@
     <table class="table table-striped align-middle">
         <thead>
             <tr>
-                <th style="width: 25%;">{{ t("table_name") }}</th>
-                <th style="width: 25%;">{{ t("table_email") }}</th>
-                <th style="width: 30%;">{{ t("table_note") }}</th>
-                <th style="width: 10%;">{{ t("table_active") }}</th>
+                <th style="width: 22%;">{{ t("table_name") }}</th>
+                <th style="width: 24%;">{{ t("table_email") }}</th>
+                <th style="width: 28%;">{{ t("table_note") }}</th>
+                <th style="width: 8%;">{{ t("table_active") }}</th>
+                <th class="text-center" style="width: 8%;">{{ t("table_orders_count") }}</th>
                 <th class="text-end" style="width: 10%;">{{ t("table_actions") }}</th>
             </tr>
         </thead>
@@ -38,6 +39,7 @@
                         <span class="badge bg-secondary">{{ t("badge_no") }}</span>
                     {% endif %}
                 </td>
+                <td class="text-center">{{ order_counts.get(cc.id, 0) }}</td>
                 <td class="text-end">
                     <a href="{{ url_for('admin.admin_cost_center_edit', cc_id=cc.id) }}"
                        class="btn btn-sm btn-primary">

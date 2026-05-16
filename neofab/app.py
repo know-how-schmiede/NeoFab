@@ -1985,7 +1985,7 @@ def new_order():
     ensure_order_estimation_columns()
     ensure_order_archive_columns()
 
-    cost_centers = CostCenter.query.order_by(CostCenter.name.asc()).all()
+    cost_centers = CostCenter.query.filter_by(is_active=True).order_by(CostCenter.name.asc()).all()
     trans = inject_globals().get("t")
     status_context = get_status_context(trans)
 
@@ -2087,9 +2087,16 @@ def new_order():
         # Nur sinnvolle IDs setzen
         if cost_center_id:
             try:
-                order.cost_center_id = int(cost_center_id)
+                selected_cost_center_id = int(cost_center_id)
             except ValueError:
-                pass
+                selected_cost_center_id = None
+            if selected_cost_center_id:
+                selected_cost_center = CostCenter.query.filter_by(
+                    id=selected_cost_center_id,
+                    is_active=True,
+                ).first()
+                if selected_cost_center:
+                    order.cost_center_id = selected_cost_center.id
 
         db.session.add(order)
         db.session.commit()
@@ -2275,9 +2282,17 @@ def order_detail(order_id):
 
                 if cost_center_id:
                     try:
-                        order.cost_center_id = int(cost_center_id)
+                        selected_cost_center_id = int(cost_center_id)
                     except ValueError:
-                        order.cost_center_id = None
+                        selected_cost_center_id = None
+                    selected_cost_center = (
+                        CostCenter.query
+                        .filter_by(id=selected_cost_center_id, is_active=True)
+                        .first()
+                        if selected_cost_center_id
+                        else None
+                    )
+                    order.cost_center_id = selected_cost_center.id if selected_cost_center else None
                 else:
                     order.cost_center_id = None
 
@@ -3094,7 +3109,7 @@ def order_detail(order_id):
     # Stammdaten f├╝r Auswahlfelder laden
     materials = Material.query.order_by(Material.name.asc()).all()
     colors = Color.query.order_by(Color.name.asc()).all()
-    cost_centers = CostCenter.query.order_by(CostCenter.name.asc()).all()
+    cost_centers = CostCenter.query.filter_by(is_active=True).order_by(CostCenter.name.asc()).all()
     printer_profiles = PrinterProfile.query.filter_by(active=True).order_by(PrinterProfile.name.asc()).all()
     filament_materials = FilamentMaterial.query.filter_by(active=True).order_by(FilamentMaterial.name.asc()).all()
 

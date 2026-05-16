@@ -2275,7 +2275,18 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
     @roles_required("admin")
     def admin_cost_center_list():
         cost_centers = CostCenter.query.order_by(CostCenter.name.asc()).all()
-        return render_template("admin_cost_centers.html", cost_centers=cost_centers)
+        order_count_rows = (
+            db.session.query(Order.cost_center_id, func.count(Order.id))
+            .filter(Order.cost_center_id.isnot(None))
+            .group_by(Order.cost_center_id)
+            .all()
+        )
+        order_counts = {cost_center_id: count for cost_center_id, count in order_count_rows}
+        return render_template(
+            "admin_cost_centers.html",
+            cost_centers=cost_centers,
+            order_counts=order_counts,
+        )
 
     @bp.route("/cost-centers/new", methods=["GET", "POST"], endpoint="admin_cost_center_new")
     @roles_required("admin")
@@ -2300,7 +2311,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     flash(trans("flash_cost_center_created"), "success")
                     return redirect(url_for(".admin_cost_center_list"))
 
-        return render_template("admin_cost_center_edit.html", cost_center=None)
+        return render_template("admin_cost_center_edit.html", cost_center=None, cost_center_orders=[])
 
     @bp.route("/cost-centers/<int:cc_id>/edit", methods=["GET", "POST"], endpoint="admin_cost_center_edit")
     @roles_required("admin")
@@ -2329,7 +2340,17 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     flash(trans("flash_cost_center_updated"), "success")
                     return redirect(url_for(".admin_cost_center_list"))
 
-        return render_template("admin_cost_center_edit.html", cost_center=cost_center)
+        cost_center_orders = (
+            Order.query
+            .filter_by(cost_center_id=cost_center.id)
+            .order_by(Order.created_at.desc(), Order.id.desc())
+            .all()
+        )
+        return render_template(
+            "admin_cost_center_edit.html",
+            cost_center=cost_center,
+            cost_center_orders=cost_center_orders,
+        )
 
     @bp.route("/cost-centers/<int:cc_id>/delete", methods=["POST"], endpoint="admin_cost_center_delete")
     @roles_required("admin")
