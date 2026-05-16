@@ -1,5 +1,12 @@
 # Timeline NeoFab
 
+## Version 0.8.11
+
+Anleitung zur Kostenermittlung fuer 3D-Drucker im Doku-Ordner ergaenzt
+Berechnungsformeln fuer Maschinenkosten, Materialkosten und Druck-Gesamtkosten dokumentiert
+Beispielwerte fuer Drucker-Typen und Filament-Materialien mit aktuellen Marktbeispielen ergaenzt
+Kostenstelle bearbeiten zeigt in der Auftragsliste die Gesamtkosten je Auftrag und die Summe aller Auftraege der Kostenstelle
+
 ## Version 0.8.10
 
 Kostenstellenliste zeigt die Anzahl der Auftraege je Kostenstelle direkt nach der Spalte Aktiv

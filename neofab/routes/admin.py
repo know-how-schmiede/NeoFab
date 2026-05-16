@@ -2384,7 +2384,13 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     flash(trans("flash_cost_center_created"), "success")
                     return redirect(url_for(".admin_cost_center_list"))
 
-        return render_template("admin_cost_center_edit.html", cost_center=None, cost_center_orders=[])
+        return render_template(
+            "admin_cost_center_edit.html",
+            cost_center=None,
+            cost_center_orders=[],
+            cost_center_order_costs={},
+            cost_center_total_cost=0,
+        )
 
     @bp.route("/cost-centers/<int:cc_id>/edit", methods=["GET", "POST"], endpoint="admin_cost_center_edit")
     @roles_required("admin")
@@ -2419,10 +2425,36 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             .order_by(Order.created_at.desc(), Order.id.desc())
             .all()
         )
+        cost_center_order_costs = {}
+        for order in cost_center_orders:
+            machine_hourly_rate = order.printer_profile.machine_hourly_rate if order.printer_profile else 0
+            maintenance_hourly_rate = order.printer_profile.maintenance_hourly_rate if order.printer_profile else 0
+            setup_fee = order.printer_profile.setup_fee if order.printer_profile else 0
+            price_per_g = order.filament_material.price_per_g if order.filament_material else 0
+            markup_percent = order.filament_material.markup_percent if order.filament_material else 0
+            drying_fee = order.filament_material.drying_fee if order.filament_material else 0
+            handling_fee = order.filament_material.handling_fee if order.filament_material else 0
+
+            order_total_cost = 0
+            for job in order.print_jobs:
+                print_hours = (job.duration_min or 0) / 60
+                machine_cost = (
+                    print_hours * ((machine_hourly_rate or 0) + (maintenance_hourly_rate or 0))
+                ) + (setup_fee or 0)
+                filament_base_cost = (job.filament_g or 0) * (price_per_g or 0)
+                material_cost = (
+                    filament_base_cost * (1 + ((markup_percent or 0) / 100))
+                ) + (drying_fee or 0) + (handling_fee or 0)
+                order_total_cost += machine_cost + material_cost
+            cost_center_order_costs[order.id] = order_total_cost
+
+        cost_center_total_cost = sum(cost_center_order_costs.values())
         return render_template(
             "admin_cost_center_edit.html",
             cost_center=cost_center,
             cost_center_orders=cost_center_orders,
+            cost_center_order_costs=cost_center_order_costs,
+            cost_center_total_cost=cost_center_total_cost,
         )
 
     @bp.route("/cost-centers/<int:cc_id>/delete", methods=["POST"], endpoint="admin_cost_center_delete")

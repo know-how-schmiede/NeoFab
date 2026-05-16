@@ -26,6 +26,7 @@
   "admin_cost_centers_none": "Es sind noch keine Kostenstellen hinterlegt.",
   "admin_cost_center_orders_title": "Auftraege mit dieser Kostenstelle",
   "admin_cost_center_orders_none": "Diese Kostenstelle wird aktuell von keinem Auftrag verwendet.",
+  "admin_cost_center_orders_total_cost": "Gesamtkosten aller Auftraege",
   "admin_logs_desc": "An- und Abmeldungen sowie spaetere Ereignisse in taeglichen Logfiles einsehen.",
   "admin_logs_delete_confirm": "Dieses Logfile wird endgueltig geloescht.",
   "admin_logs_delete_log_badge": "Loesch-Log",

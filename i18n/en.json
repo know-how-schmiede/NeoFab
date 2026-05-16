@@ -26,6 +26,7 @@
   "admin_cost_centers_none": "No cost centers have been defined yet.",
   "admin_cost_center_orders_title": "Orders using this cost center",
   "admin_cost_center_orders_none": "This cost center is currently not used by any order.",
+  "admin_cost_center_orders_total_cost": "Total cost of all orders",
   "admin_logs_desc": "View login/logout events and future audit events in daily log files.",
   "admin_logs_delete_confirm": "This log file will be permanently deleted.",
   "admin_logs_delete_log_badge": "Delete log",

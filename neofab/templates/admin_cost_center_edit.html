@@ -74,6 +74,7 @@
                             <th>{{ t("title") }}</th>
                             <th>{{ t("owner") }}</th>
                             <th>{{ t("table_status") }}</th>
+                            <th class="text-end">{{ t("print_jobs_table_total_cost") }}</th>
                             <th>{{ t("table_created") }}</th>
                         </tr>
                     </thead>
@@ -91,10 +92,20 @@
                                         {{ status_labels.get(order.status, order.status) }}
                                     </span>
                                 </td>
+                                <td class="text-end">
+                                    {{ "%.2f"|format(cost_center_order_costs.get(order.id, 0)) }} EUR
+                                </td>
                                 <td>{{ order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else "" }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>
+                    <tfoot>
+                        <tr class="table-light fw-semibold">
+                            <td colspan="4" class="text-end">{{ t("admin_cost_center_orders_total_cost") }}</td>
+                            <td class="text-end">{{ "%.2f"|format(cost_center_total_cost or 0) }} EUR</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
         {% else %}

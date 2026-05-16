@@ -26,6 +26,7 @@
   "admin_cost_centers_none": "Aucun centre de coûts n'a encore été défini.",
   "admin_cost_center_orders_title": "Commandes utilisant ce centre de coûts",
   "admin_cost_center_orders_none": "Ce centre de coûts n'est actuellement utilisé par aucune commande.",
+  "admin_cost_center_orders_total_cost": "Cout total de toutes les commandes",
   "admin_logs_desc": "Afficher les connexions, deconnexions et futurs evenements dans des fichiers journaux quotidiens.",
   "admin_logs_delete_confirm": "Ce fichier journal sera supprime definitivement.",
   "admin_logs_delete_log_badge": "Journal suppression",
