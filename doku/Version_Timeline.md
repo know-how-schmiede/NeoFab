@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.8.12
+
+Kostenstelle bearbeiten enthaelt einen PDF-Export mit Kostenstellendaten, Exportdatum und den zugeordneten Auftraegen
+
 ## Version 0.8.11
 
 Anleitung zur Kostenermittlung fuer 3D-Drucker im Doku-Ordner ergaenzt

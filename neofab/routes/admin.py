@@ -41,6 +41,7 @@ from schema_utils import ensure_training_playlist_schema
 from status_messages import (
     STATUS_GROUP_DEFS,
     STATUS_STYLE_OPTIONS,
+    build_status_context,
     default_label,
     filter_status_messages,
     resolve_status_messages,
@@ -81,6 +82,98 @@ def _parse_nonnegative_float(value, default=None):
     except (TypeError, ValueError):
         return None
     return parsed if parsed >= 0 else None
+
+
+def _pdf_escape(text_value: str) -> str:
+    text_value = (text_value or "").replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+    return text_value.encode("latin-1", "replace").decode("latin-1")
+
+
+def _wrap_pdf_line(line: str, max_chars: int = 105) -> list[str]:
+    text = str(line or "")
+    if len(text) <= max_chars:
+        return [text]
+    words = text.split()
+    rows: list[str] = []
+    current = ""
+    for word in words:
+        if len(word) > max_chars:
+            if current:
+                rows.append(current)
+                current = ""
+            rows.extend(word[i : i + max_chars] for i in range(0, len(word), max_chars))
+        elif not current:
+            current = word
+        elif len(current) + 1 + len(word) <= max_chars:
+            current += " " + word
+        else:
+            rows.append(current)
+            current = word
+    if current:
+        rows.append(current)
+    return rows or [""]
+
+
+def _build_simple_text_pdf(lines: list[str]) -> bytes:
+    rows: list[str] = []
+    for line in lines:
+        rows.extend(_wrap_pdf_line(line))
+
+    lines_per_page = 44
+    pages = [rows[i : i + lines_per_page] for i in range(0, len(rows), lines_per_page)] or [[]]
+    renumbered = [
+        "1 0 obj\n<< /Type /Catalog /Pages 3 0 R >>\nendobj\n",
+        "2 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n",
+    ]
+    page_numbers = []
+    for page_index, page_rows in enumerate(pages):
+        page_obj = 4 + page_index * 2
+        content_obj = page_obj + 1
+        page_numbers.append(page_obj)
+        content_parts = ["BT", "/F1 10 Tf"]
+        for idx, row in enumerate(page_rows):
+            y = 800 - idx * 17
+            content_parts.append(f"1 0 0 1 50 {y} Tm")
+            content_parts.append(f"({_pdf_escape(row)}) Tj")
+        content_parts.append("ET")
+        content_stream = "\n".join(content_parts).encode("latin-1")
+        renumbered.append(
+            f"{page_obj} 0 obj\n"
+            "<< /Type /Page /Parent 3 0 R /MediaBox [0 0 595 842] "
+            f"/Contents {content_obj} 0 R /Resources << /Font << /F1 2 0 R >> >> >>\n"
+            "endobj\n"
+        )
+        renumbered.append(
+            f"{content_obj} 0 obj\n<< /Length {len(content_stream)} >>\nstream\n".encode("latin-1")
+            + content_stream
+            + b"\nendstream\nendobj\n"
+        )
+    kids = " ".join(f"{obj_no} 0 R" for obj_no in page_numbers)
+    renumbered.insert(2, f"3 0 obj\n<< /Type /Pages /Count {len(pages)} /Kids [{kids}] >>\nendobj\n")
+
+    pdf_parts: list[bytes] = [b"%PDF-1.4\n"]
+    offsets = [0]
+    current = len(pdf_parts[0])
+    for obj in renumbered:
+        chunk = obj if isinstance(obj, (bytes, bytearray)) else obj.encode("latin-1")
+        offsets.append(current)
+        pdf_parts.append(chunk)
+        current += len(chunk)
+
+    xref_start = current
+    size = len(renumbered) + 1
+    xref_lines = [b"xref\n", f"0 {size}\n".encode("latin-1"), b"0000000000 65535 f \n"]
+    for off in offsets[1:]:
+        xref_lines.append(f"{off:010d} 00000 n \n".encode("latin-1"))
+    pdf_parts.extend(xref_lines)
+    pdf_parts.append(
+        b"trailer\n<< /Size "
+        + str(size).encode("latin-1")
+        + b" /Root 1 0 R >>\nstartxref\n"
+        + str(xref_start).encode("latin-1")
+        + b"\n%%EOF"
+    )
+    return b"".join(pdf_parts)
 
 
 def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str], str]]]) -> Blueprint:
@@ -2344,6 +2437,37 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
 
     # Cost Centers ----------------------------------------------------------
 
+    def _cost_center_orders_with_costs(cost_center_id: int):
+        cost_center_orders = (
+            Order.query
+            .filter_by(cost_center_id=cost_center_id)
+            .order_by(Order.created_at.desc(), Order.id.desc())
+            .all()
+        )
+        cost_center_order_costs = {}
+        for order in cost_center_orders:
+            machine_hourly_rate = order.printer_profile.machine_hourly_rate if order.printer_profile else 0
+            maintenance_hourly_rate = order.printer_profile.maintenance_hourly_rate if order.printer_profile else 0
+            setup_fee = order.printer_profile.setup_fee if order.printer_profile else 0
+            price_per_g = order.filament_material.price_per_g if order.filament_material else 0
+            markup_percent = order.filament_material.markup_percent if order.filament_material else 0
+            drying_fee = order.filament_material.drying_fee if order.filament_material else 0
+            handling_fee = order.filament_material.handling_fee if order.filament_material else 0
+
+            order_total_cost = 0
+            for job in order.print_jobs:
+                print_hours = (job.duration_min or 0) / 60
+                machine_cost = (
+                    print_hours * ((machine_hourly_rate or 0) + (maintenance_hourly_rate or 0))
+                ) + (setup_fee or 0)
+                filament_base_cost = (job.filament_g or 0) * (price_per_g or 0)
+                material_cost = (
+                    filament_base_cost * (1 + ((markup_percent or 0) / 100))
+                ) + (drying_fee or 0) + (handling_fee or 0)
+                order_total_cost += machine_cost + material_cost
+            cost_center_order_costs[order.id] = order_total_cost
+        return cost_center_orders, cost_center_order_costs, sum(cost_center_order_costs.values())
+
     @bp.route("/cost-centers", endpoint="admin_cost_center_list")
     @roles_required("admin")
     def admin_cost_center_list():
@@ -2419,42 +2543,62 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     flash(trans("flash_cost_center_updated"), "success")
                     return redirect(url_for(".admin_cost_center_list"))
 
-        cost_center_orders = (
-            Order.query
-            .filter_by(cost_center_id=cost_center.id)
-            .order_by(Order.created_at.desc(), Order.id.desc())
-            .all()
+        cost_center_orders, cost_center_order_costs, cost_center_total_cost = _cost_center_orders_with_costs(
+            cost_center.id
         )
-        cost_center_order_costs = {}
-        for order in cost_center_orders:
-            machine_hourly_rate = order.printer_profile.machine_hourly_rate if order.printer_profile else 0
-            maintenance_hourly_rate = order.printer_profile.maintenance_hourly_rate if order.printer_profile else 0
-            setup_fee = order.printer_profile.setup_fee if order.printer_profile else 0
-            price_per_g = order.filament_material.price_per_g if order.filament_material else 0
-            markup_percent = order.filament_material.markup_percent if order.filament_material else 0
-            drying_fee = order.filament_material.drying_fee if order.filament_material else 0
-            handling_fee = order.filament_material.handling_fee if order.filament_material else 0
-
-            order_total_cost = 0
-            for job in order.print_jobs:
-                print_hours = (job.duration_min or 0) / 60
-                machine_cost = (
-                    print_hours * ((machine_hourly_rate or 0) + (maintenance_hourly_rate or 0))
-                ) + (setup_fee or 0)
-                filament_base_cost = (job.filament_g or 0) * (price_per_g or 0)
-                material_cost = (
-                    filament_base_cost * (1 + ((markup_percent or 0) / 100))
-                ) + (drying_fee or 0) + (handling_fee or 0)
-                order_total_cost += machine_cost + material_cost
-            cost_center_order_costs[order.id] = order_total_cost
-
-        cost_center_total_cost = sum(cost_center_order_costs.values())
         return render_template(
             "admin_cost_center_edit.html",
             cost_center=cost_center,
             cost_center_orders=cost_center_orders,
             cost_center_order_costs=cost_center_order_costs,
             cost_center_total_cost=cost_center_total_cost,
+        )
+
+    @bp.route("/cost-centers/<int:cc_id>/pdf", endpoint="admin_cost_center_pdf")
+    @roles_required("admin")
+    def admin_cost_center_pdf(cc_id):
+        trans = t
+        cost_center = CostCenter.query.get_or_404(cc_id)
+        orders, order_costs, total_cost = _cost_center_orders_with_costs(cost_center.id)
+        status_context = build_status_context(load_app_settings(current_app), trans)
+        status_labels = status_context.get("order_status_labels", {})
+        generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+        lines = [
+            "NeoFab",
+            f"Version: {APP_VERSION}",
+            f"{trans('admin_cost_center_pdf_export_date')}: {generated_at}",
+            "",
+            trans("admin_cost_center_form_title_edit"),
+            f"{trans('admin_cost_center_label_name')}: {cost_center.name}",
+            f"{trans('admin_cost_center_label_email')}: {cost_center.email or ''}",
+            f"{trans('admin_cost_center_label_is_active')}: {trans('badge_yes') if cost_center.is_active else trans('badge_no')}",
+            f"{trans('admin_cost_center_label_note')}: {cost_center.note or ''}",
+            "",
+            f"{trans('admin_cost_center_orders_title')}: {len(orders)}",
+            f"{trans('admin_cost_center_orders_total_cost')}: {total_cost:.2f} EUR",
+            "",
+            f"{trans('table_id')} | {trans('title')} | {trans('owner')} | {trans('table_status')} | {trans('print_jobs_table_total_cost')} | {trans('table_created')}",
+            "-" * 110,
+        ]
+
+        if orders:
+            for order in orders:
+                created_at = order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else ""
+                owner = order.user.email if order.user else ""
+                status = status_labels.get(order.status, order.status or "")
+                title = (order.title or "").replace("\r", " ").replace("\n", " ").strip()
+                lines.append(
+                    f"#{order.id} | {title} | {owner} | {status} | {order_costs.get(order.id, 0):.2f} EUR | {created_at}"
+                )
+        else:
+            lines.append(trans("admin_cost_center_orders_none"))
+
+        filename = f"cost_center_{cost_center.id}.pdf"
+        return current_app.response_class(
+            _build_simple_text_pdf(lines),
+            mimetype="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
 
     @bp.route("/cost-centers/<int:cc_id>/delete", methods=["POST"], endpoint="admin_cost_center_delete")
