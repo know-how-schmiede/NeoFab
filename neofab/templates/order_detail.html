@@ -1063,6 +1063,30 @@
                 </select>
               </div>
               <div class="col-md-6">
+                <label for="edit_printer_profile_id" class="form-label">{{ t("order_printer_profile_label") }}</label>
+                <select id="edit_printer_profile_id" name="edit_printer_profile_id" class="form-select">
+                  <option value="">{{ t("select_placeholder") }}</option>
+                  {% for profile in printer_profiles %}
+                    <option value="{{ profile.id }}"
+                            {% if order.printer_profile_id == profile.id %}selected{% endif %}>
+                      {{ profile.name }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="edit_filament_material_id" class="form-label">{{ t("order_filament_material_label") }}</label>
+                <select id="edit_filament_material_id" name="edit_filament_material_id" class="form-select">
+                  <option value="">{{ t("select_placeholder") }}</option>
+                  {% for material in filament_materials %}
+                    <option value="{{ material.id }}"
+                            {% if order.filament_material_id == material.id %}selected{% endif %}>
+                      {{ material.name }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-6">
                 <label for="edit_print_started_at" class="form-label">{{ t("print_jobs_label_started_at") }}</label>
                 <input class="form-control"
                        type="datetime-local"

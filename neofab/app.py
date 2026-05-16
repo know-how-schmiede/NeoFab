@@ -2870,6 +2870,8 @@ def order_detail(order_id):
             filament_m_raw = (request.form.get("edit_print_filament_m") or "").strip()
             filament_g_raw = (request.form.get("edit_print_filament_g") or "").strip()
             status_raw = (request.form.get("edit_print_status") or "").strip()
+            printer_profile_id = request.form.get("edit_printer_profile_id") or None
+            filament_material_id = request.form.get("edit_filament_material_id") or None
 
             started_at = None
             if started_at_raw:
@@ -2917,6 +2919,34 @@ def order_detail(order_id):
             previous_status = job.status
             if status == "started" and previous_status != "started":
                 started_at = current_print_start_time()
+
+            current_printer_profile_id = order.printer_profile_id
+            current_filament_material_id = order.filament_material_id
+
+            def _select_profile_id(model, raw_id, current_id):
+                if raw_id in (None, "", "null"):
+                    return None
+                try:
+                    raw_int = int(raw_id)
+                except ValueError:
+                    return current_id
+                entry = model.query.filter_by(id=raw_int).first()
+                if not entry:
+                    return current_id
+                if not entry.active and raw_int != current_id:
+                    return current_id
+                return entry.id
+
+            order.printer_profile_id = _select_profile_id(
+                PrinterProfile,
+                printer_profile_id,
+                current_printer_profile_id,
+            )
+            order.filament_material_id = _select_profile_id(
+                FilamentMaterial,
+                filament_material_id,
+                current_filament_material_id,
+            )
 
             job.note = note or None
             job.status = status

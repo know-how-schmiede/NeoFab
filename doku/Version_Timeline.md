@@ -5,6 +5,7 @@
 Kostenstellenliste zeigt die Anzahl der Auftraege je Kostenstelle direkt nach der Spalte Aktiv
 Kostenstelle bearbeiten zeigt unter dem Formular eine Liste der Auftraege, die diese Kostenstelle verwenden
 Kostenstellen-Auswahl in Auftraegen zeigt nur aktive Kostenstellen
+Druckauftrag bearbeiten enthaelt die Auswahlfelder Drucker-Typ und Filament-Material
 
 ## Version 0.8.9
 
