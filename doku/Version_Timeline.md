@@ -6,6 +6,7 @@ Kostenstellenliste zeigt die Anzahl der Auftraege je Kostenstelle direkt nach de
 Kostenstelle bearbeiten zeigt unter dem Formular eine Liste der Auftraege, die diese Kostenstelle verwenden
 Kostenstellen-Auswahl in Auftraegen zeigt nur aktive Kostenstellen
 Druckauftrag bearbeiten enthaelt die Auswahlfelder Drucker-Typ und Filament-Material
+Drucker-Typen enthalten Kostenfelder fuer Maschinenstundensatz, Wartung pro Stunde und Ruestkostenpauschale
 
 ## Version 0.8.9
 

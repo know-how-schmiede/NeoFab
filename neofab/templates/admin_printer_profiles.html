@@ -18,12 +18,15 @@
     <table class="table table-striped align-middle">
         <thead>
             <tr>
-                <th style="width: 22%;">{{ t("table_name") }}</th>
+                <th style="width: 18%;">{{ t("table_name") }}</th>
                 <th>{{ t("table_description") }}</th>
-                <th style="width: 12%;">{{ t("table_time_factor") }}</th>
-                <th style="width: 12%;">{{ t("table_time_offset") }}</th>
-                <th style="width: 10%;">{{ t("table_active") }}</th>
-                <th class="text-end" style="width: 18%;">{{ t("table_actions") }}</th>
+                <th style="width: 10%;">{{ t("table_time_factor") }}</th>
+                <th style="width: 10%;">{{ t("table_time_offset") }}</th>
+                <th style="width: 10%;">{{ t("table_machine_hourly_rate") }}</th>
+                <th style="width: 10%;">{{ t("table_maintenance_hourly_rate") }}</th>
+                <th style="width: 10%;">{{ t("table_setup_fee") }}</th>
+                <th style="width: 8%;">{{ t("table_active") }}</th>
+                <th class="text-end" style="width: 14%;">{{ t("table_actions") }}</th>
             </tr>
         </thead>
         <tbody>
@@ -33,6 +36,9 @@
                 <td>{{ p.description or '' }}</td>
                 <td>{{ "%.2f"|format(p.time_factor or 0) }}</td>
                 <td>{{ p.time_offset_min }}</td>
+                <td>{{ "%.2f"|format(p.machine_hourly_rate or 0) }}</td>
+                <td>{{ "%.2f"|format(p.maintenance_hourly_rate or 0) }}</td>
+                <td>{{ "%.2f"|format(p.setup_fee or 0) }}</td>
                 <td>
                     <span class="badge {% if p.active %}bg-success{% else %}bg-secondary{% endif %}">
                         {{ p.active and t("badge_yes") or t("badge_no") }}

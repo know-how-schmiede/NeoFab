@@ -1499,11 +1499,22 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
     @roles_required("admin")
     def admin_printer_profile_new():
         trans = t
+
+        def parse_nonnegative_float(raw_value):
+            try:
+                value = float((raw_value or "").replace(",", "."))
+            except ValueError:
+                return None
+            return value if value >= 0 else None
+
         if request.method == "POST":
             name = request.form.get("name", "").strip()
             description = request.form.get("description", "").strip() or None
             time_factor_raw = request.form.get("time_factor", "").strip()
             time_offset_raw = request.form.get("time_offset_min", "").strip()
+            machine_hourly_rate_raw = request.form.get("machine_hourly_rate", "").strip()
+            maintenance_hourly_rate_raw = request.form.get("maintenance_hourly_rate", "").strip()
+            setup_fee_raw = request.form.get("setup_fee", "").strip()
             is_active = bool(request.form.get("is_active"))
 
             has_errors = False
@@ -1535,12 +1546,22 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 flash(trans("flash_printer_profile_offset_invalid"), "danger")
                 has_errors = True
 
+            machine_hourly_rate = parse_nonnegative_float(machine_hourly_rate_raw or "0")
+            maintenance_hourly_rate = parse_nonnegative_float(maintenance_hourly_rate_raw or "0")
+            setup_fee = parse_nonnegative_float(setup_fee_raw or "0")
+            if machine_hourly_rate is None or maintenance_hourly_rate is None or setup_fee is None:
+                flash(trans("flash_printer_profile_costs_invalid"), "danger")
+                has_errors = True
+
             if not has_errors:
                 profile = PrinterProfile(
                     name=name,
                     description=description,
                     time_factor=time_factor,
                     time_offset_min=time_offset_min,
+                    machine_hourly_rate=machine_hourly_rate,
+                    maintenance_hourly_rate=maintenance_hourly_rate,
+                    setup_fee=setup_fee,
                     active=is_active,
                 )
                 db.session.add(profile)
@@ -1556,11 +1577,21 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         trans = t
         profile = PrinterProfile.query.get_or_404(profile_id)
 
+        def parse_nonnegative_float(raw_value):
+            try:
+                value = float((raw_value or "").replace(",", "."))
+            except ValueError:
+                return None
+            return value if value >= 0 else None
+
         if request.method == "POST":
             name = request.form.get("name", "").strip()
             description = request.form.get("description", "").strip() or None
             time_factor_raw = request.form.get("time_factor", "").strip()
             time_offset_raw = request.form.get("time_offset_min", "").strip()
+            machine_hourly_rate_raw = request.form.get("machine_hourly_rate", "").strip()
+            maintenance_hourly_rate_raw = request.form.get("maintenance_hourly_rate", "").strip()
+            setup_fee_raw = request.form.get("setup_fee", "").strip()
             is_active = bool(request.form.get("is_active"))
 
             has_errors = False
@@ -1592,11 +1623,21 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 flash(trans("flash_printer_profile_offset_invalid"), "danger")
                 has_errors = True
 
+            machine_hourly_rate = parse_nonnegative_float(machine_hourly_rate_raw or "0")
+            maintenance_hourly_rate = parse_nonnegative_float(maintenance_hourly_rate_raw or "0")
+            setup_fee = parse_nonnegative_float(setup_fee_raw or "0")
+            if machine_hourly_rate is None or maintenance_hourly_rate is None or setup_fee is None:
+                flash(trans("flash_printer_profile_costs_invalid"), "danger")
+                has_errors = True
+
             if not has_errors:
                 profile.name = name
                 profile.description = description
                 profile.time_factor = time_factor
                 profile.time_offset_min = time_offset_min
+                profile.machine_hourly_rate = machine_hourly_rate
+                profile.maintenance_hourly_rate = maintenance_hourly_rate
+                profile.setup_fee = setup_fee
                 profile.active = is_active
                 db.session.commit()
                 flash(trans("flash_printer_profile_updated"), "success")

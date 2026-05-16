@@ -480,6 +480,9 @@ def ensure_printer_profiles_table():
                         description TEXT,
                         time_factor FLOAT NOT NULL DEFAULT 1.0,
                         time_offset_min INTEGER NOT NULL DEFAULT 0,
+                        machine_hourly_rate FLOAT NOT NULL DEFAULT 0.0,
+                        maintenance_hourly_rate FLOAT NOT NULL DEFAULT 0.0,
+                        setup_fee FLOAT NOT NULL DEFAULT 0.0,
                         active BOOLEAN NOT NULL DEFAULT 1,
                         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -501,6 +504,12 @@ def ensure_printer_profiles_table():
             statements.append("ALTER TABLE printer_profiles ADD COLUMN time_factor FLOAT NOT NULL DEFAULT 1.0")
         if "time_offset_min" not in cols:
             statements.append("ALTER TABLE printer_profiles ADD COLUMN time_offset_min INTEGER NOT NULL DEFAULT 0")
+        if "machine_hourly_rate" not in cols:
+            statements.append("ALTER TABLE printer_profiles ADD COLUMN machine_hourly_rate FLOAT NOT NULL DEFAULT 0.0")
+        if "maintenance_hourly_rate" not in cols:
+            statements.append("ALTER TABLE printer_profiles ADD COLUMN maintenance_hourly_rate FLOAT NOT NULL DEFAULT 0.0")
+        if "setup_fee" not in cols:
+            statements.append("ALTER TABLE printer_profiles ADD COLUMN setup_fee FLOAT NOT NULL DEFAULT 0.0")
         if "active" not in cols:
             statements.append("ALTER TABLE printer_profiles ADD COLUMN active BOOLEAN NOT NULL DEFAULT 1")
         if "created_at" not in cols:
