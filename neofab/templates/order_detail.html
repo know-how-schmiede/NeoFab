@@ -699,13 +699,14 @@
             <table class="table table-striped align-middle">
               <thead>
                 <tr>
-                  <th style="width: 24%;">{{ t("print_jobs_table_file") }}</th>
-                  <th style="width: 12%;">{{ t("print_jobs_table_status") }}</th>
-                  <th style="width: 16%;">{{ t("print_jobs_table_started_at") }}</th>
-                  <th style="width: 12%;">{{ t("print_jobs_table_duration") }}</th>
-                  <th style="width: 14%;">{{ t("print_jobs_table_filament") }}</th>
+                  <th style="width: 22%;">{{ t("print_jobs_table_file") }}</th>
+                  <th style="width: 10%;">{{ t("print_jobs_table_status") }}</th>
+                  <th style="width: 14%;">{{ t("print_jobs_table_started_at") }}</th>
+                  <th style="width: 10%;">{{ t("print_jobs_table_duration") }}</th>
+                  <th style="width: 12%;">{{ t("print_jobs_table_filament") }}</th>
+                  <th style="width: 10%;">{{ t("print_jobs_table_total_cost") }}</th>
                   <th>{{ t("print_jobs_table_note") }}</th>
-                  <th class="text-end" style="width: 16%;">{{ t("table_actions") }}</th>
+                  <th class="text-end" style="width: 14%;">{{ t("table_actions") }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -713,6 +714,18 @@
                   {% set status_value = job.status or '' %}
                   {% set status_label = print_job_status_labels.get(status_value, status_value) %}
                   {% set status_style = print_job_status_styles.get(status_value, "bg-secondary") %}
+                  {% set print_hours = ((job.duration_min or 0) / 60) %}
+                  {% set machine_hourly = order.printer_profile.machine_hourly_rate if order.printer_profile else 0 %}
+                  {% set maintenance_hourly = order.printer_profile.maintenance_hourly_rate if order.printer_profile else 0 %}
+                  {% set setup_fee = order.printer_profile.setup_fee if order.printer_profile else 0 %}
+                  {% set machine_cost = (print_hours * ((machine_hourly or 0) + (maintenance_hourly or 0))) + (setup_fee or 0) %}
+                  {% set price_per_g = order.filament_material.price_per_g if order.filament_material else 0 %}
+                  {% set markup_percent = order.filament_material.markup_percent if order.filament_material else 0 %}
+                  {% set drying_fee = order.filament_material.drying_fee if order.filament_material else 0 %}
+                  {% set handling_fee = order.filament_material.handling_fee if order.filament_material else 0 %}
+                  {% set filament_base_cost = (job.filament_g or 0) * (price_per_g or 0) %}
+                  {% set material_cost = (filament_base_cost * (1 + ((markup_percent or 0) / 100))) + (drying_fee or 0) + (handling_fee or 0) %}
+                  {% set total_cost = machine_cost + material_cost %}
                   <tr>
                     <td>
                       <div class="fw-semibold">{{ job.original_name }}</div>
@@ -743,6 +756,7 @@
                         -
                       {% endif %}
                     </td>
+                    <td>{{ "%.2f"|format(total_cost) }} EUR</td>
                     <td>{{ job.note or "" }}</td>
                     <td class="text-end">
                       {% if current_user.role == 'admin' %}

@@ -266,6 +266,7 @@
   "print_jobs_table_started_at": "Heure de départ",
   "print_jobs_table_duration": "Durée",
   "print_jobs_table_filament": "Filament",
+  "print_jobs_table_total_cost": "Cout total",
   "print_jobs_table_note": "Note",
   "print_jobs_unit_minutes": "min",
   "print_jobs_none": "Aucune tâche d'impression n'a encore été ajoutée.",

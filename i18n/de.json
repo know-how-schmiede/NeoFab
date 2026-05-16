@@ -266,6 +266,7 @@
   "print_jobs_table_started_at": "Startzeit",
   "print_jobs_table_duration": "Druckdauer",
   "print_jobs_table_filament": "Filament",
+  "print_jobs_table_total_cost": "Gesamtkosten",
   "print_jobs_table_note": "Bemerkung",
   "print_jobs_unit_minutes": "Min",
   "print_jobs_none": "Noch keine Druckaufträge hinterlegt.",

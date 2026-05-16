@@ -290,6 +290,7 @@
   "print_jobs_table_started_at": "Start time",
   "print_jobs_table_duration": "Duration",
   "print_jobs_table_filament": "Filament",
+  "print_jobs_table_total_cost": "Total cost",
   "print_jobs_table_note": "Note",
   "print_jobs_unit_minutes": "min",
   "print_jobs_none": "No print jobs have been added yet.",
