@@ -8,6 +8,7 @@ Kostenstellen-Auswahl in Auftraegen zeigt nur aktive Kostenstellen
 Druckauftrag bearbeiten enthaelt die Auswahlfelder Drucker-Typ und Filament-Material
 Drucker-Typen enthalten Kostenfelder fuer Maschinenstundensatz, Wartung pro Stunde und Ruestkostenpauschale
 Filament-Materialien enthalten Preis pro kg, Materialaufschlag, Trocknungspauschale, Handlingpauschale und berechneten Preis pro Gramm
+Druckauftrag bearbeiten berechnet Druckkosten aus Druckdauer, Filamentgewicht, Drucker-Typ und Filament-Material
 
 ## Version 0.8.9
 

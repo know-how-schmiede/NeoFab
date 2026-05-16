@@ -833,6 +833,9 @@
                   <option value="">{{ t("select_placeholder") }}</option>
                   {% for profile in printer_profiles %}
                     <option value="{{ profile.id }}"
+                            data-machine-hourly-rate="{{ profile.machine_hourly_rate or 0 }}"
+                            data-maintenance-hourly-rate="{{ profile.maintenance_hourly_rate or 0 }}"
+                            data-setup-fee="{{ profile.setup_fee or 0 }}"
                             {% if order.printer_profile_id == profile.id %}selected{% endif %}>
                       {{ profile.name }}
                     </option>
@@ -845,6 +848,10 @@
                   <option value="">{{ t("select_placeholder") }}</option>
                   {% for material in filament_materials %}
                     <option value="{{ material.id }}"
+                            data-price-per-g="{{ material.price_per_g or 0 }}"
+                            data-markup-percent="{{ material.markup_percent or 0 }}"
+                            data-drying-fee="{{ material.drying_fee or 0 }}"
+                            data-handling-fee="{{ material.handling_fee or 0 }}"
                             {% if order.filament_material_id == material.id %}selected{% endif %}>
                       {{ material.name }}
                     </option>
@@ -1068,6 +1075,9 @@
                   <option value="">{{ t("select_placeholder") }}</option>
                   {% for profile in printer_profiles %}
                     <option value="{{ profile.id }}"
+                            data-machine-hourly-rate="{{ profile.machine_hourly_rate or 0 }}"
+                            data-maintenance-hourly-rate="{{ profile.maintenance_hourly_rate or 0 }}"
+                            data-setup-fee="{{ profile.setup_fee or 0 }}"
                             {% if order.printer_profile_id == profile.id %}selected{% endif %}>
                       {{ profile.name }}
                     </option>
@@ -1080,6 +1090,10 @@
                   <option value="">{{ t("select_placeholder") }}</option>
                   {% for material in filament_materials %}
                     <option value="{{ material.id }}"
+                            data-price-per-g="{{ material.price_per_g or 0 }}"
+                            data-markup-percent="{{ material.markup_percent or 0 }}"
+                            data-drying-fee="{{ material.drying_fee or 0 }}"
+                            data-handling-fee="{{ material.handling_fee or 0 }}"
                             {% if order.filament_material_id == material.id %}selected{% endif %}>
                       {{ material.name }}
                     </option>
@@ -1130,6 +1144,26 @@
                        id="edit_print_note"
                        name="edit_print_note"
                        maxlength="255">
+              </div>
+              <div class="col-12">
+                <div class="border rounded p-3 bg-light">
+                  <div class="fw-semibold mb-2">{{ t("print_jobs_cost_title") }}</div>
+                  <div class="row g-2 small">
+                    <div class="col-md-4">
+                      <div class="text-muted">{{ t("print_jobs_cost_machine") }}</div>
+                      <div class="fw-semibold" data-print-cost-machine>0.00</div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="text-muted">{{ t("print_jobs_cost_material") }}</div>
+                      <div class="fw-semibold" data-print-cost-material>0.00</div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="text-muted">{{ t("print_jobs_cost_total") }}</div>
+                      <div class="fw-semibold" data-print-cost-total>0.00</div>
+                    </div>
+                  </div>
+                  <div class="form-text mt-2">{{ t("print_jobs_cost_hint") }}</div>
+                </div>
               </div>
             </div>
             <div class="d-flex justify-content-end gap-2 mt-3">
@@ -1383,11 +1417,69 @@
 
   const editStatus = editModal.querySelector("#edit_print_status");
   const editStartedAt = editModal.querySelector("#edit_print_started_at");
+  const editPrinterProfile = editModal.querySelector("#edit_printer_profile_id");
+  const editFilamentMaterial = editModal.querySelector("#edit_filament_material_id");
+  const editDuration = editModal.querySelector("#edit_print_duration_min");
+  const editFilamentG = editModal.querySelector("#edit_print_filament_g");
+  const costMachine = editModal.querySelector("[data-print-cost-machine]");
+  const costMaterial = editModal.querySelector("[data-print-cost-material]");
+  const costTotal = editModal.querySelector("[data-print-cost-total]");
+
+  function parseNumber(value) {
+    if (value === null || value === undefined || value === "") return 0;
+    const parsed = Number(String(value).replace(",", "."));
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function selectedOption(select) {
+    return select && select.selectedOptions.length ? select.selectedOptions[0] : null;
+  }
+
+  function formatCurrency(value) {
+    return value.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }) + " EUR";
+  }
+
+  function updatePrintCosts() {
+    const profileOption = selectedOption(editPrinterProfile);
+    const materialOption = selectedOption(editFilamentMaterial);
+    const durationHours = parseNumber(editDuration ? editDuration.value : 0) / 60;
+    const filamentG = parseNumber(editFilamentG ? editFilamentG.value : 0);
+
+    const machineHourly = parseNumber(profileOption ? profileOption.dataset.machineHourlyRate : 0);
+    const maintenanceHourly = parseNumber(profileOption ? profileOption.dataset.maintenanceHourlyRate : 0);
+    const setupFee = parseNumber(profileOption ? profileOption.dataset.setupFee : 0);
+    const machineCost = durationHours > 0
+      ? (durationHours * (machineHourly + maintenanceHourly)) + setupFee
+      : setupFee;
+
+    const pricePerG = parseNumber(materialOption ? materialOption.dataset.pricePerG : 0);
+    const markupPercent = parseNumber(materialOption ? materialOption.dataset.markupPercent : 0);
+    const dryingFee = parseNumber(materialOption ? materialOption.dataset.dryingFee : 0);
+    const handlingFee = parseNumber(materialOption ? materialOption.dataset.handlingFee : 0);
+    const filamentBaseCost = filamentG * pricePerG;
+    const materialCost = filamentBaseCost * (1 + (markupPercent / 100)) + dryingFee + handlingFee;
+    const totalCost = machineCost + materialCost;
+
+    if (costMachine) costMachine.textContent = formatCurrency(machineCost);
+    if (costMaterial) costMaterial.textContent = formatCurrency(materialCost);
+    if (costTotal) costTotal.textContent = formatCurrency(totalCost);
+  }
+
   if (editStatus && editStartedAt) {
     editStatus.addEventListener("change", () => {
       fillStartTimeWhenStarted(editStatus, editStartedAt, true);
     });
   }
+  [editPrinterProfile, editFilamentMaterial, editDuration, editFilamentG].forEach((input) => {
+    if (input) {
+      input.addEventListener("input", updatePrintCosts);
+      input.addEventListener("change", updatePrintCosts);
+    }
+  });
+  editModal.addEventListener("shown.bs.modal", updatePrintCosts);
 })();
 
 (function() {
