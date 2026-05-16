@@ -230,6 +230,8 @@ class OrderPrintJob(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
+    printer_profile_id = db.Column(db.Integer, db.ForeignKey("printer_profiles.id"), nullable=True)
+    filament_material_id = db.Column(db.Integer, db.ForeignKey("filament_materials.id"), nullable=True)
     original_name = db.Column(db.String(255), nullable=False)
     stored_name = db.Column(db.String(255), nullable=False)
     note = db.Column(db.String(255))
@@ -242,6 +244,8 @@ class OrderPrintJob(db.Model):
     uploaded_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     order = db.relationship("Order", back_populates="print_jobs")
+    printer_profile = db.relationship("PrinterProfile")
+    filament_material = db.relationship("FilamentMaterial")
 
 
 # --- OrderImage ---------------------------------------------------------------

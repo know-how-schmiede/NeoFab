@@ -3,6 +3,8 @@
 ## Version 0.8.12
 
 Kostenstelle bearbeiten enthaelt einen PDF-Export mit Kostenstellendaten, Exportdatum und den zugeordneten Auftraegen
+Druckauftraege speichern Drucker-Typ und Filament-Material individuell je Druckauftrag statt gemeinsam am Auftrag
+Druckauftragstabelle zeigt den Drucker-Typ je Druckauftrag und berechnet Kosten mit den individuellen Druckauftrag-Werten
 
 ## Version 0.8.11
 

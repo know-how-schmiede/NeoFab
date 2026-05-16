@@ -731,6 +731,8 @@ def ensure_order_print_jobs_table():
                     CREATE TABLE order_print_jobs (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         order_id INTEGER NOT NULL,
+                        printer_profile_id INTEGER,
+                        filament_material_id INTEGER,
                         original_name VARCHAR(255) NOT NULL,
                         stored_name VARCHAR(255) NOT NULL,
                         note VARCHAR(255),
@@ -755,6 +757,12 @@ def ensure_order_print_jobs_table():
         statements = []
         if "note" not in cols:
             statements.append("ALTER TABLE order_print_jobs ADD COLUMN note VARCHAR(255)")
+        add_printer_profile_id = "printer_profile_id" not in cols
+        add_filament_material_id = "filament_material_id" not in cols
+        if add_printer_profile_id:
+            statements.append("ALTER TABLE order_print_jobs ADD COLUMN printer_profile_id INTEGER")
+        if add_filament_material_id:
+            statements.append("ALTER TABLE order_print_jobs ADD COLUMN filament_material_id INTEGER")
         if "status" not in cols:
             statements.append("ALTER TABLE order_print_jobs ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'upload'")
         if "started_at" not in cols:
@@ -775,6 +783,30 @@ def ensure_order_print_jobs_table():
         for stmt in statements:
             db.session.execute(text(stmt))
         if statements:
+            if add_printer_profile_id:
+                db.session.execute(
+                    text(
+                        """
+                        UPDATE order_print_jobs
+                        SET printer_profile_id = (
+                            SELECT printer_profile_id FROM orders WHERE orders.id = order_print_jobs.order_id
+                        )
+                        WHERE printer_profile_id IS NULL
+                        """
+                    )
+                )
+            if add_filament_material_id:
+                db.session.execute(
+                    text(
+                        """
+                        UPDATE order_print_jobs
+                        SET filament_material_id = (
+                            SELECT filament_material_id FROM orders WHERE orders.id = order_print_jobs.order_id
+                        )
+                        WHERE filament_material_id IS NULL
+                        """
+                    )
+                )
             db.session.commit()
     except Exception:
         app.logger.exception("Failed to ensure order_print_jobs table exists")
@@ -2778,8 +2810,6 @@ def order_detail(order_id):
 
             printer_profile_id = request.form.get("printer_profile_id") or None
             filament_material_id = request.form.get("filament_material_id") or None
-            current_printer_profile_id = order.printer_profile_id
-            current_filament_material_id = order.filament_material_id
 
             def _select_profile_id(model, raw_id, current_id):
                 if raw_id in (None, "", "null"):
@@ -2795,19 +2825,21 @@ def order_detail(order_id):
                     return current_id
                 return entry.id
 
-            order.printer_profile_id = _select_profile_id(
+            selected_printer_profile_id = _select_profile_id(
                 PrinterProfile,
                 printer_profile_id,
-                current_printer_profile_id,
+                None,
             )
-            order.filament_material_id = _select_profile_id(
+            selected_filament_material_id = _select_profile_id(
                 FilamentMaterial,
                 filament_material_id,
-                current_filament_material_id,
+                None,
             )
 
             job = OrderPrintJob(
                 order_id=order.id,
+                printer_profile_id=selected_printer_profile_id,
+                filament_material_id=selected_filament_material_id,
                 original_name=original_name,
                 stored_name="",
                 note=note or None,
@@ -2941,9 +2973,6 @@ def order_detail(order_id):
             if status == "started" and previous_status != "started":
                 started_at = current_print_start_time()
 
-            current_printer_profile_id = order.printer_profile_id
-            current_filament_material_id = order.filament_material_id
-
             def _select_profile_id(model, raw_id, current_id):
                 if raw_id in (None, "", "null"):
                     return None
@@ -2958,15 +2987,15 @@ def order_detail(order_id):
                     return current_id
                 return entry.id
 
-            order.printer_profile_id = _select_profile_id(
+            job.printer_profile_id = _select_profile_id(
                 PrinterProfile,
                 printer_profile_id,
-                current_printer_profile_id,
+                job.printer_profile_id,
             )
-            order.filament_material_id = _select_profile_id(
+            job.filament_material_id = _select_profile_id(
                 FilamentMaterial,
                 filament_material_id,
-                current_filament_material_id,
+                job.filament_material_id,
             )
 
             job.note = note or None
@@ -3186,6 +3215,26 @@ def order_detail(order_id):
         .order_by(OrderPrintJob.uploaded_at.desc())
         .all()
     )
+    selected_printer_profile_ids = {
+        job.printer_profile_id for job in print_jobs if job.printer_profile_id
+    }
+    selected_filament_material_ids = {
+        job.filament_material_id for job in print_jobs if job.filament_material_id
+    }
+    for profile_id in selected_printer_profile_ids:
+        if not any(profile.id == profile_id for profile in printer_profiles):
+            selected_profile = PrinterProfile.query.get(profile_id)
+            if selected_profile:
+                printer_profiles.append(selected_profile)
+    printer_profiles.sort(key=lambda profile: (profile.name or "").lower())
+
+    for material_id in selected_filament_material_ids:
+        if not any(material.id == material_id for material in filament_materials):
+            selected_material = FilamentMaterial.query.get(material_id)
+            if selected_material:
+                filament_materials.append(selected_material)
+    filament_materials.sort(key=lambda material: (material.name or "").lower())
+
     gcode_folder = Path(app.config["GCODE_UPLOAD_FOLDER"]) / f"order_{order.id}"
     metadata_changed = False
     for job in print_jobs:

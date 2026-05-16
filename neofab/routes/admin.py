@@ -89,7 +89,7 @@ def _pdf_escape(text_value: str) -> str:
     return text_value.encode("latin-1", "replace").decode("latin-1")
 
 
-def _wrap_pdf_line(line: str, max_chars: int = 105) -> list[str]:
+def _wrap_pdf_line(line: str, max_chars: int = 112) -> list[str]:
     text = str(line or "")
     if len(text) <= max_chars:
         return [text]
@@ -114,26 +114,44 @@ def _wrap_pdf_line(line: str, max_chars: int = 105) -> list[str]:
     return rows or [""]
 
 
+def _truncate_pdf_cell(value, width: int, align: str = "left") -> str:
+    text = str(value or "").replace("\r", " ").replace("\n", " ").strip()
+    if len(text) > width:
+        text = text[: max(width - 1, 0)] + "." if width > 1 else text[:width]
+    if align == "right":
+        return text.rjust(width)
+    return text.ljust(width)
+
+
+def _format_pdf_table_row(values: list[object], widths: list[int], right_aligned: set[int] | None = None) -> str:
+    right_aligned = right_aligned or set()
+    cells = [
+        _truncate_pdf_cell(value, width, "right" if idx in right_aligned else "left")
+        for idx, (value, width) in enumerate(zip(values, widths))
+    ]
+    return "  ".join(cells)
+
+
 def _build_simple_text_pdf(lines: list[str]) -> bytes:
     rows: list[str] = []
     for line in lines:
         rows.extend(_wrap_pdf_line(line))
 
-    lines_per_page = 44
+    lines_per_page = 56
     pages = [rows[i : i + lines_per_page] for i in range(0, len(rows), lines_per_page)] or [[]]
     renumbered = [
         "1 0 obj\n<< /Type /Catalog /Pages 3 0 R >>\nendobj\n",
-        "2 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n",
+        "2 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>\nendobj\n",
     ]
     page_numbers = []
     for page_index, page_rows in enumerate(pages):
         page_obj = 4 + page_index * 2
         content_obj = page_obj + 1
         page_numbers.append(page_obj)
-        content_parts = ["BT", "/F1 10 Tf"]
+        content_parts = ["BT", "/F1 8 Tf"]
         for idx, row in enumerate(page_rows):
-            y = 800 - idx * 17
-            content_parts.append(f"1 0 0 1 50 {y} Tm")
+            y = 805 - idx * 14
+            content_parts.append(f"1 0 0 1 36 {y} Tm")
             content_parts.append(f"({_pdf_escape(row)}) Tj")
         content_parts.append("ET")
         content_stream = "\n".join(content_parts).encode("latin-1")
@@ -2446,16 +2464,17 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         )
         cost_center_order_costs = {}
         for order in cost_center_orders:
-            machine_hourly_rate = order.printer_profile.machine_hourly_rate if order.printer_profile else 0
-            maintenance_hourly_rate = order.printer_profile.maintenance_hourly_rate if order.printer_profile else 0
-            setup_fee = order.printer_profile.setup_fee if order.printer_profile else 0
-            price_per_g = order.filament_material.price_per_g if order.filament_material else 0
-            markup_percent = order.filament_material.markup_percent if order.filament_material else 0
-            drying_fee = order.filament_material.drying_fee if order.filament_material else 0
-            handling_fee = order.filament_material.handling_fee if order.filament_material else 0
-
             order_total_cost = 0
             for job in order.print_jobs:
+                printer_profile = job.printer_profile
+                filament_material = job.filament_material
+                machine_hourly_rate = printer_profile.machine_hourly_rate if printer_profile else 0
+                maintenance_hourly_rate = printer_profile.maintenance_hourly_rate if printer_profile else 0
+                setup_fee = printer_profile.setup_fee if printer_profile else 0
+                price_per_g = filament_material.price_per_g if filament_material else 0
+                markup_percent = filament_material.markup_percent if filament_material else 0
+                drying_fee = filament_material.drying_fee if filament_material else 0
+                handling_fee = filament_material.handling_fee if filament_material else 0
                 print_hours = (job.duration_min or 0) / 60
                 machine_cost = (
                     print_hours * ((machine_hourly_rate or 0) + (maintenance_hourly_rate or 0))
@@ -2578,19 +2597,46 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             f"{trans('admin_cost_center_orders_title')}: {len(orders)}",
             f"{trans('admin_cost_center_orders_total_cost')}: {total_cost:.2f} EUR",
             "",
-            f"{trans('table_id')} | {trans('title')} | {trans('owner')} | {trans('table_status')} | {trans('print_jobs_table_total_cost')} | {trans('table_created')}",
-            "-" * 110,
         ]
 
         if orders:
+            table_widths = [6, 29, 24, 15, 12, 16]
+            table_headers = [
+                trans("table_id"),
+                trans("title"),
+                trans("owner"),
+                trans("table_status"),
+                trans("print_jobs_table_total_cost"),
+                trans("table_created"),
+            ]
+            lines.append(_format_pdf_table_row(table_headers, table_widths, {4}))
+            lines.append(_format_pdf_table_row(["-" * width for width in table_widths], table_widths))
             for order in orders:
                 created_at = order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else ""
                 owner = order.user.email if order.user else ""
                 status = status_labels.get(order.status, order.status or "")
-                title = (order.title or "").replace("\r", " ").replace("\n", " ").strip()
                 lines.append(
-                    f"#{order.id} | {title} | {owner} | {status} | {order_costs.get(order.id, 0):.2f} EUR | {created_at}"
+                    _format_pdf_table_row(
+                        [
+                            f"#{order.id}",
+                            order.title or "",
+                            owner,
+                            status,
+                            f"{order_costs.get(order.id, 0):.2f} EUR",
+                            created_at,
+                        ],
+                        table_widths,
+                        {4},
+                    )
                 )
+            lines.append(_format_pdf_table_row(["-" * width for width in table_widths], table_widths))
+            lines.append(
+                _format_pdf_table_row(
+                    ["", "", "", trans("admin_cost_center_orders_total_cost"), f"{total_cost:.2f} EUR", ""],
+                    table_widths,
+                    {4},
+                )
+            )
         else:
             lines.append(trans("admin_cost_center_orders_none"))
 

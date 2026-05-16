@@ -699,10 +699,11 @@
             <table class="table table-striped align-middle">
               <thead>
                 <tr>
-                  <th style="width: 22%;">{{ t("print_jobs_table_file") }}</th>
+                  <th style="width: 20%;">{{ t("print_jobs_table_file") }}</th>
                   <th style="width: 10%;">{{ t("print_jobs_table_status") }}</th>
-                  <th style="width: 14%;">{{ t("print_jobs_table_started_at") }}</th>
-                  <th style="width: 10%;">{{ t("print_jobs_table_duration") }}</th>
+                  <th style="width: 13%;">{{ t("print_jobs_table_started_at") }}</th>
+                  <th style="width: 9%;">{{ t("print_jobs_table_duration") }}</th>
+                  <th style="width: 12%;">{{ t("order_printer_profile_label") }}</th>
                   <th style="width: 12%;">{{ t("print_jobs_table_filament") }}</th>
                   <th style="width: 10%;">{{ t("print_jobs_table_total_cost") }}</th>
                   <th>{{ t("print_jobs_table_note") }}</th>
@@ -715,14 +716,16 @@
                   {% set status_label = print_job_status_labels.get(status_value, status_value) %}
                   {% set status_style = print_job_status_styles.get(status_value, "bg-secondary") %}
                   {% set print_hours = ((job.duration_min or 0) / 60) %}
-                  {% set machine_hourly = order.printer_profile.machine_hourly_rate if order.printer_profile else 0 %}
-                  {% set maintenance_hourly = order.printer_profile.maintenance_hourly_rate if order.printer_profile else 0 %}
-                  {% set setup_fee = order.printer_profile.setup_fee if order.printer_profile else 0 %}
+                  {% set job_printer_profile = job.printer_profile %}
+                  {% set job_filament_material = job.filament_material %}
+                  {% set machine_hourly = job_printer_profile.machine_hourly_rate if job_printer_profile else 0 %}
+                  {% set maintenance_hourly = job_printer_profile.maintenance_hourly_rate if job_printer_profile else 0 %}
+                  {% set setup_fee = job_printer_profile.setup_fee if job_printer_profile else 0 %}
                   {% set machine_cost = (print_hours * ((machine_hourly or 0) + (maintenance_hourly or 0))) + (setup_fee or 0) %}
-                  {% set price_per_g = order.filament_material.price_per_g if order.filament_material else 0 %}
-                  {% set markup_percent = order.filament_material.markup_percent if order.filament_material else 0 %}
-                  {% set drying_fee = order.filament_material.drying_fee if order.filament_material else 0 %}
-                  {% set handling_fee = order.filament_material.handling_fee if order.filament_material else 0 %}
+                  {% set price_per_g = job_filament_material.price_per_g if job_filament_material else 0 %}
+                  {% set markup_percent = job_filament_material.markup_percent if job_filament_material else 0 %}
+                  {% set drying_fee = job_filament_material.drying_fee if job_filament_material else 0 %}
+                  {% set handling_fee = job_filament_material.handling_fee if job_filament_material else 0 %}
                   {% set filament_base_cost = (job.filament_g or 0) * (price_per_g or 0) %}
                   {% set material_cost = (filament_base_cost * (1 + ((markup_percent or 0) / 100))) + (drying_fee or 0) + (handling_fee or 0) %}
                   {% set total_cost = machine_cost + material_cost %}
@@ -750,8 +753,15 @@
                       {% endif %}
                     </td>
                     <td>
-                      {% if order.filament_material %}
-                        {{ order.filament_material.name }}
+                      {% if job_printer_profile %}
+                        {{ job_printer_profile.name }}
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if job_filament_material %}
+                        {{ job_filament_material.name }}
                       {% else %}
                         -
                       {% endif %}
@@ -770,6 +780,8 @@
                                 data-job-duration="{{ job.duration_min if job.duration_min is not none else '' }}"
                                 data-job-filament-m="{{ job.filament_m if job.filament_m is not none else '' }}"
                                 data-job-filament-g="{{ job.filament_g if job.filament_g is not none else '' }}"
+                                data-job-printer-profile-id="{{ job.printer_profile_id or '' }}"
+                                data-job-filament-material-id="{{ job.filament_material_id or '' }}"
                                 data-job-note="{{ job.note or '' }}"
                                 data-job-filename="{{ job.original_name }}">
                           <i class="bi bi-pencil me-1"></i>{{ t("btn_edit") }}
@@ -850,7 +862,7 @@
                             data-machine-hourly-rate="{{ profile.machine_hourly_rate or 0 }}"
                             data-maintenance-hourly-rate="{{ profile.maintenance_hourly_rate or 0 }}"
                             data-setup-fee="{{ profile.setup_fee or 0 }}"
-                            {% if order.printer_profile_id == profile.id %}selected{% endif %}>
+                            >
                       {{ profile.name }}
                     </option>
                   {% endfor %}
@@ -866,7 +878,7 @@
                             data-markup-percent="{{ material.markup_percent or 0 }}"
                             data-drying-fee="{{ material.drying_fee or 0 }}"
                             data-handling-fee="{{ material.handling_fee or 0 }}"
-                            {% if order.filament_material_id == material.id %}selected{% endif %}>
+                            >
                       {{ material.name }}
                     </option>
                   {% endfor %}
@@ -1092,7 +1104,7 @@
                             data-machine-hourly-rate="{{ profile.machine_hourly_rate or 0 }}"
                             data-maintenance-hourly-rate="{{ profile.maintenance_hourly_rate or 0 }}"
                             data-setup-fee="{{ profile.setup_fee or 0 }}"
-                            {% if order.printer_profile_id == profile.id %}selected{% endif %}>
+                            >
                       {{ profile.name }}
                     </option>
                   {% endfor %}
@@ -1108,7 +1120,7 @@
                             data-markup-percent="{{ material.markup_percent or 0 }}"
                             data-drying-fee="{{ material.drying_fee or 0 }}"
                             data-handling-fee="{{ material.handling_fee or 0 }}"
-                            {% if order.filament_material_id == material.id %}selected{% endif %}>
+                            >
                       {{ material.name }}
                     </option>
                   {% endfor %}
@@ -1407,6 +1419,8 @@
     const duration = button.getAttribute("data-job-duration") || "";
     const filamentM = button.getAttribute("data-job-filament-m") || "";
     const filamentG = button.getAttribute("data-job-filament-g") || "";
+    const printerProfileId = button.getAttribute("data-job-printer-profile-id") || "";
+    const filamentMaterialId = button.getAttribute("data-job-filament-material-id") || "";
     const note = button.getAttribute("data-job-note") || "";
     const filename = button.getAttribute("data-job-filename") || "";
 
@@ -1416,6 +1430,8 @@
     const durationInput = editModal.querySelector("#edit_print_duration_min");
     const filamentMInput = editModal.querySelector("#edit_print_filament_m");
     const filamentGInput = editModal.querySelector("#edit_print_filament_g");
+    const printerProfileSelect = editModal.querySelector("#edit_printer_profile_id");
+    const filamentMaterialSelect = editModal.querySelector("#edit_filament_material_id");
     const noteInput = editModal.querySelector("#edit_print_note");
     const fileInput = editModal.querySelector("#edit_print_job_file");
 
@@ -1425,6 +1441,8 @@
     if (durationInput) durationInput.value = duration;
     if (filamentMInput) filamentMInput.value = filamentM;
     if (filamentGInput) filamentGInput.value = filamentG;
+    if (printerProfileSelect) printerProfileSelect.value = printerProfileId;
+    if (filamentMaterialSelect) filamentMaterialSelect.value = filamentMaterialId;
     if (noteInput) noteInput.value = note;
     if (fileInput) fileInput.value = filename;
   });
