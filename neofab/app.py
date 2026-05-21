@@ -4251,6 +4251,12 @@ def dashboard():
     )
     trans = inject_globals().get("t")
     status_context = get_status_context(trans)
+    sort_by = (request.args.get("sort") or "created").strip().lower()
+    sort_dir = (request.args.get("dir") or "desc").strip().lower()
+    if sort_by not in {"category", "title", "status", "owner", "created"}:
+        sort_by = "created"
+    if sort_dir not in {"asc", "desc"}:
+        sort_dir = "desc"
 
     if request.method == "POST":
         action = (request.form.get("action") or "").strip()
@@ -4389,6 +4395,22 @@ def dashboard():
 
     app.logger.debug(f"[dashboard] Loaded {len(orders)} orders")
 
+    def _dashboard_sort_value(order):
+        if sort_by == "category":
+            category = get_order_category(order)
+            return ((category.name if category else "") or "").lower()
+        if sort_by == "title":
+            return (order.title or "").lower()
+        if sort_by == "status":
+            return (status_context["order_status_labels"].get(order.status, order.status) or "").lower()
+        if sort_by == "owner":
+            return ((order.user.email if order.user else "") or "").lower()
+        if sort_by == "created":
+            return order.created_at or datetime.min
+        return order.created_at or datetime.min
+
+    orders.sort(key=_dashboard_sort_value, reverse=(sort_dir == "desc"))
+
     order_ids = [o.id for o in orders]
     for o in orders:
         app.logger.debug(
@@ -4499,6 +4521,8 @@ def dashboard():
         announcement_reads=read_by_announcement,
         announcement_priority_meta=ANNOUNCEMENT_PRIORITY_META,
         announcement_form_token=_new_announcement_form_token() if current_user.role == "admin" else "",
+        sort_by=sort_by,
+        sort_dir=sort_dir,
     )
 
 

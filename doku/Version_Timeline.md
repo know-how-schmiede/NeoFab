@@ -1,5 +1,11 @@
 # Timeline NeoFab
 
+## Version 0.9.5
+
+Dashboard-Auftragsliste kann nach Kategorie, Titel, Status, Owner und Erstelldatum sortiert werden
+Sortierbare Spalten zeigen die aktuelle Sortierrichtung direkt im Tabellenkopf
+Die Kategorie ersetzt weiterhin die bisherige ID-Spalte in der Dashboard-Auftragsliste
+
 ## Version 0.9.4
 
 Admin-Benutzerverwaltung erlaubt die Zuweisung der allgemeinen Rolle Mitarbeiter

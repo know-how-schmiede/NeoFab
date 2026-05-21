@@ -108,7 +108,7 @@ The main scripts are:
 
 ## Current Version
 
-Current application version: **0.9.4**
+Current application version: **0.9.5**
 
 Recent changes include order categories for 3D print, plotter, and CNC work, a dedicated poster workflow for plotter orders, poster thumbnails including PDF previews, and category-aware order tabs.
 

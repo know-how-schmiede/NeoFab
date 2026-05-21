@@ -3,6 +3,17 @@
 {% block title %}Dashboard – NeoFab{% endblock %}
 
 {% block content %}
+{% macro sort_link(key, label) %}
+  {% set next_dir = 'desc' if sort_by == key and sort_dir == 'asc' else 'asc' %}
+  <a class="link-dark text-decoration-none" href="{{ url_for('dashboard', sort=key, dir=next_dir) }}">
+    {{ label }}
+    {% if sort_by == key %}
+      <i class="bi {% if sort_dir == 'asc' %}bi-caret-up-fill{% else %}bi-caret-down-fill{% endif %} ms-1"></i>
+    {% else %}
+      <i class="bi bi-arrow-down-up text-muted ms-1"></i>
+    {% endif %}
+  </a>
+{% endmacro %}
 
 <div class="card">
   <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
@@ -25,11 +36,11 @@
         <table class="table table-striped table-hover table-sm align-middle mb-0">
           <thead>
             <tr>
-              <th>{{ t("order_category_label") }}</th>
-              <th>{{ t("title") }}</th>
-              <th>{{ t("status") }}</th>
-              <th>{{ t("owner") }}</th>
-              <th>{{ t("created") }}</th>
+              <th>{{ sort_link('category', t("order_category_label")) }}</th>
+              <th>{{ sort_link('title', t("title")) }}</th>
+              <th>{{ sort_link('status', t("status")) }}</th>
+              <th>{{ sort_link('owner', t("owner")) }}</th>
+              <th>{{ sort_link('created', t("created")) }}</th>
               <th class="text-center">{{ t("files") }}</th>
               <th class="text-center">{{ t("print_jobs_header") }}</th>
               <th class="text-end">{{ t("actions") }}</th>
