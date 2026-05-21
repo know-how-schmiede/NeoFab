@@ -1,5 +1,12 @@
 # Timeline NeoFab
 
+## Version 0.9.2
+
+Plakatdateien zeigen in der Auftragsansicht ein Thumbnail in der Liste der hochgeladenen Plakate
+JPG- und PNG-Dateien werden als echte Bildvorschau verkleinert
+PDF-Dateien erhalten nach Moeglichkeit eine Vorschau der ersten Seite, andernfalls eine PDF-Vorschaukachel
+Poster-Thumbnails werden separat gespeichert und ueber eine geschuetzte Route ausgeliefert
+
 ## Version 0.9.1
 
 Plotter-Auftraege verwenden in der Order-Ansicht den Reiter Plakate statt 3D-Modelle / Bilder

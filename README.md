@@ -1,8 +1,8 @@
 ![NeoFab Logo](images/Logo_NeoFab.png)
 
-# NeoFab - Multilingual 3D Print Order Management System
+# NeoFab - Multilingual Workshop Order Management System
 
-NeoFab is a Flask-based web application for managing 3D printing orders in labs, workshops, maker spaces, and research environments. It supports the full workflow from order submission and file upload to print job tracking, communication, documentation, and administrative review.
+NeoFab is a Flask-based web application for managing fabrication orders in labs, workshops, maker spaces, and research environments. It supports 3D printing workflows and now provides the foundation for additional order categories such as plotter and CNC work.
 
 The application is built for multilingual use with English as the default language and German support through the included translation files.
 
@@ -14,8 +14,17 @@ The application is built for multilingual use with English as the default langua
 - **3D print order management**  
   Structured order data, project metadata, deadlines, approval information, cost centers, and status tracking.
 
+- **Order categories**  
+  Orders can be assigned to categories such as 3D print, plotter, or CNC. The order detail view adapts its tabs and forms to the selected category.
+
 - **Model and file handling**  
   Upload and manage 3D models, G-code files, and documentation attachments per order.
+
+- **Plotter poster handling**  
+  Plotter orders use a dedicated poster tab instead of the 3D model/image tab. Users can upload multiple JPG, PNG, or PDF poster files with notes, quantity, and required print-ready date.
+
+- **Poster thumbnails**  
+  Uploaded poster images show thumbnails in the order view. PDF files show a first-page preview when supported by the runtime, with a PDF fallback preview otherwise.
 
 - **STL and 3MF viewer**  
   Browser-based model preview with reset, grid, axes, labels, wireframe mode, model information, and thumbnail support.
@@ -99,9 +108,9 @@ The main scripts are:
 
 ## Current Version
 
-Current application version: **0.9.1**
+Current application version: **0.9.2**
 
-Recent changes include documented 3D print cost calculation, order counts and linked order lists for cost centers, email notifications for announcements with priority "Achtung eMail", configurable email actions in the admin system settings, and improved order and print job overviews.
+Recent changes include order categories for 3D print, plotter, and CNC work, a dedicated poster workflow for plotter orders, poster thumbnails including PDF previews, and category-aware order tabs.
 
 See [Version_Timeline.md](doku/Version_Timeline.md) for the detailed project history.
 

@@ -728,22 +728,38 @@
             {% for poster in poster_files %}
               <li class="list-group-item">
                 <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
-                  <div>
-                    <div>
-                      <strong>{{ poster.original_name }}</strong>
-                      {% if poster.file_type %}
-                        <span class="badge bg-secondary ms-2">{{ poster.file_type|upper }}</span>
+                  <div class="d-flex gap-3 align-items-start">
+                    <div class="flex-shrink-0">
+                      {% if poster.thumb_path %}
+                        <img
+                          src="{{ url_for('poster_file_thumbnail', order_id=order.id, poster_id=poster.id) }}"
+                          alt="{{ poster.original_name }}"
+                          class="img-thumbnail project-image-thumb"
+                          loading="lazy"
+                        >
+                      {% else %}
+                        <div class="model-thumb-placeholder">
+                          <i class="bi bi-file-earmark-image"></i>
+                        </div>
                       {% endif %}
-                      <span class="badge bg-secondary ms-1">&times;{{ poster.quantity or 1 }}</span>
                     </div>
-                    <small class="text-muted d-block">
-                      {% set parts = [] %}
-                      {% if poster.filesize %}{% set _ = parts.append(((poster.filesize / 1024)|round(1)) ~ " KB") %}{% endif %}
-                      {% if poster.uploaded_at %}{% set _ = parts.append("uploaded " ~ poster.uploaded_at.strftime("%Y-%m-%d %H:%M")) %}{% endif %}
-                      {% if poster.due_date %}{% set _ = parts.append(t("posters_due_date_label") ~ ": " ~ poster.due_date.strftime("%Y-%m-%d")) %}{% endif %}
-                      {% if poster.note %}{% set _ = parts.append(poster.note) %}{% endif %}
-                      {{ " | ".join(parts) }}
-                    </small>
+                    <div>
+                      <div>
+                        <strong>{{ poster.original_name }}</strong>
+                        {% if poster.file_type %}
+                          <span class="badge bg-secondary ms-2">{{ poster.file_type|upper }}</span>
+                        {% endif %}
+                        <span class="badge bg-secondary ms-1">&times;{{ poster.quantity or 1 }}</span>
+                      </div>
+                      <small class="text-muted d-block">
+                        {% set parts = [] %}
+                        {% if poster.filesize %}{% set _ = parts.append(((poster.filesize / 1024)|round(1)) ~ " KB") %}{% endif %}
+                        {% if poster.uploaded_at %}{% set _ = parts.append("uploaded " ~ poster.uploaded_at.strftime("%Y-%m-%d %H:%M")) %}{% endif %}
+                        {% if poster.due_date %}{% set _ = parts.append(t("posters_due_date_label") ~ ": " ~ poster.due_date.strftime("%Y-%m-%d")) %}{% endif %}
+                        {% if poster.note %}{% set _ = parts.append(poster.note) %}{% endif %}
+                        {{ " | ".join(parts) }}
+                      </small>
+                    </div>
                   </div>
                   <div class="d-flex gap-2">
                     <a class="btn btn-sm btn-outline-primary"

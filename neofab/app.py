@@ -952,12 +952,21 @@ def ensure_order_category_schema():
                         note VARCHAR(255),
                         quantity INTEGER NOT NULL DEFAULT 1,
                         due_date DATE,
+                        thumb_path VARCHAR(255),
                         uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
                     """
                 )
             )
             db.session.commit()
+        else:
+            poster_cols = {
+                row[1]
+                for row in db.session.execute(text("PRAGMA table_info(order_poster_files)"))
+            }
+            if "thumb_path" not in poster_cols:
+                db.session.execute(text("ALTER TABLE order_poster_files ADD COLUMN thumb_path VARCHAR(255)"))
+                db.session.commit()
     except Exception:
         app.logger.exception("Failed to ensure order category schema exists")
 
@@ -1283,6 +1292,50 @@ def save_image_thumbnail(source_path: Path, target_path: Path, max_width: int = 
     except Exception as exc:  # noqa: BLE001 - log and continue without blocking the upload
         app.logger.warning("Could not create thumbnail for %s: %s", source_path, exc)
         return False
+
+
+def save_poster_thumbnail(source_path: Path, target_path: Path, file_type: str | None) -> bool:
+    """
+    Stores a poster thumbnail as PNG. PDFs are rendered with PyMuPDF when
+    available; otherwise a neutral PDF placeholder is generated.
+    """
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    ext = (file_type or "").lower()
+    try:
+        if ext in {"jpg", "jpeg", "png"}:
+            with Image.open(source_path) as img:
+                preview = _fit_image_to_size(img, (240, 180))
+                preview.save(target_path, format="PNG")
+            return True
+
+        if ext == "pdf":
+            try:
+                import fitz  # type: ignore
+
+                doc = fitz.open(str(source_path))
+                try:
+                    if len(doc) > 0:
+                        page = doc.load_page(0)
+                        pix = page.get_pixmap(matrix=fitz.Matrix(0.5, 0.5), alpha=False)
+                        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                        preview = _fit_image_to_size(img, (240, 180))
+                        preview.save(target_path, format="PNG")
+                        return True
+                finally:
+                    doc.close()
+            except Exception as exc:  # noqa: BLE001 - fallback placeholder below
+                app.logger.info("Could not render PDF poster thumbnail for %s: %s", source_path, exc)
+
+            canvas = Image.new("RGB", (240, 180), (248, 249, 250))
+            draw = ImageDraw.Draw(canvas)
+            draw.rectangle((78, 28, 162, 142), fill=(255, 255, 255), outline=(180, 185, 190), width=2)
+            draw.rectangle((78, 112, 162, 142), fill=(220, 53, 69))
+            draw.text((101, 120), "PDF", fill=(255, 255, 255))
+            canvas.save(target_path, format="PNG")
+            return True
+    except Exception as exc:  # noqa: BLE001 - log and continue without blocking the upload
+        app.logger.warning("Could not create poster thumbnail for %s: %s", source_path, exc)
+    return False
 
 
 def _normalize_vec(vec):
@@ -3061,6 +3114,10 @@ def order_detail(order_id):
                 poster_file.filesize = full_path.stat().st_size
             except OSError:
                 poster_file.filesize = None
+            thumb_name = f"{poster_file.id}_{Path(safe_name).stem}.png"
+            thumb_path = order_folder / "thumbnails" / thumb_name
+            if save_poster_thumbnail(full_path, thumb_path, ext):
+                poster_file.thumb_path = thumb_name
             poster_file.uploaded_at = datetime.utcnow()
 
             db.session.commit()
@@ -3925,6 +3982,36 @@ def download_poster_file(order_id, poster_id):
         path=poster.stored_name,
         as_attachment=True,
         download_name=poster.original_name,
+    )
+
+
+@app.route("/orders/<int:order_id>/posters/<int:poster_id>/thumbnail")
+@login_required
+def poster_file_thumbnail(order_id, poster_id):
+    order = Order.query.get_or_404(order_id)
+
+    if not can_view_order(order, current_user):
+        abort(403)
+    if not is_plotter_order(order):
+        abort(404)
+
+    poster = OrderPosterFile.query.filter_by(
+        id=poster_id,
+        order_id=order.id,
+    ).first_or_404()
+    if not poster.thumb_path:
+        abort(404)
+
+    thumb_folder = Path(app.config["POSTER_UPLOAD_FOLDER"]) / f"order_{order.id}" / "thumbnails"
+    thumb_path = thumb_folder / poster.thumb_path
+    if not thumb_path.exists():
+        abort(404)
+
+    return send_from_directory(
+        directory=str(thumb_folder),
+        path=poster.thumb_path,
+        as_attachment=False,
+        mimetype="image/png",
     )
 
 
