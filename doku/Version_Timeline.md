@@ -4,6 +4,7 @@
 
 Admin-Benutzerverwaltung erlaubt die Zuweisung der allgemeinen Rolle Mitarbeiter
 Mitarbeiter koennen im eigenen Profil auswaehlen, welche Auftragskategorien zusaetzlich im Dashboard angezeigt werden
+Administratoren koennen diese Dashboard-Kategorien auch in der Benutzerverwaltung fuer Mitarbeiter setzen
 Beim Speichern von Benutzern werden nur bekannte Rollen uebernommen
 Alte spezialisierte Mitarbeiterrollen werden automatisch auf die Rolle Mitarbeiter migriert
 

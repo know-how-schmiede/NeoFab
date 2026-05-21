@@ -182,6 +182,8 @@
   "admin_user_new_admin_title": "Neuen Admin erstellen",
   "admin_user_new_title": "Neuer Benutzer",
   "admin_user_own_role_hint": "Die eigene Rolle kann nicht geaendert werden.",
+  "admin_user_worker_categories_label": "Dashboard-Kategorien für Mitarbeiter",
+  "admin_user_worker_categories_help": "Aufträge dieser Kategorien werden dem Mitarbeiter zusätzlich im Dashboard angezeigt.",
   "admin_users_back": "Zurück zum Admin-Panel",
   "admin_users_desc": "Registrierte Nutzer und Rollen ansehen und bearbeiten.",
   "admin_users_heading": "Benutzerverwaltung",

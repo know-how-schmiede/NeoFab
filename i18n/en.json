@@ -206,6 +206,8 @@
   "admin_user_new_admin_title": "Create New Admin",
   "admin_user_new_title": "New User",
   "admin_user_own_role_hint": "You cannot change your own role.",
+  "admin_user_worker_categories_label": "Dashboard categories for workers",
+  "admin_user_worker_categories_help": "Orders in these categories are also shown on this worker's dashboard.",
   "admin_users_back": "Back to Admin Panel",
   "admin_users_desc": "View and edit registered users and their roles.",
   "admin_users_heading": "User Management",
