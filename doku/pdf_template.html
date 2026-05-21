@@ -214,6 +214,33 @@
     {% endif %}
   </div>
 
+  {% if order_is_plotter %}
+  <div class="section page-break">
+    <h2>{{ t("posters_header") }}</h2>
+    <p>Order #{{ order_dict.id }} - {{ order_dict.title }}</p>
+    <hr>
+    {% if poster_files %}
+      <ul>
+        {% for poster in poster_files %}
+          <li>
+            <strong>{{ poster.name }}</strong>
+            {% if poster.file_type %} ({{ poster.file_type }}){% endif %}
+            {% if poster.thumb_data_uri %}
+              <br>
+              <img src="{{ poster.thumb_data_uri }}" alt="{{ poster.name }}" class="image-thumb">
+            {% endif %}
+            <br> {{ t("posters_quantity_label") }}: {{ poster.quantity }}
+            {% if poster.due_date %} <br> {{ t("posters_due_date_label") }}: {{ poster.due_date }}{% endif %}
+            {% if poster.note %} <br> {{ t("posters_note_label") }}: {{ poster.note }}{% endif %}
+            {% if poster.uploaded_at %} - {{ poster.uploaded_at }}{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="meta">{{ t("posters_none") }}</div>
+    {% endif %}
+  </div>
+  {% else %}
   <div class="section page-break">
     <h2>{{ t("files_header") }}</h2>
     <p>Order #{{ order_dict.id }} - {{ order_dict.title }}</p>
@@ -293,6 +320,8 @@
       <div class="meta">{{ t("print_jobs_none") }}</div>
     {% endif %}
   </div>
+
+  {% endif %}
 
   <div class="section page-break">
     <h2>{{ t("images_header") }}</h2>

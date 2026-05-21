@@ -4673,10 +4673,39 @@ def build_order_context(order, translator) -> dict:
             app.logger.warning("Could not embed model thumbnail for PDF (%s): %s", chosen, exc)
             return ""
 
+    def poster_thumb_data_uri(poster_entry: OrderPosterFile) -> str:
+        base_folder = Path(app.config["POSTER_UPLOAD_FOLDER"]) / f"order_{order.id}"
+        original_path = base_folder / poster_entry.stored_name
+        thumb_path = base_folder / "thumbnails" / poster_entry.thumb_path if poster_entry.thumb_path else None
+
+        if thumb_path and thumb_path.exists():
+            chosen = thumb_path
+        elif original_path.exists() and ensure_poster_thumbnail_file(order, poster_entry):
+            thumb_path = base_folder / "thumbnails" / poster_entry.thumb_path if poster_entry.thumb_path else None
+            chosen = thumb_path if thumb_path and thumb_path.exists() else original_path
+        elif original_path.exists():
+            chosen = original_path
+        else:
+            chosen = None
+
+        if not chosen or not chosen.exists():
+            return ""
+
+        mime, _ = mimetypes.guess_type(chosen.name)
+        if not mime:
+            mime = "image/png"
+        try:
+            data = base64.b64encode(chosen.read_bytes()).decode("ascii")
+            return f"data:{mime};base64,{data}"
+        except Exception as exc:  # noqa: BLE001
+            app.logger.warning("Could not embed poster thumbnail for PDF (%s): %s", chosen, exc)
+            return ""
+
     generated_at = fmt_dt(datetime.now())
     status_context = get_status_context(translator)
     status_labels = status_context.get("order_status_labels", {})
     print_job_status_labels = status_context.get("print_job_status_labels", {})
+    order_is_plotter = is_plotter_order(order)
 
     print_jobs = (
         OrderPrintJob.query
@@ -4684,12 +4713,21 @@ def build_order_context(order, translator) -> dict:
         .order_by(OrderPrintJob.uploaded_at.desc())
         .all()
     )
+    poster_files = (
+        OrderPosterFile.query
+        .filter_by(order_id=order.id)
+        .order_by(OrderPosterFile.uploaded_at.desc())
+        .all()
+        if order_is_plotter
+        else []
+    )
 
     return {
         "app_name": "NeoFab",
         "app_version": APP_VERSION,
         "pdf_generated_at": generated_at,
         "order": order,
+        "order_is_plotter": order_is_plotter,
         "order_dict": {
             "id": order.id,
             "title": order.title,
@@ -4764,6 +4802,19 @@ def build_order_context(order, translator) -> dict:
             }
             for job in print_jobs
         ],
+        "poster_files": [
+            {
+                "name": poster.original_name,
+                "file_type": (poster.file_type or "").upper(),
+                "filesize": poster.filesize,
+                "uploaded_at": fmt_dt(poster.uploaded_at),
+                "note": poster.note or "",
+                "quantity": poster.quantity or 1,
+                "due_date": poster.due_date.strftime("%Y-%m-%d") if poster.due_date else "",
+                "thumb_data_uri": poster_thumb_data_uri(poster),
+            }
+            for poster in poster_files
+        ],
         "t": translator,
     }
 
@@ -4798,6 +4849,60 @@ def render_pdf_with_template(template_path: str, context: dict) -> bytes:
         app.logger.error("xhtml2pdf failed with %s errors, falling back.", pisa_status.err)
         return b""
     return result.getvalue()
+
+
+def _build_text_rows_pdf(text_rows: List[str]) -> bytes:
+    start_y = 820
+    step = 18
+    content_parts = ["BT", "/F1 12 Tf"]
+    for idx, row in enumerate(text_rows):
+        y = start_y - idx * step
+        content_parts.append(f"1 0 0 1 72 {y} Tm")
+        content_parts.append(f"({_pdf_escape(row)}) Tj")
+    content_parts.append("ET")
+    content_stream = "\n".join(content_parts).encode("latin-1")
+
+    objects = []
+    objects.append("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n")
+    objects.append("2 0 obj\n<< /Type /Pages /Count 1 /Kids [3 0 R] >>\nendobj\n")
+    objects.append(
+        "3 0 obj\n"
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
+        "/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\n"
+        "endobj\n"
+    )
+    objects.append(
+        f"4 0 obj\n<< /Length {len(content_stream)} >>\nstream\n".encode("latin-1")
+        + content_stream
+        + b"\nendstream\nendobj\n"
+    )
+    objects.append("5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n")
+
+    pdf_parts: List[bytes] = [b"%PDF-1.4\n"]
+    offsets = [0]
+    current = len(pdf_parts[0])
+    for obj in objects:
+        chunk = obj if isinstance(obj, (bytes, bytearray)) else obj.encode("latin-1")
+        offsets.append(current)
+        pdf_parts.append(chunk)
+        current += len(chunk)
+
+    xref_start = current
+    size = len(objects) + 1
+    xref_lines = [b"xref\n", f"0 {size}\n".encode("latin-1")]
+    xref_lines.append(b"0000000000 65535 f \n")
+    for off in offsets[1:]:
+        xref_lines.append(f"{off:010d} 00000 n \n".encode("latin-1"))
+    trailer = (
+        b"trailer\n<< /Size "
+        + str(size).encode("latin-1")
+        + b" /Root 1 0 R >>\nstartxref\n"
+        + str(xref_start).encode("latin-1")
+        + b"\n%%EOF"
+    )
+    pdf_parts.extend(xref_lines)
+    pdf_parts.append(trailer)
+    return b"".join(pdf_parts)
 
 
 def _build_order_pdf(order, translator) -> bytes:
@@ -4842,6 +4947,48 @@ def _build_order_pdf(order, translator) -> bytes:
         meta_str = " - ".join(meta)
         content = msg.content.replace("\r", " ").replace("\n", " ").strip()
         add(f"ÔÇó {meta_str}", content)
+
+    if is_plotter_order(order):
+        add("", "")
+        add(translator("posters_header"), "")
+        poster_files = (
+            OrderPosterFile.query
+            .filter_by(order_id=order.id)
+            .order_by(OrderPosterFile.uploaded_at.desc())
+            .all()
+        )
+        if not poster_files:
+            add(translator("posters_none"), "")
+        for poster in poster_files:
+            parts = []
+            if poster.file_type:
+                parts.append(poster.file_type.upper())
+            parts.append(f"{translator('posters_quantity_label')} {poster.quantity or 1}")
+            if poster.due_date:
+                parts.append(f"{translator('posters_due_date_label')} {poster.due_date.strftime('%Y-%m-%d')}")
+            if poster.note:
+                parts.append(poster.note)
+            if poster.filesize:
+                parts.append(f"{(poster.filesize / 1024):.1f} KB")
+            if poster.uploaded_at:
+                parts.append(poster.uploaded_at.strftime("%Y-%m-%d %H:%M"))
+            add(f"- {poster.original_name}", " | ".join(parts))
+
+        add("", "")
+        add(translator("images_header"), "")
+        for img in order.images:
+            meta = []
+            if img.filesize:
+                meta.append(f"{(img.filesize / 1024):.1f} KB")
+            if img.uploaded_at:
+                meta.append(img.uploaded_at.strftime("%Y-%m-%d %H:%M"))
+            add(f"- {img.original_name}", " | ".join(meta))
+
+        text_rows: List[str] = []
+        for label, value in lines:
+            line = f"{label}: {value}".strip()
+            text_rows.append(line)
+        return _build_text_rows_pdf(text_rows)
 
     add("", "")
     add(translator("files_header"), "")
