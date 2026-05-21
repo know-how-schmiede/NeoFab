@@ -96,6 +96,13 @@
             </button>
           </li>
         {% endif %}
+        {% if 'posters' in visible_tabs %}
+          <li class="nav-item" role="presentation">
+            <button class="nav-link {% if active_tab == 'posters' %}active{% endif %}" id="posters-tab" data-bs-toggle="tab" data-bs-target="#posters-tab-pane" type="button" role="tab" aria-controls="posters-tab-pane" aria-selected="{{ 'true' if active_tab == 'posters' else 'false' }}">
+              {{ t("tab_posters") }}
+            </button>
+          </li>
+        {% endif %}
         {% if 'print-jobs' in visible_tabs %}
           <li class="nav-item" role="presentation">
             <button class="nav-link {% if active_tab == 'print-jobs' %}active{% endif %}" id="print-jobs-tab" data-bs-toggle="tab" data-bs-target="#print-jobs-tab-pane" type="button" role="tab" aria-controls="print-jobs-tab-pane" aria-selected="{{ 'true' if active_tab == 'print-jobs' else 'false' }}">
@@ -354,6 +361,7 @@
 
 <!-- Files Tab Pane (outside the update form) -->
 <div class="tab-content mt-3">
+  {% if 'files' in visible_tabs %}
   <div class="tab-pane fade {% if active_tab == 'files' %}show active{% endif %}" id="files-tab-pane" role="tabpanel" aria-labelledby="files-tab">
 
     <div class="alert alert-info mb-3">
@@ -703,6 +711,122 @@
     </div>
 
   </div>
+  {% endif %}
+
+  {% if 'posters' in visible_tabs %}
+  <div class="tab-pane fade {% if active_tab == 'posters' %}show active{% endif %}" id="posters-tab-pane" role="tabpanel" aria-labelledby="posters-tab">
+    <div class="card mb-3">
+      <div class="card-header">
+        <h3 class="h6 mb-0 d-flex align-items-center">
+          <i class="bi bi-file-earmark-image me-2"></i>
+          {{ t("posters_header") }}
+        </h3>
+      </div>
+      <div class="card-body">
+        {% if poster_files %}
+          <ul class="list-group mb-3">
+            {% for poster in poster_files %}
+              <li class="list-group-item">
+                <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+                  <div>
+                    <div>
+                      <strong>{{ poster.original_name }}</strong>
+                      {% if poster.file_type %}
+                        <span class="badge bg-secondary ms-2">{{ poster.file_type|upper }}</span>
+                      {% endif %}
+                      <span class="badge bg-secondary ms-1">&times;{{ poster.quantity or 1 }}</span>
+                    </div>
+                    <small class="text-muted d-block">
+                      {% set parts = [] %}
+                      {% if poster.filesize %}{% set _ = parts.append(((poster.filesize / 1024)|round(1)) ~ " KB") %}{% endif %}
+                      {% if poster.uploaded_at %}{% set _ = parts.append("uploaded " ~ poster.uploaded_at.strftime("%Y-%m-%d %H:%M")) %}{% endif %}
+                      {% if poster.due_date %}{% set _ = parts.append(t("posters_due_date_label") ~ ": " ~ poster.due_date.strftime("%Y-%m-%d")) %}{% endif %}
+                      {% if poster.note %}{% set _ = parts.append(poster.note) %}{% endif %}
+                      {{ " | ".join(parts) }}
+                    </small>
+                  </div>
+                  <div class="d-flex gap-2">
+                    <a class="btn btn-sm btn-outline-primary"
+                       href="{{ url_for('download_poster_file', order_id=order.id, poster_id=poster.id) }}">
+                      <i class="bi bi-download me-1"></i>{{ t("btn_download") }}
+                    </a>
+                  </div>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-muted">{{ t("posters_none") }}</p>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" class="mt-2" action="{{ url_for('order_detail', order_id=order.id, tab='posters') }}">
+          <input type="hidden" name="action" value="upload_poster_file">
+          <div class="mb-2">
+            <label for="poster_file" class="form-label">
+              <i class="bi bi-upload me-1"></i>
+              {{ t("posters_upload_label") }}
+            </label>
+            <input class="form-control"
+                   type="file"
+                   id="poster_file"
+                   name="poster_file"
+                   accept=".jpg,.jpeg,.png,.pdf"
+                   data-upload-size-check="true"
+                   data-max-upload-size="{{ max_upload_size_bytes }}"
+                   required>
+            <div class="form-text">
+              {{ t("posters_upload_hint") }}
+              <br>{{ t("upload_max_size_hint") }} {{ max_upload_size_mb }} MB.
+            </div>
+            <div class="upload-size-feedback alert alert-danger mt-2 mb-0 d-none" role="alert">
+              {{ t("flash_upload_too_large") }}
+            </div>
+          </div>
+
+          <div class="row g-2 mb-2">
+            <div class="col-md-6">
+              <label for="poster_note" class="form-label">{{ t("posters_note_label") }}</label>
+              <input
+                type="text"
+                class="form-control"
+                id="poster_note"
+                name="poster_note"
+                maxlength="255"
+                placeholder="{{ t('posters_note_placeholder') }}"
+              >
+            </div>
+            <div class="col-md-3">
+              <label for="poster_quantity" class="form-label">{{ t("posters_quantity_label") }}</label>
+              <input
+                type="number"
+                class="form-control"
+                id="poster_quantity"
+                name="poster_quantity"
+                min="1"
+                step="1"
+                value="1"
+              >
+            </div>
+            <div class="col-md-3">
+              <label for="poster_due_date" class="form-label">{{ t("posters_due_date_label") }}</label>
+              <input
+                type="date"
+                class="form-control"
+                id="poster_due_date"
+                name="poster_due_date"
+              >
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-secondary btn-sm">
+            <i class="bi bi-plus-circle me-1"></i>
+            {{ t("btn_upload_file") }}
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
   {% if 'print-jobs' in visible_tabs %}
   <div class="tab-pane fade {% if active_tab == 'print-jobs' %}show active{% endif %}" id="print-jobs-tab-pane" role="tabpanel" aria-labelledby="print-jobs-tab">

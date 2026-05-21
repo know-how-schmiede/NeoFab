@@ -109,6 +109,7 @@ class Order(db.Model):
     printer_profile = db.relationship("PrinterProfile")
     filament_material = db.relationship("FilamentMaterial")
     print_jobs = db.relationship("OrderPrintJob", back_populates="order", lazy=True)
+    poster_files = db.relationship("OrderPosterFile", back_populates="order", lazy=True)
     messages = db.relationship("OrderMessage", back_populates="order", lazy=True)
     files = db.relationship("OrderFile", back_populates="order", lazy=True)
     images = db.relationship("OrderImage", back_populates="order", lazy=True)
@@ -174,6 +175,23 @@ class UserOrderCategoryPermission(db.Model):
     __table_args__ = (
         db.UniqueConstraint("user_id", "category_id", name="uq_user_order_category_permission"),
     )
+
+
+class OrderPosterFile(db.Model):
+    __tablename__ = "order_poster_files"
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
+    original_name = db.Column(db.String(255), nullable=False)
+    stored_name = db.Column(db.String(255), nullable=False)
+    file_type = db.Column(db.String(20))
+    filesize = db.Column(db.Integer)
+    note = db.Column(db.String(255))
+    quantity = db.Column(db.Integer, nullable=False, default=1)
+    due_date = db.Column(db.Date)
+    uploaded_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    order = db.relationship("Order", back_populates="poster_files")
 
 
 # --- OrderMessage (Chat-/Kommunikationseintrag) ------------------------------
@@ -477,6 +495,7 @@ __all__ = [
     "OrderCategory",
     "OrderWorkJob",
     "UserOrderCategoryPermission",
+    "OrderPosterFile",
     "OrderMessage",
     "OrderReadStatus",
     "Announcement",

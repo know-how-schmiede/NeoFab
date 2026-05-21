@@ -1,5 +1,12 @@
 # Timeline NeoFab
 
+## Version 0.9.1
+
+Plotter-Auftraege verwenden in der Order-Ansicht den Reiter Plakate statt 3D-Modelle / Bilder
+Plakate koennen als JPG, PNG oder PDF mit Bemerkung, Anzahl und gewuenschtem Druckdatum hochgeladen werden
+Plakatdateien werden separat von 3D-Modellen gespeichert und koennen je Auftrag mehrfach hinterlegt werden
+Bestehende Plotter-Kategorien werden automatisch auf den neuen Plakate-Reiter migriert
+
 ## Version 0.9.0
 
 Auftraege erhalten eine Kategorie als Stammdatum, initial mit 3D-Druck, Plotter und CNC-Fraesen

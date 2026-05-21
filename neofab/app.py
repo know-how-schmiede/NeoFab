@@ -92,6 +92,7 @@ from models import (
     OrderCategory,
     OrderWorkJob,
     UserOrderCategoryPermission,
+    OrderPosterFile,
     OrderMessage,
     OrderReadStatus,
     Announcement,
@@ -181,6 +182,10 @@ GCODE_UPLOAD_FOLDER = BASE_DIR / "uploads" / "gcode"
 os.makedirs(GCODE_UPLOAD_FOLDER, exist_ok=True)
 app.config["GCODE_UPLOAD_FOLDER"] = str(GCODE_UPLOAD_FOLDER)
 
+POSTER_UPLOAD_FOLDER = BASE_DIR / "uploads" / "posters"
+os.makedirs(POSTER_UPLOAD_FOLDER, exist_ok=True)
+app.config["POSTER_UPLOAD_FOLDER"] = str(POSTER_UPLOAD_FOLDER)
+
 TRAINING_UPLOAD_FOLDER = BASE_DIR / "uploads" / "tutorials"
 os.makedirs(TRAINING_UPLOAD_FOLDER, exist_ok=True)
 app.config["TRAINING_UPLOAD_FOLDER"] = str(TRAINING_UPLOAD_FOLDER)
@@ -236,7 +241,7 @@ DEFAULT_ORDER_CATEGORIES = [
         "key": "plotter",
         "name": "Plotter",
         "description": "Plotter- und Schneidauftraege.",
-        "enabled_tabs": "general,files,communication",
+        "enabled_tabs": "general,posters,communication",
         "allowed_worker_roles": "admin,worker_plotter",
     },
     {
@@ -341,6 +346,11 @@ def is_3d_print_order(order: Order) -> bool:
     return bool(category and category.key == "3d_print")
 
 
+def is_plotter_order(order: Order) -> bool:
+    category = get_order_category(order)
+    return bool(category and category.key == "plotter")
+
+
 def can_manage_order_category(order: Order, user: User) -> bool:
     if getattr(user, "role", None) == "admin":
         return True
@@ -369,6 +379,10 @@ def get_visible_order_tabs(order: Order, user: User) -> list[str]:
     tabs = category.tab_keys() if category else ["general", "files", "communication"]
     if not is_3d_print_order(order):
         tabs = [tab for tab in tabs if tab != "print-jobs"]
+    if is_plotter_order(order):
+        tabs = ["posters" if tab == "files" else tab for tab in tabs]
+    elif "posters" in tabs:
+        tabs = [tab for tab in tabs if tab != "posters"]
     if "general" not in tabs:
         tabs.insert(0, "general")
     return tabs
@@ -906,6 +920,9 @@ def ensure_order_category_schema():
         for item in DEFAULT_ORDER_CATEGORIES:
             existing = OrderCategory.query.filter_by(key=item["key"]).first()
             if existing:
+                if existing.key == "plotter" and existing.enabled_tabs != item["enabled_tabs"]:
+                    existing.enabled_tabs = item["enabled_tabs"]
+                    existing.updated_at = datetime.utcnow()
                 continue
             db.session.add(OrderCategory(**item))
         db.session.commit()
@@ -915,6 +932,30 @@ def ensure_order_category_schema():
             db.session.execute(
                 text("UPDATE orders SET category_id = :category_id WHERE category_id IS NULL"),
                 {"category_id": default_category.id},
+            )
+            db.session.commit()
+
+        poster_files_exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='order_poster_files'")
+        ).scalar()
+        if not poster_files_exists:
+            db.session.execute(
+                text(
+                    """
+                    CREATE TABLE order_poster_files (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        order_id INTEGER NOT NULL,
+                        original_name VARCHAR(255) NOT NULL,
+                        stored_name VARCHAR(255) NOT NULL,
+                        file_type VARCHAR(20),
+                        filesize INTEGER,
+                        note VARCHAR(255),
+                        quantity INTEGER NOT NULL DEFAULT 1,
+                        due_date DATE,
+                        uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
             )
             db.session.commit()
     except Exception:
@@ -2959,6 +3000,89 @@ def order_detail(order_id):
             flash(trans("flash_image_updated"), "success")
             return redirect(url_for("order_detail", order_id=order.id))
 
+        # --- 5c) Plakatdatei hochladen (nur Plotter-Auftraege) -------------
+        elif action == "upload_poster_file":
+            if not is_plotter_order(order):
+                abort(403)
+
+            file = request.files.get("poster_file")
+            note = (request.form.get("poster_note") or "").strip()
+            if note:
+                note = note[:255]
+            quantity_raw = (request.form.get("poster_quantity") or "").strip()
+            due_date_raw = (request.form.get("poster_due_date") or "").strip()
+
+            try:
+                quantity = max(1, int(quantity_raw or "1"))
+            except ValueError:
+                quantity = 1
+
+            due_date = None
+            if due_date_raw:
+                try:
+                    due_date = datetime.strptime(due_date_raw, "%Y-%m-%d").date()
+                except ValueError:
+                    flash(trans("flash_poster_invalid_due_date"), "danger")
+                    return order_detail_redirect("posters")
+
+            if not file or not file.filename:
+                flash(trans("flash_poster_select_file"), "warning")
+                return order_detail_redirect("posters")
+
+            original_name = file.filename
+            safe_name = secure_filename(original_name)
+            _, ext = os.path.splitext(safe_name)
+            ext = ext.lower().lstrip(".")
+            allowed_ext = {"jpg", "jpeg", "png", "pdf"}
+            if ext not in allowed_ext:
+                flash(trans("flash_poster_invalid_file"), "warning")
+                return order_detail_redirect("posters")
+
+            poster_file = OrderPosterFile(
+                order_id=order.id,
+                original_name=original_name,
+                stored_name="",
+                file_type=ext,
+                note=note or None,
+                quantity=quantity,
+                due_date=due_date,
+            )
+            db.session.add(poster_file)
+            db.session.flush()
+
+            stored_name = f"{poster_file.id}_{safe_name}"
+            order_folder = Path(app.config["POSTER_UPLOAD_FOLDER"]) / f"order_{order.id}"
+            order_folder.mkdir(parents=True, exist_ok=True)
+            full_path = order_folder / stored_name
+            file.save(str(full_path))
+
+            poster_file.stored_name = stored_name
+            try:
+                poster_file.filesize = full_path.stat().st_size
+            except OSError:
+                poster_file.filesize = None
+            poster_file.uploaded_at = datetime.utcnow()
+
+            db.session.commit()
+            write_audit_log(
+                app,
+                "file_uploaded",
+                user=current_user,
+                details={
+                    "order_id": order.id,
+                    "file_kind": "poster",
+                    "file_id": poster_file.id,
+                    "original_name": poster_file.original_name,
+                    "stored_name": poster_file.stored_name,
+                    "file_type": poster_file.file_type,
+                    "filesize": poster_file.filesize,
+                    "quantity": poster_file.quantity,
+                    "due_date": poster_file.due_date.isoformat() if poster_file.due_date else None,
+                },
+            )
+            flash(trans("flash_poster_uploaded"), "success")
+            return order_detail_redirect("posters")
+
         # --- 6) G-Code hochladen (nur Admin) -------------------------------
         elif action == "upload_print_job":
             if current_user.role != "admin" or not is_3d_print_order(order):
@@ -3472,6 +3596,15 @@ def order_detail(order_id):
     if metadata_changed:
         db.session.commit()
 
+    poster_files = []
+    if is_plotter_order(order):
+        poster_files = (
+            OrderPosterFile.query
+            .filter_by(order_id=order.id)
+            .order_by(OrderPosterFile.uploaded_at.desc())
+            .all()
+        )
+
     status_context = get_status_context(inject_globals().get("t"))
     app.logger.debug(
         f"[order_detail] Render detail for order {order.id}: status={order.status!r}, "
@@ -3488,6 +3621,7 @@ def order_detail(order_id):
         printer_profiles=printer_profiles,
         filament_materials=filament_materials,
         print_jobs=print_jobs,
+        poster_files=poster_files,
         print_job_statuses=status_context["print_job_statuses"],
         print_job_status_labels=status_context["print_job_status_labels"],
         print_job_status_styles=status_context["print_job_status_styles"],
@@ -3760,6 +3894,37 @@ def download_print_job(order_id, job_id):
         path=job.stored_name,
         as_attachment=True,
         download_name=job.original_name,
+    )
+
+
+@app.route("/orders/<int:order_id>/posters/<int:poster_id>/download")
+@login_required
+def download_poster_file(order_id, poster_id):
+    trans = inject_globals().get("t")
+    order = Order.query.get_or_404(order_id)
+
+    if not can_view_order(order, current_user):
+        abort(403)
+    if not is_plotter_order(order):
+        abort(404)
+
+    poster = OrderPosterFile.query.filter_by(
+        id=poster_id,
+        order_id=order.id,
+    ).first_or_404()
+
+    order_folder = Path(app.config["POSTER_UPLOAD_FOLDER"]) / f"order_{order.id}"
+    full_path = order_folder / poster.stored_name
+
+    if not full_path.exists():
+        flash(trans("flash_file_missing_server"), "danger")
+        return redirect(url_for("order_detail", order_id=order.id, tab="posters"))
+
+    return send_from_directory(
+        directory=str(order_folder),
+        path=poster.stored_name,
+        as_attachment=True,
+        download_name=poster.original_name,
     )
 
 
