@@ -66,6 +66,22 @@
             </div>
           </div>
 
+          <div class="col-md-6">
+            <label for="dashboard_rows_per_page" class="form-label">
+              {{ t("admin_settings_dashboard_rows_label") }}
+            </label>
+            <select class="form-select" id="dashboard_rows_per_page" name="dashboard_rows_per_page">
+              {% for option in [10, 25, 50] %}
+                <option value="{{ option }}" {% if settings.get('dashboard_rows_per_page') == option %}selected{% endif %}>
+                  {{ option }}
+                </option>
+              {% endfor %}
+            </select>
+            <div class="form-text">
+              {{ t("admin_settings_dashboard_rows_help") }}
+            </div>
+          </div>
+
           <div class="col-12">
             <div class="alert alert-secondary small mb-0">
               {{ t("admin_settings_storage_hint").format(path=settings_path) }}

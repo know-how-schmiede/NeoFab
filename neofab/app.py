@@ -59,6 +59,7 @@ from PIL import Image, ImageDraw
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape, Template
 from config import (
+    DASHBOARD_ROWS_PER_PAGE_OPTIONS,
     DEFAULT_SETTINGS,
     SETTINGS_FILE,
     coerce_positive_int,
@@ -4257,6 +4258,22 @@ def dashboard():
         sort_by = "created"
     if sort_dir not in {"asc", "desc"}:
         sort_dir = "desc"
+    settings = load_app_settings(app)
+    per_page_options = list(DASHBOARD_ROWS_PER_PAGE_OPTIONS)
+    default_per_page = settings.get("dashboard_rows_per_page") or DEFAULT_SETTINGS["dashboard_rows_per_page"]
+    if default_per_page not in per_page_options:
+        default_per_page = DEFAULT_SETTINGS["dashboard_rows_per_page"]
+    try:
+        per_page = int(request.args.get("per_page") or default_per_page)
+    except (TypeError, ValueError):
+        per_page = default_per_page
+    if per_page not in per_page_options:
+        per_page = default_per_page
+    try:
+        page = int(request.args.get("page") or 1)
+    except (TypeError, ValueError):
+        page = 1
+    page = max(page, 1)
 
     if request.method == "POST":
         action = (request.form.get("action") or "").strip()
@@ -4411,8 +4428,16 @@ def dashboard():
 
     orders.sort(key=_dashboard_sort_value, reverse=(sort_dir == "desc"))
 
-    order_ids = [o.id for o in orders]
-    for o in orders:
+    total_orders = len(orders)
+    total_pages = max(1, math.ceil(total_orders / per_page))
+    if page > total_pages:
+        page = total_pages
+    page_start = (page - 1) * per_page
+    page_end = page_start + per_page
+    paginated_orders = orders[page_start:page_end]
+
+    order_ids = [o.id for o in paginated_orders]
+    for o in paginated_orders:
         app.logger.debug(
             f"[dashboard] Order id={o.id}, title={o.title!r}, status={o.status!r}"
         )
@@ -4486,7 +4511,7 @@ def dashboard():
 
     # 5) "last_new_message" pro Order berechnen (f├╝r "new message"-Badge)
     last_new_message = {}
-    for o in orders:
+    for o in paginated_orders:
         latest = latest_by_order.get(o.id)      # datetime oder None
         last_read = read_by_order.get(o.id)     # datetime oder None
 
@@ -4510,7 +4535,7 @@ def dashboard():
 
     return render_template(
         "dashboard.html",
-        orders=orders,
+        orders=paginated_orders,
         last_new_message=last_new_message,
         status_labels=status_context["order_status_labels"],
         status_styles=status_context["order_status_styles"],
@@ -4523,6 +4548,13 @@ def dashboard():
         announcement_form_token=_new_announcement_form_token() if current_user.role == "admin" else "",
         sort_by=sort_by,
         sort_dir=sort_dir,
+        page=page,
+        per_page=per_page,
+        per_page_options=per_page_options,
+        total_orders=total_orders,
+        total_pages=total_pages,
+        page_start=page_start + 1 if total_orders else 0,
+        page_end=min(page_end, total_orders),
     )
 
 

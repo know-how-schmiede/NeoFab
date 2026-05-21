@@ -28,10 +28,12 @@ from werkzeug.utils import secure_filename
 from auth_utils import roles_required
 from audit_logs import DELETE_LOG_FILE, delete_log_file, list_log_files, read_log_entries, write_audit_log
 from config import (
+    DASHBOARD_ROWS_PER_PAGE_OPTIONS,
     EMAIL_ACTION_KEYS,
     EMAIL_ACTION_STATE_DISABLED,
     EMAIL_ACTION_STATE_ENABLED,
     SETTINGS_FILE,
+    coerce_dashboard_rows_per_page,
     coerce_positive_int,
     load_app_settings,
     normalize_email_actions,
@@ -91,6 +93,19 @@ def _parse_nonnegative_float(value, default=None):
     except (TypeError, ValueError):
         return None
     return parsed if parsed >= 0 else None
+
+
+def _parse_bool(value, default=True):
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    text_value = str(value).strip().lower()
+    if text_value in {"1", "true", "yes", "on", "ja"}:
+        return True
+    if text_value in {"0", "false", "no", "off", "nein"}:
+        return False
+    return default
 
 
 def _pdf_escape(text_value: str) -> str:
@@ -601,13 +616,17 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             if form_type == "general":
                 raw_timeout = (request.form.get("session_timeout_minutes") or "").strip()
                 timeout_value = coerce_positive_int(raw_timeout, None)
+                rows_value = coerce_dashboard_rows_per_page(request.form.get("dashboard_rows_per_page"), None)
 
                 if timeout_value is None:
                     flash(trans("flash_settings_invalid_timeout"), "danger")
+                elif rows_value not in DASHBOARD_ROWS_PER_PAGE_OPTIONS:
+                    flash(trans("flash_settings_invalid_dashboard_rows"), "danger")
                 else:
                     try:
                         updated_settings = settings.copy()
                         updated_settings["session_timeout_minutes"] = timeout_value
+                        updated_settings["dashboard_rows_per_page"] = rows_value
                         save_app_settings(current_app, updated_settings)
                         flash(trans("flash_settings_saved"), "success")
                         return redirect(url_for(".admin_settings"))
@@ -863,6 +882,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             "version": APP_VERSION,
             "settings": {
                 "session_timeout_minutes": settings.get("session_timeout_minutes"),
+                "dashboard_rows_per_page": settings.get("dashboard_rows_per_page"),
                 "smtp_host": settings.get("smtp_host", ""),
                 "smtp_port": settings.get("smtp_port", 0),
                 "smtp_use_tls": bool(settings.get("smtp_use_tls")),
@@ -921,6 +941,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             updated_settings = load_app_settings(current_app, force_reload=True).copy()
             for key in (
                 "session_timeout_minutes",
+                "dashboard_rows_per_page",
                 "smtp_host",
                 "smtp_port",
                 "smtp_use_tls",
@@ -1684,6 +1705,107 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         profiles = PrinterProfile.query.order_by(PrinterProfile.name.asc()).all()
         return render_template("admin_printer_profiles.html", profiles=profiles)
 
+    @bp.route("/printer-profiles/export", endpoint="admin_printer_profile_export")
+    @roles_required("admin")
+    def admin_printer_profile_export():
+        """Exportiert alle Drucker-Typen als JSON mit Versionsinfo."""
+        profiles = PrinterProfile.query.order_by(PrinterProfile.name.asc()).all()
+        payload = {
+            "version": APP_VERSION,
+            "printer_profiles": [
+                {
+                    "name": p.name,
+                    "description": p.description or "",
+                    "time_factor": p.time_factor,
+                    "time_offset_min": p.time_offset_min,
+                    "machine_hourly_rate": p.machine_hourly_rate,
+                    "maintenance_hourly_rate": p.maintenance_hourly_rate,
+                    "setup_fee": p.setup_fee,
+                    "active": bool(p.active),
+                }
+                for p in profiles
+            ],
+        }
+        output = json.dumps(payload, ensure_ascii=False, indent=2)
+
+        return current_app.response_class(
+            output,
+            mimetype="application/json",
+            headers={"Content-Disposition": "attachment; filename=NeoFab_printer_profiles.json"},
+        )
+
+    @bp.route("/printer-profiles/import", methods=["POST"], endpoint="admin_printer_profile_import")
+    @roles_required("admin")
+    def admin_printer_profile_import():
+        """
+        Importiert Drucker-Typen aus einer JSON-Datei.
+        Bestehende Drucker-Typen werden vorher entfernt.
+        """
+        trans = t
+        file = request.files.get("file")
+        if not file or not file.filename:
+            flash(trans("flash_json_choose_file"), "warning")
+            return redirect(url_for(".admin_printer_profile_list"))
+
+        try:
+            content = file.read().decode("utf-8-sig")
+            data = json.loads(content)
+        except Exception:
+            flash(trans("flash_invalid_json"), "danger")
+            return redirect(url_for(".admin_printer_profile_list"))
+
+        rows = data.get("printer_profiles", []) if isinstance(data, dict) else []
+
+        PrinterProfile.query.delete()
+        created = skipped = 0
+        for entry in rows:
+            if not isinstance(entry, dict):
+                skipped += 1
+                continue
+
+            name = (entry.get("name") or "").strip()
+            description = (entry.get("description") or "").strip() or None
+            time_factor = _parse_nonnegative_float(entry.get("time_factor"), 1.0)
+            time_offset_min_raw = entry.get("time_offset_min", 0)
+            machine_hourly_rate = _parse_nonnegative_float(entry.get("machine_hourly_rate"), 0.0)
+            maintenance_hourly_rate = _parse_nonnegative_float(entry.get("maintenance_hourly_rate"), 0.0)
+            setup_fee = _parse_nonnegative_float(entry.get("setup_fee"), 0.0)
+            try:
+                time_offset_min = int(time_offset_min_raw)
+            except (TypeError, ValueError):
+                time_offset_min = None
+
+            if (
+                not name
+                or time_factor is None
+                or time_factor < 1.0
+                or time_offset_min is None
+                or time_offset_min < 0
+                or machine_hourly_rate is None
+                or maintenance_hourly_rate is None
+                or setup_fee is None
+            ):
+                skipped += 1
+                continue
+
+            db.session.add(
+                PrinterProfile(
+                    name=name,
+                    description=description,
+                    time_factor=time_factor,
+                    time_offset_min=time_offset_min,
+                    machine_hourly_rate=machine_hourly_rate,
+                    maintenance_hourly_rate=maintenance_hourly_rate,
+                    setup_fee=setup_fee,
+                    active=_parse_bool(entry.get("active"), True),
+                )
+            )
+            created += 1
+
+        db.session.commit()
+        flash(trans("flash_import_result_simple").format(created=created, skipped=skipped), "success")
+        return redirect(url_for(".admin_printer_profile_list"))
+
     @bp.route("/printer-profiles/new", methods=["GET", "POST"], endpoint="admin_printer_profile_new")
     @roles_required("admin")
     def admin_printer_profile_new():
@@ -1851,6 +1973,107 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
     def admin_filament_material_list():
         materials = FilamentMaterial.query.order_by(FilamentMaterial.name.asc()).all()
         return render_template("admin_filament_materials.html", materials=materials)
+
+    @bp.route("/filament-materials/export", endpoint="admin_filament_material_export")
+    @roles_required("admin")
+    def admin_filament_material_export():
+        """Exportiert alle Filament-Materialien als JSON mit Versionsinfo."""
+        materials = FilamentMaterial.query.order_by(FilamentMaterial.name.asc()).all()
+        payload = {
+            "version": APP_VERSION,
+            "filament_materials": [
+                {
+                    "name": m.name,
+                    "description": m.description or "",
+                    "filament_diameter_mm": m.filament_diameter_mm,
+                    "density_g_cm3": m.density_g_cm3,
+                    "price_per_kg": m.price_per_kg,
+                    "markup_percent": m.markup_percent,
+                    "drying_fee": m.drying_fee,
+                    "handling_fee": m.handling_fee,
+                    "active": bool(m.active),
+                }
+                for m in materials
+            ],
+        }
+        output = json.dumps(payload, ensure_ascii=False, indent=2)
+
+        return current_app.response_class(
+            output,
+            mimetype="application/json",
+            headers={"Content-Disposition": "attachment; filename=NeoFab_filament_materials.json"},
+        )
+
+    @bp.route("/filament-materials/import", methods=["POST"], endpoint="admin_filament_material_import")
+    @roles_required("admin")
+    def admin_filament_material_import():
+        """
+        Importiert Filament-Materialien aus einer JSON-Datei.
+        Bestehende Filament-Materialien werden vorher entfernt.
+        """
+        trans = t
+        file = request.files.get("file")
+        if not file or not file.filename:
+            flash(trans("flash_json_choose_file"), "warning")
+            return redirect(url_for(".admin_filament_material_list"))
+
+        try:
+            content = file.read().decode("utf-8-sig")
+            data = json.loads(content)
+        except Exception:
+            flash(trans("flash_invalid_json"), "danger")
+            return redirect(url_for(".admin_filament_material_list"))
+
+        rows = data.get("filament_materials", []) if isinstance(data, dict) else []
+
+        FilamentMaterial.query.delete()
+        created = skipped = 0
+        for entry in rows:
+            if not isinstance(entry, dict):
+                skipped += 1
+                continue
+
+            name = (entry.get("name") or "").strip()
+            description = (entry.get("description") or "").strip() or None
+            filament_diameter_mm = _parse_nonnegative_float(entry.get("filament_diameter_mm"), 1.75)
+            density_g_cm3 = _parse_nonnegative_float(entry.get("density_g_cm3"), None)
+            price_per_kg = _parse_nonnegative_float(entry.get("price_per_kg"), 0.0)
+            markup_percent = _parse_nonnegative_float(entry.get("markup_percent"), 0.0)
+            drying_fee = _parse_nonnegative_float(entry.get("drying_fee"), 0.0)
+            handling_fee = _parse_nonnegative_float(entry.get("handling_fee"), 0.0)
+
+            if (
+                not name
+                or filament_diameter_mm is None
+                or filament_diameter_mm <= 0
+                or density_g_cm3 is None
+                or density_g_cm3 <= 0
+                or price_per_kg is None
+                or markup_percent is None
+                or drying_fee is None
+                or handling_fee is None
+            ):
+                skipped += 1
+                continue
+
+            db.session.add(
+                FilamentMaterial(
+                    name=name,
+                    description=description,
+                    filament_diameter_mm=filament_diameter_mm,
+                    density_g_cm3=density_g_cm3,
+                    price_per_kg=price_per_kg,
+                    markup_percent=markup_percent,
+                    drying_fee=drying_fee,
+                    handling_fee=handling_fee,
+                    active=_parse_bool(entry.get("active"), True),
+                )
+            )
+            created += 1
+
+        db.session.commit()
+        flash(trans("flash_import_result_simple").format(created=created, skipped=skipped), "success")
+        return redirect(url_for(".admin_filament_material_list"))
 
     @bp.route("/filament-materials/new", methods=["GET", "POST"], endpoint="admin_filament_material_new")
     @roles_required("admin")

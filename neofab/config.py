@@ -23,6 +23,7 @@ DEFAULT_EMAIL_ACTION_SETTINGS = {
 
 DEFAULT_SETTINGS = {
     "session_timeout_minutes": 30,
+    "dashboard_rows_per_page": 25,
     "smtp_host": "",
     "smtp_port": 0,
     "smtp_use_tls": False,
@@ -36,6 +37,7 @@ DEFAULT_SETTINGS = {
     "imprint_markdown": "",
     "privacy_markdown": "",
 }
+DASHBOARD_ROWS_PER_PAGE_OPTIONS = (10, 25, 50)
 
 _settings_cache: Optional[Dict[str, Any]] = None
 _settings_mtime: Optional[float] = None
@@ -51,6 +53,12 @@ def coerce_positive_int(value: Any, fallback: int) -> int:
     except (TypeError, ValueError):
         pass
     return fallback
+
+
+def coerce_dashboard_rows_per_page(value: Any, fallback: int | None = None) -> int:
+    fallback_value = fallback if fallback in DASHBOARD_ROWS_PER_PAGE_OPTIONS else DEFAULT_SETTINGS["dashboard_rows_per_page"]
+    value_int = coerce_positive_int(value, fallback_value)
+    return value_int if value_int in DASHBOARD_ROWS_PER_PAGE_OPTIONS else fallback_value
 
 
 def normalize_email_actions(value: Any) -> Dict[str, str]:
@@ -148,6 +156,10 @@ def load_app_settings(app, force_reload: bool = False) -> Dict[str, Any]:
                     loaded.get("session_timeout_minutes"),
                     DEFAULT_SETTINGS["session_timeout_minutes"],
                 )
+                settings["dashboard_rows_per_page"] = coerce_dashboard_rows_per_page(
+                    loaded.get("dashboard_rows_per_page"),
+                    DEFAULT_SETTINGS["dashboard_rows_per_page"],
+                )
                 settings["smtp_host"] = str(loaded.get("smtp_host", "") or "").strip()
                 settings["smtp_port"] = coerce_positive_int(loaded.get("smtp_port"), 0)
                 settings["smtp_use_tls"] = bool(loaded.get("smtp_use_tls"))
@@ -194,6 +206,10 @@ def save_app_settings(app, new_settings: Dict[str, Any]) -> Dict[str, Any]:
         settings["session_timeout_minutes"] = coerce_positive_int(
             new_settings.get("session_timeout_minutes"),
             DEFAULT_SETTINGS["session_timeout_minutes"],
+        )
+        settings["dashboard_rows_per_page"] = coerce_dashboard_rows_per_page(
+            new_settings.get("dashboard_rows_per_page"),
+            DEFAULT_SETTINGS["dashboard_rows_per_page"],
         )
         settings["smtp_host"] = str(new_settings.get("smtp_host", "") or "").strip()
         settings["smtp_port"] = coerce_positive_int(new_settings.get("smtp_port"), 0)
