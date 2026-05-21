@@ -68,6 +68,15 @@ from models import (
 )
 from version import APP_VERSION
 
+USER_ROLE_OPTIONS = [
+    ("user", "role_user"),
+    ("admin", "role_admin"),
+    ("worker_3d_print", "role_worker_3d_print"),
+    ("worker_plotter", "role_worker_plotter"),
+    ("worker_cnc", "role_worker_cnc"),
+]
+USER_ROLE_VALUES = {value for value, _label_key in USER_ROLE_OPTIONS}
+
 
 def _translator(get_translator: Callable[[], Optional[Callable[[str], str]]]) -> Callable[[str], str]:
     trans = get_translator()
@@ -1308,6 +1317,8 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             trans = t
             email = request.form.get("email", "").strip().lower()
             role = request.form.get("role", "user").strip()
+            if role not in USER_ROLE_VALUES:
+                role = "user"
             new_password = request.form.get("password", "")
 
             salutation = request.form.get("salutation") or None
@@ -1375,7 +1386,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     flash(trans("flash_user_updated"), "success")
                     return redirect(url_for(".admin_user_list"))
 
-        return render_template("admin_user_edit.html", user=user)
+        return render_template("admin_user_edit.html", user=user, role_options=USER_ROLE_OPTIONS)
 
     @bp.route("/users/<int:user_id>/activate", methods=["POST"], endpoint="admin_user_activate")
     @roles_required("admin")

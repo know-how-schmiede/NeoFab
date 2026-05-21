@@ -1,5 +1,12 @@
 # Timeline NeoFab
 
+## Version 0.9.4
+
+Admin-Benutzerverwaltung erlaubt die Zuweisung von Mitarbeiterrollen fuer 3D-Druck, Plotter und CNC
+Mitarbeiterrollen werden in der Benutzerliste lesbar angezeigt
+Beim Speichern von Benutzern werden nur bekannte Rollen uebernommen
+Mitarbeiter sehen im Dashboard Auftraege der Kategorien, deren Rollen in der Kategorie-Matrix hinterlegt sind
+
 ## Version 0.9.3
 
 Plakatdateien koennen in der Auftragsansicht bearbeitet werden

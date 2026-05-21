@@ -3,6 +3,13 @@
 {% block title %}{{ is_new_admin and t("admin_user_new_admin_title") or t("admin_user_edit_title") }} - NeoFab{% endblock %}
 
 {% block content %}
+{% set role_options = role_options|default([
+  ('user', 'role_user'),
+  ('admin', 'role_admin'),
+  ('worker_3d_print', 'role_worker_3d_print'),
+  ('worker_plotter', 'role_worker_plotter'),
+  ('worker_cnc', 'role_worker_cnc')
+]) %}
 
 <div class="card mb-3">
   <div class="card-header">
@@ -54,8 +61,11 @@
               class="form-select"
               required
             >
-              <option value="user"  {% if user.role == 'user' %}selected{% endif %}>User</option>
-              <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
+              {% for value, label_key in role_options %}
+                <option value="{{ value }}" {% if user.role == value %}selected{% endif %}>
+                  {{ t(label_key) }}
+                </option>
+              {% endfor %}
             </select>
           {% endif %}
         </div>

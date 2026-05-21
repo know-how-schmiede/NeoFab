@@ -3,6 +3,13 @@
 {% block title %}{{ t("admin_users_title") }} - NeoFab{% endblock %}
 
 {% block content %}
+{% set role_labels = {
+  'user': t('role_user'),
+  'admin': t('role_admin'),
+  'worker_3d_print': t('role_worker_3d_print'),
+  'worker_plotter': t('role_worker_plotter'),
+  'worker_cnc': t('role_worker_cnc')
+} %}
 
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
@@ -47,8 +54,8 @@
                 {{ (u.first_name or '') ~ ' ' ~ (u.last_name or '') }}
               </td>
               <td>
-                <span class="badge {% if u.role == 'admin' %}bg-primary{% else %}bg-secondary{% endif %}">
-                  {{ u.role }}
+                <span class="badge {% if u.role == 'admin' %}bg-primary{% elif u.role and u.role.startswith('worker_') %}bg-info text-dark{% else %}bg-secondary{% endif %}">
+                  {{ role_labels.get(u.role, u.role) }}
                 </span>
               </td>
               <td>
