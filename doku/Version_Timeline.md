@@ -2,10 +2,10 @@
 
 ## Version 0.9.4
 
-Admin-Benutzerverwaltung erlaubt die Zuweisung von Mitarbeiterrollen fuer 3D-Druck, Plotter und CNC
-Mitarbeiterrollen werden in der Benutzerliste lesbar angezeigt
+Admin-Benutzerverwaltung erlaubt die Zuweisung der allgemeinen Rolle Mitarbeiter
+Mitarbeiter koennen im eigenen Profil auswaehlen, welche Auftragskategorien zusaetzlich im Dashboard angezeigt werden
 Beim Speichern von Benutzern werden nur bekannte Rollen uebernommen
-Mitarbeiter sehen im Dashboard Auftraege der Kategorien, deren Rollen in der Kategorie-Matrix hinterlegt sind
+Alte spezialisierte Mitarbeiterrollen werden automatisch auf die Rolle Mitarbeiter migriert
 
 ## Version 0.9.3
 

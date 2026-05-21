@@ -6,9 +6,7 @@
 {% set role_labels = {
   'user': t('role_user'),
   'admin': t('role_admin'),
-  'worker_3d_print': t('role_worker_3d_print'),
-  'worker_plotter': t('role_worker_plotter'),
-  'worker_cnc': t('role_worker_cnc')
+  'worker': t('role_worker')
 } %}
 
 <div class="card">
@@ -54,7 +52,7 @@
                 {{ (u.first_name or '') ~ ' ' ~ (u.last_name or '') }}
               </td>
               <td>
-                <span class="badge {% if u.role == 'admin' %}bg-primary{% elif u.role and u.role.startswith('worker_') %}bg-info text-dark{% else %}bg-secondary{% endif %}">
+                <span class="badge {% if u.role == 'admin' %}bg-primary{% elif u.role == 'worker' %}bg-info text-dark{% else %}bg-secondary{% endif %}">
                   {{ role_labels.get(u.role, u.role) }}
                 </span>
               </td>

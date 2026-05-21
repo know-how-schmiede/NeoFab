@@ -71,9 +71,7 @@ from version import APP_VERSION
 USER_ROLE_OPTIONS = [
     ("user", "role_user"),
     ("admin", "role_admin"),
-    ("worker_3d_print", "role_worker_3d_print"),
-    ("worker_plotter", "role_worker_plotter"),
-    ("worker_cnc", "role_worker_cnc"),
+    ("worker", "role_worker"),
 ]
 USER_ROLE_VALUES = {value for value, _label_key in USER_ROLE_OPTIONS}
 

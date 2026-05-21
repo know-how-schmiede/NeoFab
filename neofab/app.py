@@ -235,21 +235,21 @@ DEFAULT_ORDER_CATEGORIES = [
         "name": "3D-Druck",
         "description": "Additive Fertigung mit 3D-Druckern und G-Code-Druckauftraegen.",
         "enabled_tabs": "general,project,files,print-jobs,communication",
-        "allowed_worker_roles": "admin,worker_3d_print",
+        "allowed_worker_roles": "admin",
     },
     {
         "key": "plotter",
         "name": "Plotter",
         "description": "Plotter- und Schneidauftraege.",
         "enabled_tabs": "general,posters,communication",
-        "allowed_worker_roles": "admin,worker_plotter",
+        "allowed_worker_roles": "admin",
     },
     {
         "key": "cnc",
         "name": "CNC-Fraesen",
         "description": "Subtraktive Fertigung mit CNC-Fraesen.",
         "enabled_tabs": "general,files,communication",
-        "allowed_worker_roles": "admin,worker_cnc",
+        "allowed_worker_roles": "admin",
     },
 ]
 
@@ -923,9 +923,27 @@ def ensure_order_category_schema():
                 if existing.key == "plotter" and existing.enabled_tabs != item["enabled_tabs"]:
                     existing.enabled_tabs = item["enabled_tabs"]
                     existing.updated_at = datetime.utcnow()
+                if existing.allowed_worker_roles != item["allowed_worker_roles"]:
+                    existing.allowed_worker_roles = item["allowed_worker_roles"]
+                    existing.updated_at = datetime.utcnow()
                 continue
             db.session.add(OrderCategory(**item))
         db.session.commit()
+
+        user_exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='user'")
+        ).scalar()
+        if user_exists:
+            db.session.execute(
+                text(
+                    """
+                    UPDATE user
+                    SET role = 'worker'
+                    WHERE role IN ('worker_3d_print', 'worker_plotter', 'worker_cnc')
+                    """
+                )
+            )
+            db.session.commit()
 
         default_category = OrderCategory.query.filter_by(key="3d_print").first()
         if default_category and orders_exists:
@@ -2190,6 +2208,43 @@ def profile():
                 if new_password:
                     user.set_password(new_password)
 
+                if user.role == "worker":
+                    selected_ids = set()
+                    for raw_id in request.form.getlist("worker_category_ids"):
+                        try:
+                            selected_ids.add(int(raw_id))
+                        except (TypeError, ValueError):
+                            continue
+                    valid_categories = OrderCategory.query.filter(
+                        OrderCategory.active.is_(True),
+                        OrderCategory.id.in_(selected_ids) if selected_ids else False,
+                    ).all()
+                    valid_ids = {category.id for category in valid_categories}
+                    existing_permissions = UserOrderCategoryPermission.query.filter_by(
+                        user_id=user.id,
+                    ).all()
+                    existing_by_category = {
+                        permission.category_id: permission
+                        for permission in existing_permissions
+                    }
+                    for permission in existing_permissions:
+                        if permission.category_id not in valid_ids:
+                            db.session.delete(permission)
+                    for category_id in valid_ids:
+                        permission = existing_by_category.get(category_id)
+                        if permission:
+                            permission.can_manage = True
+                        else:
+                            db.session.add(
+                                UserOrderCategoryPermission(
+                                    user_id=user.id,
+                                    category_id=category_id,
+                                    can_manage=True,
+                                )
+                            )
+                else:
+                    UserOrderCategoryPermission.query.filter_by(user_id=user.id).delete()
+
                 db.session.commit()
                 flash(trans("flash_profile_updated"), "success")
                 return redirect(url_for("profile"))
@@ -2198,10 +2253,20 @@ def profile():
     announcement_reads = AnnouncementRead.query.filter_by(user_id=current_user.id).all()
     read_by_announcement = {entry.announcement_id: entry for entry in announcement_reads}
     announcements_read = [a for a in announcements if a.id in read_by_announcement]
+    worker_categories = OrderCategory.query.filter_by(active=True).order_by(OrderCategory.name.asc()).all()
+    selected_worker_category_ids = {
+        permission.category_id
+        for permission in UserOrderCategoryPermission.query.filter_by(
+            user_id=user.id,
+            can_manage=True,
+        ).all()
+    }
 
     return render_template(
         "profile.html",
         user=user,
+        worker_categories=worker_categories,
+        selected_worker_category_ids=selected_worker_category_ids,
         announcements_read=announcements_read,
         announcement_priority_meta=ANNOUNCEMENT_PRIORITY_META,
         announcement_form_token=_new_announcement_form_token() if current_user.role == "admin" else "",
