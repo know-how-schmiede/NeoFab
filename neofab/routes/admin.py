@@ -465,6 +465,12 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         """Einfache Admin-Startseite."""
         return render_template("admin.html")
 
+    @bp.route("/3d-print-master-data", endpoint="admin_3d_print_master_data")
+    @roles_required("admin")
+    def admin_3d_print_master_data():
+        """Grouped master data area for 3D printing."""
+        return render_template("admin_3d_print_master_data.html")
+
     @bp.route("/orders", endpoint="admin_orders")
     @roles_required("admin")
     def admin_orders():

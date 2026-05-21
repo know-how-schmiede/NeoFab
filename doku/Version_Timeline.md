@@ -1,5 +1,13 @@
 # Timeline NeoFab
 
+## Version 0.9.6
+
+Plotter-Auftraege verwenden im PDF-Export der Projektdokumentation eine eigene Plakat-Sektion
+3D-Druck-spezifische Bereiche wie 3D-Dateien, Material, Farbe, Druckauftraege und Filamentwerte werden bei Plotter-PDFs ausgeblendet
+Plakatdateien werden im Plotter-PDF mit Dateityp, Thumbnail, Anzahl, gewuenschtem Druckdatum und Bemerkung ausgegeben
+Der Fallback-PDF-Export beruecksichtigt Plotter-Auftraege ebenfalls ohne 3D-Druck-Informationen
+Admin-Bereich fasst Material, Drucker-Typen, Filament-Materialien und Farben unter 3D Druck Stammdaten zusammen
+
 ## Version 0.9.5
 
 Dashboard-Auftragsliste kann nach Kategorie, Titel, Status, Owner und Erstelldatum sortiert werden
