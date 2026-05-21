@@ -762,10 +762,28 @@
                     </div>
                   </div>
                   <div class="d-flex gap-2">
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            data-bs-toggle="modal"
+                            data-bs-target="#posterEditModal"
+                            data-poster-id="{{ poster.id }}"
+                            data-poster-name="{{ poster.original_name }}"
+                            data-poster-note="{{ poster.note or '' }}"
+                            data-poster-quantity="{{ poster.quantity or 1 }}"
+                            data-poster-due-date="{{ poster.due_date.strftime('%Y-%m-%d') if poster.due_date else '' }}">
+                      <i class="bi bi-pencil me-1"></i>{{ t("btn_edit") }}
+                    </button>
                     <a class="btn btn-sm btn-outline-primary"
                        href="{{ url_for('download_poster_file', order_id=order.id, poster_id=poster.id) }}">
                       <i class="bi bi-download me-1"></i>{{ t("btn_download") }}
                     </a>
+                    <form method="post" onsubmit="return confirm('{{ t('confirm_delete_poster') }}');">
+                      <input type="hidden" name="action" value="delete_poster_file">
+                      <input type="hidden" name="poster_id" value="{{ poster.id }}">
+                      <button type="submit" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-trash me-1"></i>{{ t("btn_delete") }}
+                      </button>
+                    </form>
                   </div>
                 </div>
               </li>
@@ -1217,6 +1235,62 @@
                      name="image_note"
                      maxlength="255"
                      placeholder="{{ t('images_note_placeholder') }}">
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 mt-3">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              {{ t("btn_cancel") }}
+            </button>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-save me-1"></i>{{ t("btn_save_changes") }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="posterEditModal" tabindex="-1" aria-labelledby="posterEditLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="posterEditLabel">{{ t("posters_edit_title") }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('btn_cancel') }}"></button>
+      </div>
+      <div class="modal-body">
+        <form method="post" action="{{ url_for('order_detail', order_id=order.id, tab='posters') }}">
+          <input type="hidden" name="action" value="update_poster_file">
+          <input type="hidden" name="poster_id" id="edit_poster_id" value="">
+          <div class="row g-3">
+            <div class="col-12">
+              <label for="edit_poster_name" class="form-label">{{ t("files_preview_filename") }}</label>
+              <input class="form-control" type="text" id="edit_poster_name" value="" readonly>
+            </div>
+            <div class="col-md-6">
+              <label for="edit_poster_note" class="form-label">{{ t("posters_note_label") }}</label>
+              <input class="form-control"
+                     type="text"
+                     id="edit_poster_note"
+                     name="poster_note"
+                     maxlength="255"
+                     placeholder="{{ t('posters_note_placeholder') }}">
+            </div>
+            <div class="col-md-3">
+              <label for="edit_poster_quantity" class="form-label">{{ t("posters_quantity_label") }}</label>
+              <input class="form-control"
+                     type="number"
+                     min="1"
+                     step="1"
+                     id="edit_poster_quantity"
+                     name="poster_quantity">
+            </div>
+            <div class="col-md-3">
+              <label for="edit_poster_due_date" class="form-label">{{ t("posters_due_date_label") }}</label>
+              <input class="form-control"
+                     type="date"
+                     id="edit_poster_due_date"
+                     name="poster_due_date">
             </div>
           </div>
           <div class="d-flex justify-content-end gap-2 mt-3">
@@ -1767,6 +1841,34 @@
     if (idInput) idInput.value = imageId;
     if (nameInput) nameInput.value = imageName;
     if (noteInput) noteInput.value = imageNote;
+  });
+})();
+
+(function() {
+  const posterEditModal = document.getElementById("posterEditModal");
+  if (!posterEditModal) return;
+
+  posterEditModal.addEventListener("show.bs.modal", (event) => {
+    const button = event.relatedTarget;
+    if (!button) return;
+
+    const posterId = button.getAttribute("data-poster-id") || "";
+    const posterName = button.getAttribute("data-poster-name") || "";
+    const posterNote = button.getAttribute("data-poster-note") || "";
+    const posterQuantity = button.getAttribute("data-poster-quantity") || "1";
+    const posterDueDate = button.getAttribute("data-poster-due-date") || "";
+
+    const idInput = posterEditModal.querySelector("#edit_poster_id");
+    const nameInput = posterEditModal.querySelector("#edit_poster_name");
+    const noteInput = posterEditModal.querySelector("#edit_poster_note");
+    const quantityInput = posterEditModal.querySelector("#edit_poster_quantity");
+    const dueDateInput = posterEditModal.querySelector("#edit_poster_due_date");
+
+    if (idInput) idInput.value = posterId;
+    if (nameInput) nameInput.value = posterName;
+    if (noteInput) noteInput.value = posterNote;
+    if (quantityInput) quantityInput.value = posterQuantity;
+    if (dueDateInput) dueDateInput.value = posterDueDate;
   });
 })();
 

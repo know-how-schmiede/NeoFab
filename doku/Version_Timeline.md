@@ -1,5 +1,11 @@
 # Timeline NeoFab
 
+## Version 0.9.3
+
+Plakatdateien koennen in der Auftragsansicht bearbeitet werden
+Bemerkung, Anzahl und gewuenschtes Druckdatum lassen sich nachtraeglich aendern
+Plakatdateien koennen inklusive Originaldatei und Thumbnail geloescht werden
+
 ## Version 0.9.2
 
 Plakatdateien zeigen in der Auftragsansicht ein Thumbnail in der Liste der hochgeladenen Plakate

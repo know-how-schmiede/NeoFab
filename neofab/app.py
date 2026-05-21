@@ -3140,6 +3140,95 @@ def order_detail(order_id):
             flash(trans("flash_poster_uploaded"), "success")
             return order_detail_redirect("posters")
 
+        elif action == "update_poster_file":
+            if not is_plotter_order(order):
+                abort(403)
+
+            try:
+                poster_id = int(request.form.get("poster_id", "0"))
+            except ValueError:
+                poster_id = 0
+
+            if not poster_id:
+                flash(trans("flash_poster_invalid_id"), "danger")
+                return order_detail_redirect("posters")
+
+            poster_file = OrderPosterFile.query.filter_by(
+                id=poster_id,
+                order_id=order.id,
+            ).first()
+            if not poster_file:
+                flash(trans("flash_poster_not_found"), "warning")
+                return order_detail_redirect("posters")
+
+            note = (request.form.get("poster_note") or "").strip()
+            quantity_raw = (request.form.get("poster_quantity") or "").strip()
+            due_date_raw = (request.form.get("poster_due_date") or "").strip()
+
+            try:
+                quantity = max(1, int(quantity_raw or "1"))
+            except ValueError:
+                quantity = 1
+
+            due_date = None
+            if due_date_raw:
+                try:
+                    due_date = datetime.strptime(due_date_raw, "%Y-%m-%d").date()
+                except ValueError:
+                    flash(trans("flash_poster_invalid_due_date"), "danger")
+                    return order_detail_redirect("posters")
+
+            poster_file.note = note[:255] if note else None
+            poster_file.quantity = quantity
+            poster_file.due_date = due_date
+            db.session.commit()
+
+            flash(trans("flash_poster_updated"), "success")
+            return order_detail_redirect("posters")
+
+        elif action == "delete_poster_file":
+            if not is_plotter_order(order):
+                abort(403)
+
+            try:
+                poster_id = int(request.form.get("poster_id", "0"))
+            except ValueError:
+                poster_id = 0
+
+            if not poster_id:
+                flash(trans("flash_poster_invalid_id"), "danger")
+                return order_detail_redirect("posters")
+
+            poster_file = OrderPosterFile.query.filter_by(
+                id=poster_id,
+                order_id=order.id,
+            ).first()
+            if not poster_file:
+                flash(trans("flash_poster_not_found"), "warning")
+                return order_detail_redirect("posters")
+
+            order_folder = Path(app.config["POSTER_UPLOAD_FOLDER"]) / f"order_{order.id}"
+            full_path = order_folder / poster_file.stored_name
+            if full_path.exists():
+                try:
+                    full_path.unlink()
+                except OSError:
+                    app.logger.warning("Could not delete poster file on disk: %s", full_path)
+
+            if poster_file.thumb_path:
+                thumb_path = order_folder / "thumbnails" / poster_file.thumb_path
+                if thumb_path.exists():
+                    try:
+                        thumb_path.unlink()
+                    except OSError:
+                        app.logger.warning("Could not delete poster thumbnail on disk: %s", thumb_path)
+
+            db.session.delete(poster_file)
+            db.session.commit()
+
+            flash(trans("flash_poster_deleted"), "info")
+            return order_detail_redirect("posters")
+
         # --- 6) G-Code hochladen (nur Admin) -------------------------------
         elif action == "upload_print_job":
             if current_user.role != "admin" or not is_3d_print_order(order):
