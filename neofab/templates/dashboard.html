@@ -98,20 +98,24 @@
               </td>
 
               <td class="text-center">
-                {% set job_counts = print_job_counts.get(o.id, {}) %}
-                <span class="print-job-summary" aria-label="{{ t('print_jobs_summary_title') }}">
-                  <span class="badge print-job-summary-badge text-secondary border-secondary-subtle"
-                        title="{{ t('print_jobs_summary_total') }}">{{ job_counts.get('total', 0) }}</span>
-                  <span class="text-muted">/</span>
-                  <span class="badge print-job-summary-badge text-primary border-primary-subtle"
-                        title="{{ t('print_jobs_summary_started') }}">{{ job_counts.get('started', 0) }}</span>
-                  <span class="text-muted">/</span>
-                  <span class="badge print-job-summary-badge text-success border-success-subtle"
-                        title="{{ t('print_jobs_summary_finished') }}">{{ job_counts.get('finished', 0) }}</span>
-                  <span class="text-muted">/</span>
-                  <span class="badge print-job-summary-badge text-danger border-danger-subtle"
-                        title="{{ t('print_jobs_summary_error') }}">{{ job_counts.get('error', 0) }}</span>
-                </span>
+                {% if o.id in plotter_order_ids %}
+                  <span class="text-muted">-</span>
+                {% else %}
+                  {% set job_counts = print_job_counts.get(o.id, {}) %}
+                  <span class="print-job-summary" aria-label="{{ t('print_jobs_summary_title') }}">
+                    <span class="badge print-job-summary-badge text-secondary border-secondary-subtle"
+                          title="{{ t('print_jobs_summary_total') }}">{{ job_counts.get('total', 0) }}</span>
+                    <span class="text-muted">/</span>
+                    <span class="badge print-job-summary-badge text-primary border-primary-subtle"
+                          title="{{ t('print_jobs_summary_started') }}">{{ job_counts.get('started', 0) }}</span>
+                    <span class="text-muted">/</span>
+                    <span class="badge print-job-summary-badge text-success border-success-subtle"
+                          title="{{ t('print_jobs_summary_finished') }}">{{ job_counts.get('finished', 0) }}</span>
+                    <span class="text-muted">/</span>
+                    <span class="badge print-job-summary-badge text-danger border-danger-subtle"
+                          title="{{ t('print_jobs_summary_error') }}">{{ job_counts.get('error', 0) }}</span>
+                  </span>
+                {% endif %}
               </td>
 
               <td class="text-end">

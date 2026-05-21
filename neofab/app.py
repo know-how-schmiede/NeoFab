@@ -4437,6 +4437,8 @@ def dashboard():
     paginated_orders = orders[page_start:page_end]
 
     order_ids = [o.id for o in paginated_orders]
+    plotter_order_ids = [o.id for o in paginated_orders if is_plotter_order(o)]
+    print_order_ids = [o.id for o in paginated_orders if not is_plotter_order(o)]
     for o in paginated_orders:
         app.logger.debug(
             f"[dashboard] Order id={o.id}, title={o.title!r}, status={o.status!r}"
@@ -4444,29 +4446,40 @@ def dashboard():
 
     # 2) Anzahl Dateien pro Order ermitteln
     file_counts = {}
-    if order_ids:
+    if print_order_ids:
         file_count_rows = (
             db.session.query(
                 OrderFile.order_id,
                 func.count(OrderFile.id)
             )
-            .filter(OrderFile.order_id.in_(order_ids))
+            .filter(OrderFile.order_id.in_(print_order_ids))
             .group_by(OrderFile.order_id)
             .all()
         )
         file_counts = {order_id: count for order_id, count in file_count_rows}
+    if plotter_order_ids:
+        poster_count_rows = (
+            db.session.query(
+                OrderPosterFile.order_id,
+                func.count(OrderPosterFile.id)
+            )
+            .filter(OrderPosterFile.order_id.in_(plotter_order_ids))
+            .group_by(OrderPosterFile.order_id)
+            .all()
+        )
+        file_counts.update({order_id: count for order_id, count in poster_count_rows})
 
     app.logger.debug(f"[dashboard] file_counts: {file_counts}")
 
     print_job_counts = {}
-    if order_ids:
+    if print_order_ids:
         print_job_rows = (
             db.session.query(
                 OrderPrintJob.order_id,
                 OrderPrintJob.status,
                 func.count(OrderPrintJob.id),
             )
-            .filter(OrderPrintJob.order_id.in_(order_ids))
+            .filter(OrderPrintJob.order_id.in_(print_order_ids))
             .group_by(OrderPrintJob.order_id, OrderPrintJob.status)
             .all()
         )
@@ -4541,6 +4554,7 @@ def dashboard():
         status_styles=status_context["order_status_styles"],
         file_counts=file_counts,
         print_job_counts=print_job_counts,
+        plotter_order_ids=set(plotter_order_ids),
         announcements_unread=announcements_unread,
         announcements_read=announcements_read,
         announcement_reads=read_by_announcement,

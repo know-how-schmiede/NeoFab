@@ -1,5 +1,10 @@
 # Timeline NeoFab
 
+## Version 0.9.8
+
+Dashboard-Dateizaehler zeigt bei Plotter-Auftraegen die hochgeladenen Plakatdateien statt 3D-Druckdateien
+Dashboard blendet Druckauftrags-Zusammenfassung bei Plotter-Auftraegen aus
+
 ## Version 0.9.7
 
 Admin-Bereich fasst Material, Drucker-Typen, Filament-Materialien und Farben unter 3D Druck Stammdaten zusammen
