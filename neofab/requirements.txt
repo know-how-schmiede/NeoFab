@@ -3,6 +3,7 @@ Flask-Bootstrap
 Flask-Login
 Flask-SQLAlchemy
 Pillow
+PyMuPDF
 xhtml2pdf
 svglib
 reportlab

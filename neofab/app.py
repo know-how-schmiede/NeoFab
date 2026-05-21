@@ -1338,6 +1338,32 @@ def save_poster_thumbnail(source_path: Path, target_path: Path, file_type: str |
     return False
 
 
+def ensure_poster_thumbnail_file(order: Order, poster: OrderPosterFile) -> bool:
+    if not poster.stored_name:
+        return False
+
+    order_folder = Path(app.config["POSTER_UPLOAD_FOLDER"]) / f"order_{order.id}"
+    source_path = order_folder / poster.stored_name
+    if not source_path.exists():
+        return False
+
+    thumb_name = poster.thumb_path
+    if not thumb_name:
+        safe_stem = Path(secure_filename(poster.original_name or poster.stored_name)).stem or f"poster_{poster.id}"
+        thumb_name = f"{poster.id}_{safe_stem}.png"
+
+    thumb_path = order_folder / "thumbnails" / thumb_name
+    if thumb_path.exists():
+        if poster.thumb_path != thumb_name:
+            poster.thumb_path = thumb_name
+        return True
+
+    if save_poster_thumbnail(source_path, thumb_path, poster.file_type):
+        poster.thumb_path = thumb_name
+        return True
+    return False
+
+
 def _normalize_vec(vec):
     length = math.sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2])
     if length <= 0:
@@ -3750,6 +3776,13 @@ def order_detail(order_id):
             .order_by(OrderPosterFile.uploaded_at.desc())
             .all()
         )
+        poster_thumbnail_changed = False
+        for poster in poster_files:
+            before = poster.thumb_path
+            if ensure_poster_thumbnail_file(order, poster) and poster.thumb_path != before:
+                poster_thumbnail_changed = True
+        if poster_thumbnail_changed:
+            db.session.commit()
 
     status_context = get_status_context(inject_globals().get("t"))
     app.logger.debug(
@@ -4088,8 +4121,9 @@ def poster_file_thumbnail(order_id, poster_id):
         id=poster_id,
         order_id=order.id,
     ).first_or_404()
-    if not poster.thumb_path:
+    if not ensure_poster_thumbnail_file(order, poster):
         abort(404)
+    db.session.commit()
 
     thumb_folder = Path(app.config["POSTER_UPLOAD_FOLDER"]) / f"order_{order.id}" / "thumbnails"
     thumb_path = thumb_folder / poster.thumb_path

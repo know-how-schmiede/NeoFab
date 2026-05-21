@@ -112,6 +112,8 @@ Current application version: **0.9.3**
 
 Recent changes include order categories for 3D print, plotter, and CNC work, a dedicated poster workflow for plotter orders, poster thumbnails including PDF previews, and category-aware order tabs.
 
+The update script installs Python dependencies from `neofab/requirements.txt`, including PyMuPDF for rendering the first page of uploaded poster PDFs as thumbnails.
+
 See [Version_Timeline.md](doku/Version_Timeline.md) for the detailed project history.
 
 ## Screenshots V0.8.6
