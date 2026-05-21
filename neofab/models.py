@@ -77,6 +77,7 @@ class Order(db.Model):
     status = db.Column(db.String(50), nullable=False, default="new")
 
     # Material & Farbe (FK)
+    category_id = db.Column(db.Integer, db.ForeignKey("order_categories.id"), nullable=True)
     material_id = db.Column(db.Integer, db.ForeignKey("materials.id"), nullable=True)
     color_id = db.Column(db.Integer, db.ForeignKey("colors.id"), nullable=True)
     cost_center_id = db.Column(db.Integer, db.ForeignKey("cost_centers.id"), nullable=True)
@@ -101,6 +102,7 @@ class Order(db.Model):
 
     # Beziehungen
     user = db.relationship("User", back_populates="orders")
+    category = db.relationship("OrderCategory")
     material = db.relationship("Material")
     color = db.relationship("Color")
     cost_center = db.relationship("CostCenter")
@@ -111,6 +113,67 @@ class Order(db.Model):
     files = db.relationship("OrderFile", back_populates="order", lazy=True)
     images = db.relationship("OrderImage", back_populates="order", lazy=True)
     tags_entry = db.relationship("OrderTag", back_populates="order", uselist=False)
+
+
+# --- OrderCategory -----------------------------------------------------------
+
+
+class OrderCategory(db.Model):
+    __tablename__ = "order_categories"
+
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(50), unique=True, nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    enabled_tabs = db.Column(db.String(255), nullable=False, default="general,files,communication")
+    allowed_worker_roles = db.Column(db.String(255), nullable=False, default="admin")
+    active = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def tab_keys(self) -> list[str]:
+        return [item.strip() for item in (self.enabled_tabs or "").split(",") if item.strip()]
+
+    def worker_roles(self) -> set[str]:
+        roles = {item.strip() for item in (self.allowed_worker_roles or "").split(",") if item.strip()}
+        roles.add("admin")
+        return roles
+
+
+class OrderWorkJob(db.Model):
+    __tablename__ = "order_work_jobs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
+    category_id = db.Column(db.Integer, db.ForeignKey("order_categories.id"), nullable=True)
+    status = db.Column(db.String(50), nullable=False, default="upload")
+    machine_name = db.Column(db.String(100))
+    material_note = db.Column(db.String(255))
+    cost_amount = db.Column(db.Float)
+    note = db.Column(db.String(255))
+    started_at = db.Column(db.DateTime)
+    duration_min = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    order = db.relationship("Order")
+    category = db.relationship("OrderCategory")
+
+
+class UserOrderCategoryPermission(db.Model):
+    __tablename__ = "user_order_category_permissions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    category_id = db.Column(db.Integer, db.ForeignKey("order_categories.id"), nullable=False)
+    can_manage = db.Column(db.Boolean, nullable=False, default=True)
+
+    user = db.relationship("User")
+    category = db.relationship("OrderCategory")
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "category_id", name="uq_user_order_category_permission"),
+    )
 
 
 # --- OrderMessage (Chat-/Kommunikationseintrag) ------------------------------
@@ -411,6 +474,9 @@ __all__ = [
     "db",
     "User",
     "Order",
+    "OrderCategory",
+    "OrderWorkJob",
+    "UserOrderCategoryPermission",
     "OrderMessage",
     "OrderReadStatus",
     "Announcement",

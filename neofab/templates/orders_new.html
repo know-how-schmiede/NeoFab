@@ -65,6 +65,27 @@
           </select>
         </div>
 
+        <!-- Category -->
+        <div class="col-md-6">
+          <label for="category_id" class="form-label">
+            <i class="bi bi-diagram-3 me-1"></i>
+            {{ t("new_order_category_label") }}*
+          </label>
+          <select
+            id="category_id"
+            name="category_id"
+            class="form-select"
+            required
+          >
+            {% for category in order_categories %}
+              <option value="{{ category.id }}"
+                      {% if category.key == '3d_print' %}selected{% endif %}>
+                {{ category.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
       </div>
 
       <!-- Buttons -->

@@ -99,7 +99,7 @@ The main scripts are:
 
 ## Current Version
 
-Current application version: **0.8.11**
+Current application version: **0.9.0**
 
 Recent changes include documented 3D print cost calculation, order counts and linked order lists for cost centers, email notifications for announcements with priority "Achtung eMail", configurable email actions in the admin system settings, and improved order and print job overviews.
 

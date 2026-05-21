@@ -16,6 +16,7 @@
 
 {% block content %}
 {% set active_tab = active_tab|default('general') %}
+{% set visible_tabs = visible_tabs|default(['general', 'project', 'files', 'print-jobs', 'communication']) %}
 {% macro communication_panel(container_id, form_action) %}
   <div class="card mt-4">
     <div class="card-header">
@@ -81,26 +82,34 @@
             {{ t("tab_general") }}
           </button>
         </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link {% if active_tab == 'project' %}active{% endif %}" id="project-tab" data-bs-toggle="tab" data-bs-target="#project-tab-pane" type="button" role="tab" aria-controls="project-tab-pane" aria-selected="{{ 'true' if active_tab == 'project' else 'false' }}">
-            {{ t("tab_project") }}
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link {% if active_tab == 'files' %}active{% endif %}" id="files-tab" data-bs-toggle="tab" data-bs-target="#files-tab-pane" type="button" role="tab" aria-controls="files-tab-pane" aria-selected="{{ 'true' if active_tab == 'files' else 'false' }}">
-            {{ t("tab_files") }}
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link {% if active_tab == 'print-jobs' %}active{% endif %}" id="print-jobs-tab" data-bs-toggle="tab" data-bs-target="#print-jobs-tab-pane" type="button" role="tab" aria-controls="print-jobs-tab-pane" aria-selected="{{ 'true' if active_tab == 'print-jobs' else 'false' }}">
-            {{ t("tab_print_jobs") }}
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link {% if active_tab == 'communication' %}active{% endif %}" id="communication-tab" data-bs-toggle="tab" data-bs-target="#communication-tab-pane" type="button" role="tab" aria-controls="communication-tab-pane" aria-selected="{{ 'true' if active_tab == 'communication' else 'false' }}">
-            {{ t("communication_header") }}
-          </button>
-        </li>
+        {% if 'project' in visible_tabs %}
+          <li class="nav-item" role="presentation">
+            <button class="nav-link {% if active_tab == 'project' %}active{% endif %}" id="project-tab" data-bs-toggle="tab" data-bs-target="#project-tab-pane" type="button" role="tab" aria-controls="project-tab-pane" aria-selected="{{ 'true' if active_tab == 'project' else 'false' }}">
+              {{ t("tab_project") }}
+            </button>
+          </li>
+        {% endif %}
+        {% if 'files' in visible_tabs %}
+          <li class="nav-item" role="presentation">
+            <button class="nav-link {% if active_tab == 'files' %}active{% endif %}" id="files-tab" data-bs-toggle="tab" data-bs-target="#files-tab-pane" type="button" role="tab" aria-controls="files-tab-pane" aria-selected="{{ 'true' if active_tab == 'files' else 'false' }}">
+              {{ t("tab_files") }}
+            </button>
+          </li>
+        {% endif %}
+        {% if 'print-jobs' in visible_tabs %}
+          <li class="nav-item" role="presentation">
+            <button class="nav-link {% if active_tab == 'print-jobs' %}active{% endif %}" id="print-jobs-tab" data-bs-toggle="tab" data-bs-target="#print-jobs-tab-pane" type="button" role="tab" aria-controls="print-jobs-tab-pane" aria-selected="{{ 'true' if active_tab == 'print-jobs' else 'false' }}">
+              {{ t("tab_print_jobs") }}
+            </button>
+          </li>
+        {% endif %}
+        {% if 'communication' in visible_tabs %}
+          <li class="nav-item" role="presentation">
+            <button class="nav-link {% if active_tab == 'communication' %}active{% endif %}" id="communication-tab" data-bs-toggle="tab" data-bs-target="#communication-tab-pane" type="button" role="tab" aria-controls="communication-tab-pane" aria-selected="{{ 'true' if active_tab == 'communication' else 'false' }}">
+              {{ t("communication_header") }}
+            </button>
+          </li>
+        {% endif %}
       </ul>
 
       <div class="tab-content">
@@ -186,6 +195,16 @@
               </option>
             {% endfor %}
           </select>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">
+            <i class="bi bi-diagram-3 me-1"></i>
+            {{ t("order_category_label") }}
+          </label>
+          <div class="form-control-plaintext pt-0">
+            {{ order.category.name if order.category else t("order_category_3d_print") }}
+          </div>
         </div>
 
         <div class="col-md-4">
@@ -685,6 +704,7 @@
 
   </div>
 
+  {% if 'print-jobs' in visible_tabs %}
   <div class="tab-pane fade {% if active_tab == 'print-jobs' %}show active{% endif %}" id="print-jobs-tab-pane" role="tabpanel" aria-labelledby="print-jobs-tab">
     <div class="card mb-3">
       <div class="card-header">
@@ -942,10 +962,13 @@
       <p class="text-muted">{{ t("print_jobs_admin_only") }}</p>
     {% endif %}
   </div>
+  {% endif %}
 
-  <div class="tab-pane fade {% if active_tab == 'communication' %}show active{% endif %}" id="communication-tab-pane" role="tabpanel" aria-labelledby="communication-tab">
-    {{ communication_panel("messagesContainerTab", url_for("order_detail", order_id=order.id, tab="communication")) }}
-  </div>
+  {% if 'communication' in visible_tabs %}
+    <div class="tab-pane fade {% if active_tab == 'communication' %}show active{% endif %}" id="communication-tab-pane" role="tabpanel" aria-labelledby="communication-tab">
+      {{ communication_panel("messagesContainerTab", url_for("order_detail", order_id=order.id, tab="communication")) }}
+    </div>
+  {% endif %}
 </div>
 
 <div class="modal fade" id="fileEditModal" tabindex="-1" aria-labelledby="fileEditLabel" aria-hidden="true">
@@ -1070,7 +1093,7 @@
   </div>
 </div>
 
-{% if current_user.role == 'admin' %}
+{% if current_user.role == 'admin' and 'print-jobs' in visible_tabs %}
   <div class="modal fade" id="printJobEditModal" tabindex="-1" aria-labelledby="printJobEditLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">

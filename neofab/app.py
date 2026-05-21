@@ -24,7 +24,7 @@ import secrets
 from time import perf_counter
 from urllib.parse import parse_qs, urlparse
 
-from sqlalchemy import func, text
+from sqlalchemy import func, or_, text
 
 from markupsafe import Markup, escape
 from werkzeug.exceptions import RequestEntityTooLarge
@@ -89,6 +89,9 @@ from models import (
     db,
     User,
     Order,
+    OrderCategory,
+    OrderWorkJob,
+    UserOrderCategoryPermission,
     OrderMessage,
     OrderReadStatus,
     Announcement,
@@ -221,6 +224,30 @@ ORDER_STATUS_VALUES = [item["key"] for item in ORDER_STATUS_DEFS]
 PRINT_JOB_STATUSES = [(item["key"], item["label"]) for item in PRINT_JOB_STATUS_DEFS]
 PRINT_JOB_STATUS_VALUES = [item["key"] for item in PRINT_JOB_STATUS_DEFS]
 
+DEFAULT_ORDER_CATEGORIES = [
+    {
+        "key": "3d_print",
+        "name": "3D-Druck",
+        "description": "Additive Fertigung mit 3D-Druckern und G-Code-Druckauftraegen.",
+        "enabled_tabs": "general,project,files,print-jobs,communication",
+        "allowed_worker_roles": "admin,worker_3d_print",
+    },
+    {
+        "key": "plotter",
+        "name": "Plotter",
+        "description": "Plotter- und Schneidauftraege.",
+        "enabled_tabs": "general,files,communication",
+        "allowed_worker_roles": "admin,worker_plotter",
+    },
+    {
+        "key": "cnc",
+        "name": "CNC-Fraesen",
+        "description": "Subtraktive Fertigung mit CNC-Fraesen.",
+        "enabled_tabs": "general,files,communication",
+        "allowed_worker_roles": "admin,worker_cnc",
+    },
+]
+
 ANNOUNCEMENT_PRIORITY_META = {
     "info": {"label": "announcement_priority_info", "icon": "bi-info-circle", "class": "text-primary"},
     "notice": {"label": "announcement_priority_notice", "icon": "bi-exclamation-circle", "class": "text-info"},
@@ -300,6 +327,51 @@ def handle_request_entity_too_large(_error):
         return redirect(url_for("order_detail", order_id=request.view_args["order_id"], tab=tab), code=303)
 
     return redirect(request.referrer or url_for("dashboard"), code=303)
+
+
+def get_order_category(order: Order) -> OrderCategory | None:
+    category = getattr(order, "category", None)
+    if category:
+        return category
+    return OrderCategory.query.filter_by(key="3d_print").first()
+
+
+def is_3d_print_order(order: Order) -> bool:
+    category = get_order_category(order)
+    return bool(category and category.key == "3d_print")
+
+
+def can_manage_order_category(order: Order, user: User) -> bool:
+    if getattr(user, "role", None) == "admin":
+        return True
+
+    category = get_order_category(order)
+    if not category:
+        return False
+
+    permission = UserOrderCategoryPermission.query.filter_by(
+        user_id=user.id,
+        category_id=category.id,
+        can_manage=True,
+    ).first()
+    if permission:
+        return True
+
+    return user.role in category.worker_roles()
+
+
+def can_view_order(order: Order, user: User) -> bool:
+    return getattr(user, "role", None) == "admin" or order.user_id == user.id or can_manage_order_category(order, user)
+
+
+def get_visible_order_tabs(order: Order, user: User) -> list[str]:
+    category = get_order_category(order)
+    tabs = category.tab_keys() if category else ["general", "files", "communication"]
+    if not is_3d_print_order(order):
+        tabs = [tab for tab in tabs if tab != "print-jobs"]
+    if "general" not in tabs:
+        tabs.insert(0, "general")
+    return tabs
 
 
 # ============================================================
@@ -716,6 +788,139 @@ def ensure_order_archive_columns():
         app.logger.exception("Failed to ensure orders archive columns exist")
 
 
+def ensure_order_category_schema():
+    """
+    Ensures order categories, generic work jobs and user category permissions exist.
+    """
+    try:
+        exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='order_categories'")
+        ).scalar()
+        if not exists:
+            db.session.execute(
+                text(
+                    """
+                    CREATE TABLE order_categories (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        key VARCHAR(50) NOT NULL UNIQUE,
+                        name VARCHAR(100) NOT NULL,
+                        description TEXT,
+                        enabled_tabs VARCHAR(255) NOT NULL DEFAULT 'general,files,communication',
+                        allowed_worker_roles VARCHAR(255) NOT NULL DEFAULT 'admin',
+                        active BOOLEAN NOT NULL DEFAULT 1,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+            )
+            db.session.commit()
+        else:
+            cols = {
+                row[1]
+                for row in db.session.execute(text("PRAGMA table_info(order_categories)"))
+            }
+            statements = []
+            if "description" not in cols:
+                statements.append("ALTER TABLE order_categories ADD COLUMN description TEXT")
+            if "enabled_tabs" not in cols:
+                statements.append(
+                    "ALTER TABLE order_categories ADD COLUMN enabled_tabs VARCHAR(255) NOT NULL DEFAULT 'general,files,communication'"
+                )
+            if "allowed_worker_roles" not in cols:
+                statements.append(
+                    "ALTER TABLE order_categories ADD COLUMN allowed_worker_roles VARCHAR(255) NOT NULL DEFAULT 'admin'"
+                )
+            if "active" not in cols:
+                statements.append("ALTER TABLE order_categories ADD COLUMN active BOOLEAN NOT NULL DEFAULT 1")
+            if "created_at" not in cols:
+                statements.append(
+                    "ALTER TABLE order_categories ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+                )
+            if "updated_at" not in cols:
+                statements.append(
+                    "ALTER TABLE order_categories ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+                )
+            for stmt in statements:
+                db.session.execute(text(stmt))
+            if statements:
+                db.session.commit()
+
+        orders_exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='orders'")
+        ).scalar()
+        if orders_exists:
+            order_cols = {
+                row[1]
+                for row in db.session.execute(text("PRAGMA table_info(orders)"))
+            }
+            if "category_id" not in order_cols:
+                db.session.execute(text("ALTER TABLE orders ADD COLUMN category_id INTEGER"))
+                db.session.commit()
+
+        work_jobs_exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='order_work_jobs'")
+        ).scalar()
+        if not work_jobs_exists:
+            db.session.execute(
+                text(
+                    """
+                    CREATE TABLE order_work_jobs (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        order_id INTEGER NOT NULL,
+                        category_id INTEGER,
+                        status VARCHAR(50) NOT NULL DEFAULT 'upload',
+                        machine_name VARCHAR(100),
+                        material_note VARCHAR(255),
+                        cost_amount FLOAT,
+                        note VARCHAR(255),
+                        started_at DATETIME,
+                        duration_min INTEGER,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+            )
+            db.session.commit()
+
+        permission_exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='user_order_category_permissions'")
+        ).scalar()
+        if not permission_exists:
+            db.session.execute(
+                text(
+                    """
+                    CREATE TABLE user_order_category_permissions (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        category_id INTEGER NOT NULL,
+                        can_manage BOOLEAN NOT NULL DEFAULT 1,
+                        UNIQUE(user_id, category_id)
+                    )
+                    """
+                )
+            )
+            db.session.commit()
+
+        for item in DEFAULT_ORDER_CATEGORIES:
+            existing = OrderCategory.query.filter_by(key=item["key"]).first()
+            if existing:
+                continue
+            db.session.add(OrderCategory(**item))
+        db.session.commit()
+
+        default_category = OrderCategory.query.filter_by(key="3d_print").first()
+        if default_category and orders_exists:
+            db.session.execute(
+                text("UPDATE orders SET category_id = :category_id WHERE category_id IS NULL"),
+                {"category_id": default_category.id},
+            )
+            db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure order category schema exists")
+
+
 def ensure_order_print_jobs_table():
     """
     Ensures the order_print_jobs table and required columns exist.
@@ -1005,6 +1210,7 @@ with app.app_context():
     ensure_order_project_columns()
     ensure_order_estimation_columns()
     ensure_order_archive_columns()
+    ensure_order_category_schema()
     ensure_order_print_jobs_table()
     ensure_order_read_status_table()
     ensure_announcements_table()
@@ -2037,8 +2243,10 @@ def new_order():
     ensure_order_project_columns()
     ensure_order_estimation_columns()
     ensure_order_archive_columns()
+    ensure_order_category_schema()
 
     cost_centers = CostCenter.query.filter_by(is_active=True).order_by(CostCenter.name.asc()).all()
+    order_categories = OrderCategory.query.filter_by(active=True).order_by(OrderCategory.name.asc()).all()
     trans = inject_globals().get("t")
     status_context = get_status_context(trans)
 
@@ -2074,6 +2282,20 @@ def new_order():
 
         # Kostenstelle / Druckerprofil / Filament (optional)
         cost_center_id = request.form.get("cost_center_id") or None
+        category_id = request.form.get("category_id") or None
+        selected_category = None
+        if category_id:
+            try:
+                selected_category_id = int(category_id)
+            except ValueError:
+                selected_category_id = None
+            if selected_category_id:
+                selected_category = OrderCategory.query.filter_by(
+                    id=selected_category_id,
+                    active=True,
+                ).first()
+        if selected_category is None:
+            selected_category = OrderCategory.query.filter_by(key="3d_print", active=True).first()
 
         # ├ûffentlichkeits-Felder
         def _default_public_flag(field_name: str) -> bool:
@@ -2107,12 +2329,14 @@ def new_order():
                 "orders_new.html",
                 form_token=form_token,
                 cost_centers=cost_centers,
+                order_categories=order_categories,
             )
 
         order = Order(
             title=title,
             description=description or None,
             status=status,
+            category_id=selected_category.id if selected_category else None,
             user_id=current_user.id,
             public_allow_poster=public_allow_poster,
             public_allow_web=public_allow_web,
@@ -2161,6 +2385,7 @@ def new_order():
                 "order_id": order.id,
                 "title": order.title,
                 "status": order.status,
+                "category_id": order.category_id,
                 "cost_center_id": order.cost_center_id,
             },
         )
@@ -2256,6 +2481,7 @@ def new_order():
         "orders_new.html",
         form_token=form_token,
         cost_centers=cost_centers,
+        order_categories=order_categories,
     )
 
 
@@ -2276,10 +2502,11 @@ def order_detail(order_id):
     order = Order.query.get_or_404(order_id)
 
     # Access control: normale User sehen nur eigene Auftr├ñge
-    if current_user.role != "admin" and order.user_id != current_user.id:
+    if not can_view_order(order, current_user):
         abort(403)
 
-    valid_tabs = {"general", "project", "files", "print-jobs", "communication"}
+    visible_tabs = get_visible_order_tabs(order, current_user)
+    valid_tabs = set(visible_tabs)
     active_tab = request.args.get("tab", "general")
     if active_tab not in valid_tabs:
         active_tab = "general"
@@ -2734,7 +2961,7 @@ def order_detail(order_id):
 
         # --- 6) G-Code hochladen (nur Admin) -------------------------------
         elif action == "upload_print_job":
-            if current_user.role != "admin":
+            if current_user.role != "admin" or not is_3d_print_order(order):
                 abort(403)
 
             file = request.files.get("gcode_file")
@@ -2893,7 +3120,7 @@ def order_detail(order_id):
 
         # --- 7) G-Code l├Âschen (nur Admin) ---------------------------------
         elif action == "update_print_job":
-            if current_user.role != "admin":
+            if current_user.role != "admin" or not is_3d_print_order(order):
                 abort(403)
 
             try:
@@ -3010,7 +3237,7 @@ def order_detail(order_id):
             return redirect(url_for("order_detail", order_id=order.id))
 
         elif action == "delete_print_job":
-            if current_user.role != "admin":
+            if current_user.role != "admin" or not is_3d_print_order(order):
                 abort(403)
 
             try:
@@ -3209,12 +3436,14 @@ def order_detail(order_id):
             filament_materials.append(selected_material)
             filament_materials.sort(key=lambda material: (material.name or "").lower())
 
-    print_jobs = (
-        OrderPrintJob.query
-        .filter_by(order_id=order.id)
-        .order_by(OrderPrintJob.uploaded_at.desc())
-        .all()
-    )
+    print_jobs = []
+    if is_3d_print_order(order):
+        print_jobs = (
+            OrderPrintJob.query
+            .filter_by(order_id=order.id)
+            .order_by(OrderPrintJob.uploaded_at.desc())
+            .all()
+        )
     selected_printer_profile_ids = {
         job.printer_profile_id for job in print_jobs if job.printer_profile_id
     }
@@ -3264,6 +3493,7 @@ def order_detail(order_id):
         print_job_status_styles=status_context["print_job_status_styles"],
         tags_value=order.tags_entry.tags if order.tags_entry else "",
         active_tab=active_tab,
+        visible_tabs=visible_tabs,
     )
 
 
@@ -3276,7 +3506,7 @@ def order_messages_fragment(order_id):
     order = Order.query.get_or_404(order_id)
 
     # Access control wie in order_detail
-    if current_user.role != "admin" and order.user_id != current_user.id:
+    if not can_view_order(order, current_user):
         abort(403)
 
     messages = order.messages
@@ -3287,7 +3517,7 @@ def order_messages_fragment(order_id):
 @login_required
 def order_image_thumbnail(order_id, image_id):
     order = Order.query.get_or_404(order_id)
-    if current_user.role != "admin" and order.user_id != current_user.id:
+    if not can_view_order(order, current_user):
         abort(403)
 
     image_entry = OrderImage.query.filter_by(id=image_id, order_id=order.id).first_or_404()
@@ -3319,7 +3549,7 @@ def order_image_thumbnail(order_id, image_id):
 @login_required
 def order_image_view(order_id, image_id):
     order = Order.query.get_or_404(order_id)
-    if current_user.role != "admin" and order.user_id != current_user.id:
+    if not can_view_order(order, current_user):
         abort(403)
 
     image_entry = OrderImage.query.filter_by(id=image_id, order_id=order.id).first_or_404()
@@ -3341,7 +3571,7 @@ def order_image_view(order_id, image_id):
 @login_required
 def order_file_thumbnail(order_id, file_id, size):
     order = Order.query.get_or_404(order_id)
-    if current_user.role != "admin" and order.user_id != current_user.id:
+    if not can_view_order(order, current_user):
         abort(403)
 
     order_file = OrderFile.query.filter_by(id=file_id, order_id=order.id).first_or_404()
@@ -3410,7 +3640,7 @@ def order_file_thumbnail(order_id, file_id, size):
 @login_required
 def order_file_preview(order_id, file_id):
     order = Order.query.get_or_404(order_id)
-    if current_user.role != "admin" and order.user_id != current_user.id:
+    if not can_view_order(order, current_user):
         abort(403)
 
     order_file = OrderFile.query.filter_by(id=file_id, order_id=order.id).first_or_404()
@@ -3442,7 +3672,7 @@ def order_file_preview(order_id, file_id):
 def download_order_image(order_id, image_id):
     trans = inject_globals().get("t")
     order = Order.query.get_or_404(order_id)
-    if current_user.role != "admin" and order.user_id != current_user.id:
+    if not can_view_order(order, current_user):
         abort(403)
 
     image_entry = OrderImage.query.filter_by(id=image_id, order_id=order.id).first_or_404()
@@ -3476,7 +3706,7 @@ def download_order_file(order_id, file_id):
     order = Order.query.get_or_404(order_id)
 
     # Access control wie in order_detail
-    if current_user.role != "admin" and order.user_id != current_user.id:
+    if not can_view_order(order, current_user):
         abort(403)
 
     # Datei suchen
@@ -3508,8 +3738,10 @@ def download_print_job(order_id, job_id):
     trans = inject_globals().get("t")
     order = Order.query.get_or_404(order_id)
 
-    if current_user.role != "admin" and order.user_id != current_user.id:
+    if not can_view_order(order, current_user):
         abort(403)
+    if not is_3d_print_order(order):
+        abort(404)
 
     job = OrderPrintJob.query.filter_by(
         id=job_id,
@@ -3537,7 +3769,7 @@ def set_file_color(file_id):
     order_file = OrderFile.query.get_or_404(file_id)
     order = Order.query.get_or_404(order_file.order_id)
 
-    if current_user.role != "admin" and order.user_id != current_user.id:
+    if not can_view_order(order, current_user):
         abort(403)
 
     payload = request.get_json(silent=True) or request.form
@@ -3691,9 +3923,25 @@ def dashboard():
             .all()
         )
     else:
+        managed_category_ids = {
+            permission.category_id
+            for permission in UserOrderCategoryPermission.query.filter_by(
+                user_id=current_user.id,
+                can_manage=True,
+            ).all()
+        }
+        for category in OrderCategory.query.filter_by(active=True).all():
+            if current_user.role in category.worker_roles():
+                managed_category_ids.add(category.id)
+
         orders = (
             Order.query
-            .filter(Order.user_id == current_user.id)
+            .filter(
+                or_(
+                    Order.user_id == current_user.id,
+                    Order.category_id.in_(managed_category_ids) if managed_category_ids else False,
+                )
+            )
             .filter(Order.is_archived.is_(False))
             .order_by(Order.created_at.desc())
             .all()

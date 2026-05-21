@@ -1,5 +1,14 @@
 # Timeline NeoFab
 
+## Version 0.9.0
+
+Auftraege erhalten eine Kategorie als Stammdatum, initial mit 3D-Druck, Plotter und CNC-Fraesen
+Bestehende Auftraege werden automatisch der Kategorie 3D-Druck zugeordnet
+Generische Work-Job- und Kategorie-Berechtigungsmodelle als langfristige Basis fuer nicht additive Fertigungsauftraege ergaenzt
+Neue Auftraege koennen direkt mit einer Kategorie angelegt werden
+Auftragsdetails zeigen nur die fuer die Kategorie sichtbaren Reiter; 3D-Druckauftraege behalten den Druckauftrags-Reiter
+G-Code-Druckauftraege sind serverseitig auf 3D-Druckauftraege beschraenkt
+
 ## Version 0.8.12
 
 Kostenstelle bearbeiten enthaelt einen PDF-Export mit Kostenstellendaten, Exportdatum und den zugeordneten Auftraegen
