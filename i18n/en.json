@@ -330,7 +330,7 @@
   "print_jobs_cost_material": "Material",
   "print_jobs_cost_total": "Total",
   "print_jobs_cost_hint": "Calculated from print duration, filament weight, printer type costs, and filament material costs.",
-  "print_jobs_admin_only": "Only administrators can upload and manage print jobs.",
+  "print_jobs_admin_only": "Only administrators and workers can upload and manage print jobs.",
   "print_job_status_upload": "Uploaded",
   "print_job_status_preparation": "Preparation",
   "print_job_status_started": "Started",

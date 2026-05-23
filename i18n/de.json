@@ -306,7 +306,7 @@
   "print_jobs_cost_material": "Material",
   "print_jobs_cost_total": "Gesamt",
   "print_jobs_cost_hint": "Berechnung aus Druckdauer, Filamentgewicht, Drucker-Typ-Kosten und Filament-Material-Kosten.",
-  "print_jobs_admin_only": "Nur Administratoren können Druckaufträge verwalten.",
+  "print_jobs_admin_only": "Nur Administratoren und Mitarbeiter können Druckaufträge verwalten.",
   "print_job_status_upload": "Hochgeladen",
   "print_job_status_preparation": "Druckvorbereitung",
   "print_job_status_started": "Druck gestartet",

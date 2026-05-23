@@ -306,7 +306,7 @@
   "print_jobs_cost_material": "Materiau",
   "print_jobs_cost_total": "Total",
   "print_jobs_cost_hint": "Calcule a partir de la duree d'impression, du poids de filament, des couts du type d'imprimante et des couts du materiau de filament.",
-  "print_jobs_admin_only": "Seuls les administrateurs peuvent gérer les tâches d'impression.",
+  "print_jobs_admin_only": "Seuls les administrateurs et les collaborateurs peuvent gerer les taches d'impression.",
   "print_job_status_upload": "Téléversée",
   "print_job_status_preparation": "Préparation",
   "print_job_status_started": "Démarrée",

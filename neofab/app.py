@@ -3409,9 +3409,9 @@ def order_detail(order_id):
             flash(trans("flash_poster_deleted"), "info")
             return order_detail_redirect("posters")
 
-        # --- 6) G-Code hochladen (nur Admin) -------------------------------
+        # --- 6) G-Code hochladen (Admin + Mitarbeiter) ---------------------
         elif action == "upload_print_job":
-            if current_user.role != "admin" or not is_3d_print_order(order):
+            if current_user.role not in {"admin", "worker"} or not is_3d_print_order(order):
                 abort(403)
 
             file = request.files.get("gcode_file")
@@ -3572,9 +3572,9 @@ def order_detail(order_id):
             flash(trans("flash_print_job_uploaded"), "success")
             return order_detail_redirect("print-jobs")
 
-        # --- 7) G-Code l├Âschen (nur Admin) ---------------------------------
+        # --- 7) G-Code bearbeiten (Admin + Mitarbeiter) ---------------------
         elif action == "update_print_job":
-            if current_user.role != "admin" or not is_3d_print_order(order):
+            if current_user.role not in {"admin", "worker"} or not is_3d_print_order(order):
                 abort(403)
 
             try:
@@ -3691,7 +3691,7 @@ def order_detail(order_id):
             return redirect(url_for("order_detail", order_id=order.id))
 
         elif action == "delete_print_job":
-            if current_user.role != "admin" or not is_3d_print_order(order):
+            if current_user.role not in {"admin", "worker"} or not is_3d_print_order(order):
                 abort(403)
 
             try:

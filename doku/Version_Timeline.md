@@ -5,6 +5,7 @@
 Im Auftragsbereich wurde das neue Formularfeld Projekt-Gruppe ergaenzt
 Projekt-Gruppe kann beim Erstellen und Bearbeiten eines Auftrags gepflegt werden
 Projekt-Gruppe wird in den Auftragsdaten sowie im PDF-Export mit ausgegeben
+Mitarbeiter koennen Druckauftraege jetzt ebenfalls hochladen, bearbeiten und loeschen
 
 ## Version 0.9.9
 

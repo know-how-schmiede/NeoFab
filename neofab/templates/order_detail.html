@@ -983,7 +983,7 @@
                     <td>{{ "%.2f"|format(total_cost) }} EUR</td>
                     <td>{{ job.note or "" }}</td>
                     <td class="text-end">
-                      {% if current_user.role == 'admin' %}
+                      {% if current_user.role in ['admin', 'worker'] %}
                         <button type="button"
                                 class="btn btn-sm btn-outline-secondary"
                                 data-bs-toggle="modal"
@@ -1005,7 +1005,7 @@
                          href="{{ url_for('download_print_job', order_id=order.id, job_id=job.id) }}">
                         <i class="bi bi-download me-1"></i>{{ t("btn_download") }}
                       </a>
-                      {% if current_user.role == 'admin' %}
+                      {% if current_user.role in ['admin', 'worker'] %}
                         <form method="post" class="d-inline"
                               onsubmit="return confirm('{{ t('confirm_delete_print_job') }}');">
                           <input type="hidden" name="action" value="delete_print_job">
@@ -1027,7 +1027,7 @@
       </div>
     </div>
 
-    {% if current_user.role == 'admin' %}
+    {% if current_user.role in ['admin', 'worker'] %}
       <div class="card">
         <div class="card-header">
           <h4 class="h6 mb-0 d-flex align-items-center">
@@ -1343,7 +1343,7 @@
   </div>
 </div>
 
-{% if current_user.role == 'admin' and 'print-jobs' in visible_tabs %}
+{% if current_user.role in ['admin', 'worker'] and 'print-jobs' in visible_tabs %}
   <div class="modal fade" id="printJobEditModal" tabindex="-1" aria-labelledby="printJobEditLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
