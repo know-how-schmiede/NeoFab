@@ -1,5 +1,11 @@
 # Timeline NeoFab
 
+## Version 0.9.10
+
+Im Auftragsbereich wurde das neue Formularfeld Projekt-Gruppe ergaenzt
+Projekt-Gruppe kann beim Erstellen und Bearbeiten eines Auftrags gepflegt werden
+Projekt-Gruppe wird in den Auftragsdaten sowie im PDF-Export mit ausgegeben
+
 ## Version 0.9.9
 
 Beim Erstellen eines Druckauftrags wird der Auftragsstatus im Dashboard automatisch von New auf In progress gesetzt

@@ -67,6 +67,7 @@ class Order(db.Model):
 
     summary_short = db.Column(db.String(255))
     summary_long = db.Column(db.Text)
+    project_group = db.Column(db.String(255))
     project_purpose = db.Column(db.String(255))
     project_use_case = db.Column(db.String(255))
     learning_points = db.Column(db.Text)

@@ -791,6 +791,8 @@ def ensure_order_project_columns():
             statements.append("ALTER TABLE orders ADD COLUMN summary_short VARCHAR(255)")
         if "summary_long" not in cols:
             statements.append("ALTER TABLE orders ADD COLUMN summary_long TEXT")
+        if "project_group" not in cols:
+            statements.append("ALTER TABLE orders ADD COLUMN project_group VARCHAR(255)")
         if "project_purpose" not in cols:
             statements.append("ALTER TABLE orders ADD COLUMN project_purpose VARCHAR(255)")
         if "project_use_case" not in cols:
@@ -2539,6 +2541,7 @@ def new_order():
 
         summary_short = request.form.get("summary_short", "").strip() or None
         summary_long = request.form.get("summary_long", "").strip() or None
+        project_group = request.form.get("project_group", "").strip() or None
         project_purpose = request.form.get("project_purpose", "").strip() or None
         project_use_case = request.form.get("project_use_case", "").strip() or None
         learning_points = request.form.get("learning_points", "").strip() or None
@@ -2572,6 +2575,7 @@ def new_order():
             public_display_name=public_display_name,
             summary_short=summary_short,
             summary_long=summary_long,
+            project_group=project_group,
             project_purpose=project_purpose,
             project_use_case=project_use_case,
             learning_points=learning_points,
@@ -2764,6 +2768,7 @@ def order_detail(order_id):
 
             summary_short = request.form.get("summary_short", "").strip() or None
             summary_long = request.form.get("summary_long", "").strip() or None
+            project_group = request.form.get("project_group", "").strip() or None
             project_purpose = request.form.get("project_purpose", "").strip() or None
             project_use_case = request.form.get("project_use_case", "").strip() or None
             learning_points = request.form.get("learning_points", "").strip() or None
@@ -2840,6 +2845,7 @@ def order_detail(order_id):
                 order.public_display_name = public_display_name
                 order.summary_short = summary_short
                 order.summary_long = summary_long
+                order.project_group = project_group
                 order.project_purpose = project_purpose
                 order.project_use_case = project_use_case
                 order.learning_points = learning_points
@@ -4877,6 +4883,7 @@ def build_order_context(order, translator) -> dict:
             "description": order.description or "",
             "summary_short": order.summary_short or "",
             "summary_long": order.summary_long or "",
+            "project_group": order.project_group or "",
             "project_purpose": order.project_purpose or "",
             "project_use_case": order.project_use_case or "",
             "learning_points": order.learning_points or "",
@@ -5056,6 +5063,7 @@ def _build_order_pdf(order, translator) -> bytes:
     add(translator("order_updated_label"), order.updated_at.strftime("%Y-%m-%d %H:%M") if order.updated_at else "")
     add(translator("order_summary_short"), order.summary_short or "")
     add(translator("order_summary_long"), order.summary_long or "")
+    add(translator("order_project_group"), order.project_group or "")
     add(translator("order_description_label"), order.description or "")
     add(translator("order_project_purpose"), order.project_purpose or "")
     add(translator("order_project_use_case"), order.project_use_case or "")
