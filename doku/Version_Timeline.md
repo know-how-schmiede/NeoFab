@@ -7,6 +7,8 @@ Admin und Mitarbeiter koennen Plakatdateien in der Auftragsansicht auf den Statu
 Der Plakatstatus wird als Badge in der Plakatliste angezeigt und als eigener Status-Button bei den Aktionen eingeblendet
 Bei Plotter-Auftraegen setzt das Dashboard den Auftragsstatus automatisch auf Gedruckt, sobald alle Plakate gedruckt sind
 Sind bei einem Plotter-Auftrag erst einzelne Plakate gedruckt, wird der Auftragsstatus im Dashboard automatisch als In progress gefuehrt
+Order-Statusmeldungen (Neu, In Bearbeitung, Pausiert, Abgeschlossen, Storniert) sind jetzt in allen Sprachen lokalisiert und durchgaengig konsistent
+Druckauftrags-Statusmeldungen sind in Deutsch, Englisch und Franzoesisch sprachlich vereinheitlicht und als konsistente Zustandsbegriffe hinterlegt
 
 ## Version 0.9.8
 

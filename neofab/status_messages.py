@@ -9,11 +9,11 @@ LEGACY_ORDER_STATUS_MAP = {
 }
 
 ORDER_STATUS_DEFS = [
-    {"key": "new", "label": "New", "style": "bg-primary"},
-    {"key": "in_progress", "label": "In progress", "style": "bg-info"},
-    {"key": "on_hold", "label": "On hold", "style": "bg-warning text-dark"},
-    {"key": "completed", "label": "Completed", "style": "bg-success"},
-    {"key": "cancelled", "label": "Cancelled", "style": "bg-secondary"},
+    {"key": "new", "label": "order_status_new", "style": "bg-primary", "label_is_key": True},
+    {"key": "in_progress", "label": "order_status_in_progress", "style": "bg-info", "label_is_key": True},
+    {"key": "on_hold", "label": "order_status_on_hold", "style": "bg-warning text-dark", "label_is_key": True},
+    {"key": "completed", "label": "order_status_completed", "style": "bg-success", "label_is_key": True},
+    {"key": "cancelled", "label": "order_status_cancelled", "style": "bg-secondary", "label_is_key": True},
 ]
 
 PRINT_JOB_STATUS_DEFS = [
