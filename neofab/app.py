@@ -388,6 +388,42 @@ def sync_plotter_order_status_from_posters(order: Order) -> bool:
     return False
 
 
+def sync_3d_order_status_from_print_jobs(order: Order) -> bool:
+    """
+    Synchronisiert den Auftragsstatus eines 3D-Druckauftrags anhand der Druckauftrags-Status.
+
+    Regeln:
+    - Alle Druckauftraege "finished" -> Auftrag "completed"
+    - Sonst (bei vorhandenen Druckauftraegen) mindestens "in_progress"
+    - Keine Druckauftraege -> keine Aenderung
+    """
+    if not is_3d_print_order(order):
+        return False
+    if order.status == "cancelled":
+        return False
+
+    jobs = OrderPrintJob.query.filter_by(order_id=order.id).all()
+    if not jobs:
+        return False
+
+    statuses = [((job.status or "upload").strip().lower()) for job in jobs]
+    all_finished = all(status == "finished" for status in statuses)
+
+    if all_finished:
+        target_status = "completed"
+    elif order.status == "completed":
+        target_status = "in_progress"
+    elif order.status in ("new", "neu"):
+        target_status = "in_progress"
+    else:
+        target_status = order.status
+
+    if order.status != target_status:
+        order.status = target_status
+        return True
+    return False
+
+
 def can_manage_order_category(order: Order, user: User) -> bool:
     if getattr(user, "role", None) == "admin":
         return True
@@ -3553,6 +3589,8 @@ def order_detail(order_id):
             if order.status in ("new", "neu"):
                 order.status = "in_progress"
 
+            sync_3d_order_status_from_print_jobs(order)
+
             db.session.commit()
             write_audit_log(
                 app,
@@ -3686,6 +3724,8 @@ def order_detail(order_id):
             job.filament_m = filament_m
             job.filament_g = filament_g
 
+            sync_3d_order_status_from_print_jobs(order)
+
             db.session.commit()
             flash(trans("flash_print_job_updated"), "success")
             return redirect(url_for("order_detail", order_id=order.id))
@@ -3723,6 +3763,8 @@ def order_detail(order_id):
                     )
 
             db.session.delete(job)
+            db.session.flush()
+            sync_3d_order_status_from_print_jobs(order)
             db.session.commit()
             flash(trans("flash_print_job_deleted"), "info")
             return redirect(url_for("order_detail", order_id=order.id))

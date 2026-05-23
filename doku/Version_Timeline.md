@@ -6,6 +6,7 @@ Im Auftragsbereich wurde das neue Formularfeld Projekt-Gruppe ergaenzt
 Projekt-Gruppe kann beim Erstellen und Bearbeiten eines Auftrags gepflegt werden
 Projekt-Gruppe wird in den Auftragsdaten sowie im PDF-Export mit ausgegeben
 Mitarbeiter koennen Druckauftraege jetzt ebenfalls hochladen, bearbeiten und loeschen
+Bei 3D-Druck-Auftraegen wird der Auftragsstatus im Reiter Allgemein automatisch auf Abgeschlossen gesetzt, sobald alle Druckauftraege den Status Druck beendet haben
 
 ## Version 0.9.9
 
