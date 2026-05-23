@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.9.9
+
+Beim Erstellen eines Druckauftrags wird der Auftragsstatus im Dashboard automatisch von New auf In progress gesetzt
+
 ## Version 0.9.8
 
 Dashboard-Dateizaehler zeigt bei Plotter-Auftraegen die hochgeladenen Plakatdateien statt 3D-Druckdateien

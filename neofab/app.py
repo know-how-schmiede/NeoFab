@@ -3461,6 +3461,10 @@ def order_detail(order_id):
             if filament_g is None:
                 job.filament_g = round(float(gcode_metadata["filament_g"]), 2) if "filament_g" in gcode_metadata else None
 
+            # Beim ersten Druckauftrag soll ein neuer Auftrag automatisch in Bearbeitung gehen.
+            if order.status in ("new", "neu"):
+                order.status = "in_progress"
+
             db.session.commit()
             write_audit_log(
                 app,
