@@ -84,8 +84,12 @@
 
               <td>
                 {% set status_style = status_styles.get(o.status, "bg-light text-dark") %}
+                {% set status_text = status_labels.get(o.status, o.status) %}
+                {% if o.id in plotter_order_ids and o.status == 'completed' %}
+                  {% set status_text = t('posters_status_printed') %}
+                {% endif %}
                 <span class="badge {{ status_style }}">
-                  {{ status_labels.get(o.status, o.status) }}
+                  {{ status_text }}
                 </span>
               </td>
 

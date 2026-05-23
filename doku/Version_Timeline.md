@@ -3,6 +3,10 @@
 ## Version 0.9.9
 
 Beim Erstellen eines Druckauftrags wird der Auftragsstatus im Dashboard automatisch von New auf In progress gesetzt
+Admin und Mitarbeiter koennen Plakatdateien in der Auftragsansicht auf den Status Gedruckt setzen
+Der Plakatstatus wird als Badge in der Plakatliste angezeigt und als eigener Status-Button bei den Aktionen eingeblendet
+Bei Plotter-Auftraegen setzt das Dashboard den Auftragsstatus automatisch auf Gedruckt, sobald alle Plakate gedruckt sind
+Sind bei einem Plotter-Auftrag erst einzelne Plakate gedruckt, wird der Auftragsstatus im Dashboard automatisch als In progress gefuehrt
 
 ## Version 0.9.8
 

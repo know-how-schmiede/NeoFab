@@ -608,6 +608,7 @@
   "posters_status_open": "Open",
   "posters_status_printed": "Printed",
   "flash_poster_marked_printed": "Poster status set to printed.",
+  "flash_poster_already_printed": "Poster is already marked as printed.",
   "label_language": "Language",
   "role_admin": "Admin",
   "role_user": "User",

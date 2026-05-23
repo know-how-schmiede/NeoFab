@@ -352,6 +352,42 @@ def is_plotter_order(order: Order) -> bool:
     return bool(category and category.key == "plotter")
 
 
+def sync_plotter_order_status_from_posters(order: Order) -> bool:
+    """
+    Synchronisiert den Auftragsstatus eines Plotter-Auftrags anhand der Plakatstatus.
+
+    Regeln:
+    - Alle Plakate "printed"  -> Auftrag "completed"
+    - Mind. ein "printed"     -> Auftrag "in_progress"
+    - Sonst (Plakate vorhanden) -> Auftrag "new"
+    - Keine Plakate            -> keine Aenderung
+    """
+    if not is_plotter_order(order):
+        return False
+    if order.status == "cancelled":
+        return False
+
+    posters = OrderPosterFile.query.filter_by(order_id=order.id).all()
+    if not posters:
+        return False
+
+    statuses = [((poster.status or "open").strip().lower()) for poster in posters]
+    has_printed = any(status == "printed" for status in statuses)
+    all_printed = all(status == "printed" for status in statuses)
+
+    if all_printed:
+        target_status = "completed"
+    elif has_printed:
+        target_status = "in_progress"
+    else:
+        target_status = "new"
+
+    if order.status != target_status:
+        order.status = target_status
+        return True
+    return False
+
+
 def can_manage_order_category(order: Order, user: User) -> bool:
     if getattr(user, "role", None) == "admin":
         return True
@@ -3219,6 +3255,8 @@ def order_detail(order_id):
                 poster_file.thumb_path = thumb_name
             poster_file.uploaded_at = datetime.utcnow()
 
+            sync_plotter_order_status_from_posters(order)
+
             db.session.commit()
             write_audit_log(
                 app,
@@ -3308,10 +3346,15 @@ def order_detail(order_id):
                 flash(trans("flash_poster_not_found"), "warning")
                 return order_detail_redirect("posters")
 
-            if poster_file.status != "printed":
+            was_marked = poster_file.status == "printed"
+            if not was_marked:
                 poster_file.status = "printed"
-                db.session.commit()
+            sync_plotter_order_status_from_posters(order)
+            db.session.commit()
+            if not was_marked:
                 flash(trans("flash_poster_marked_printed"), "success")
+            else:
+                flash(trans("flash_poster_already_printed"), "info")
 
             return order_detail_redirect("posters")
 
@@ -3353,6 +3396,8 @@ def order_detail(order_id):
                         app.logger.warning("Could not delete poster thumbnail on disk: %s", thumb_path)
 
             db.session.delete(poster_file)
+            db.session.flush()
+            sync_plotter_order_status_from_posters(order)
             db.session.commit()
 
             flash(trans("flash_poster_deleted"), "info")
