@@ -969,6 +969,7 @@ def ensure_order_category_schema():
                         file_type VARCHAR(20),
                         filesize INTEGER,
                         note VARCHAR(255),
+                        status VARCHAR(50) NOT NULL DEFAULT 'open',
                         quantity INTEGER NOT NULL DEFAULT 1,
                         due_date DATE,
                         thumb_path VARCHAR(255),
@@ -985,6 +986,11 @@ def ensure_order_category_schema():
             }
             if "thumb_path" not in poster_cols:
                 db.session.execute(text("ALTER TABLE order_poster_files ADD COLUMN thumb_path VARCHAR(255)"))
+                db.session.commit()
+            if "status" not in poster_cols:
+                db.session.execute(
+                    text("ALTER TABLE order_poster_files ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'open'")
+                )
                 db.session.commit()
     except Exception:
         app.logger.exception("Failed to ensure order category schema exists")
@@ -3189,6 +3195,7 @@ def order_detail(order_id):
                 stored_name="",
                 file_type=ext,
                 note=note or None,
+                status="open",
                 quantity=quantity,
                 due_date=due_date,
             )
@@ -3276,6 +3283,36 @@ def order_detail(order_id):
             db.session.commit()
 
             flash(trans("flash_poster_updated"), "success")
+            return order_detail_redirect("posters")
+
+        elif action == "mark_poster_printed":
+            if not is_plotter_order(order):
+                abort(403)
+            if current_user.role not in {"admin", "worker"}:
+                abort(403)
+
+            try:
+                poster_id = int(request.form.get("poster_id", "0"))
+            except ValueError:
+                poster_id = 0
+
+            if not poster_id:
+                flash(trans("flash_poster_invalid_id"), "danger")
+                return order_detail_redirect("posters")
+
+            poster_file = OrderPosterFile.query.filter_by(
+                id=poster_id,
+                order_id=order.id,
+            ).first()
+            if not poster_file:
+                flash(trans("flash_poster_not_found"), "warning")
+                return order_detail_redirect("posters")
+
+            if poster_file.status != "printed":
+                poster_file.status = "printed"
+                db.session.commit()
+                flash(trans("flash_poster_marked_printed"), "success")
+
             return order_detail_redirect("posters")
 
         elif action == "delete_poster_file":

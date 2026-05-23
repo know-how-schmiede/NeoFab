@@ -187,6 +187,7 @@ class OrderPosterFile(db.Model):
     file_type = db.Column(db.String(20))
     filesize = db.Column(db.Integer)
     note = db.Column(db.String(255))
+    status = db.Column(db.String(50), nullable=False, default="open")
     quantity = db.Column(db.Integer, nullable=False, default=1)
     due_date = db.Column(db.Date)
     thumb_path = db.Column(db.String(255))
