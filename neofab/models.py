@@ -111,6 +111,7 @@ class Order(db.Model):
     filament_material = db.relationship("FilamentMaterial")
     print_jobs = db.relationship("OrderPrintJob", back_populates="order", lazy=True)
     poster_files = db.relationship("OrderPosterFile", back_populates="order", lazy=True)
+    procurement_articles = db.relationship("OrderProcurementArticle", back_populates="order", lazy=True)
     messages = db.relationship("OrderMessage", back_populates="order", lazy=True)
     files = db.relationship("OrderFile", back_populates="order", lazy=True)
     images = db.relationship("OrderImage", back_populates="order", lazy=True)
@@ -195,6 +196,27 @@ class OrderPosterFile(db.Model):
     uploaded_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     order = db.relationship("Order", back_populates="poster_files")
+
+
+class OrderProcurementArticle(db.Model):
+    __tablename__ = "order_procurement_articles"
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
+    article_name = db.Column(db.String(255), nullable=False)
+    article_description = db.Column(db.Text)
+    supplier = db.Column(db.String(255))
+    article_url = db.Column(db.String(1000))
+    quantity = db.Column(db.Integer, nullable=False, default=1)
+    price_per_unit_incl_vat = db.Column(db.Float)
+    note_file_original_name = db.Column(db.String(255))
+    note_file_stored_name = db.Column(db.String(255))
+    note_file_type = db.Column(db.String(20))
+    note_file_size = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    order = db.relationship("Order", back_populates="procurement_articles")
 
 
 # --- OrderMessage (Chat-/Kommunikationseintrag) ------------------------------
@@ -499,6 +521,7 @@ __all__ = [
     "OrderWorkJob",
     "UserOrderCategoryPermission",
     "OrderPosterFile",
+    "OrderProcurementArticle",
     "OrderMessage",
     "OrderReadStatus",
     "Announcement",

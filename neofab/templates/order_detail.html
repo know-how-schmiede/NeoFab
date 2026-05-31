@@ -16,7 +16,7 @@
 
 {% block content %}
 {% set active_tab = active_tab|default('general') %}
-{% set visible_tabs = visible_tabs|default(['general', 'project', 'files', 'print-jobs', 'communication']) %}
+{% set visible_tabs = visible_tabs|default(['general', 'project', 'files', 'posters', 'articles', 'print-jobs', 'communication']) %}
 {% macro communication_panel(container_id, form_action) %}
   <div class="card mt-4">
     <div class="card-header">
@@ -100,6 +100,13 @@
           <li class="nav-item" role="presentation">
             <button class="nav-link {% if active_tab == 'posters' %}active{% endif %}" id="posters-tab" data-bs-toggle="tab" data-bs-target="#posters-tab-pane" type="button" role="tab" aria-controls="posters-tab-pane" aria-selected="{{ 'true' if active_tab == 'posters' else 'false' }}">
               {{ t("tab_posters") }}
+            </button>
+          </li>
+        {% endif %}
+        {% if 'articles' in visible_tabs %}
+          <li class="nav-item" role="presentation">
+            <button class="nav-link {% if active_tab == 'articles' %}active{% endif %}" id="articles-tab" data-bs-toggle="tab" data-bs-target="#articles-tab-pane" type="button" role="tab" aria-controls="articles-tab-pane" aria-selected="{{ 'true' if active_tab == 'articles' else 'false' }}">
+              {{ t("tab_articles") }}
             </button>
           </li>
         {% endif %}
@@ -898,6 +905,136 @@
   </div>
   {% endif %}
 
+  {% if 'articles' in visible_tabs %}
+  <div class="tab-pane fade {% if active_tab == 'articles' %}show active{% endif %}" id="articles-tab-pane" role="tabpanel" aria-labelledby="articles-tab">
+    <div class="card mb-3">
+      <div class="card-header">
+        <h3 class="h6 mb-0 d-flex align-items-center">
+          <i class="bi bi-bag-check me-2"></i>
+          {{ t("articles_header") }}
+        </h3>
+      </div>
+      <div class="card-body">
+        {% if procurement_articles %}
+          <ul class="list-group mb-3">
+            {% for article in procurement_articles %}
+              <li class="list-group-item">
+                <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+                  <div>
+                    <div>
+                      <strong>{{ article.article_name }}</strong>
+                      <span class="badge bg-secondary ms-1">&times;{{ article.quantity or 1 }}</span>
+                    </div>
+                    <small class="text-muted d-block">
+                      {% set parts = [] %}
+                      {% if article.supplier %}{% set _ = parts.append(t("articles_supplier_label") ~ ": " ~ article.supplier) %}{% endif %}
+                      {% if article.price_per_unit_incl_vat is not none %}{% set _ = parts.append(t("articles_price_label") ~ ": " ~ ("%.2f"|format(article.price_per_unit_incl_vat)) ~ " EUR") %}{% endif %}
+                      {% if article.created_at %}{% set _ = parts.append("uploaded " ~ article.created_at.strftime("%Y-%m-%d %H:%M")) %}{% endif %}
+                      {{ " | ".join(parts) }}
+                    </small>
+                    {% if article.article_description %}
+                      <div class="small mt-1">{{ article.article_description }}</div>
+                    {% endif %}
+                    <div class="small mt-2 d-flex flex-wrap gap-2">
+                      {% if article.article_url %}
+                        <a class="btn btn-sm btn-outline-secondary" href="{{ article.article_url }}" target="_blank" rel="noopener noreferrer">
+                          <i class="bi bi-link-45deg me-1"></i>{{ t("articles_link_label") }}
+                        </a>
+                      {% endif %}
+                      {% if article.note_file_stored_name %}
+                        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('download_procurement_article_note_file', order_id=order.id, article_id=article.id) }}">
+                          <i class="bi bi-download me-1"></i>{{ t("articles_note_download") }}
+                        </a>
+                      {% endif %}
+                    </div>
+                  </div>
+
+                  <div class="d-flex gap-2">
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            data-bs-toggle="modal"
+                            data-bs-target="#articleEditModal"
+                            data-article-id="{{ article.id }}"
+                            data-article-name="{{ article.article_name }}"
+                            data-article-description="{{ article.article_description or '' }}"
+                            data-article-supplier="{{ article.supplier or '' }}"
+                            data-article-url="{{ article.article_url or '' }}"
+                            data-article-quantity="{{ article.quantity or 1 }}"
+                            data-article-price="{{ article.price_per_unit_incl_vat if article.price_per_unit_incl_vat is not none else '' }}">
+                      <i class="bi bi-pencil me-1"></i>{{ t("btn_edit") }}
+                    </button>
+                    <form method="post" onsubmit="return confirm('{{ t('confirm_delete_article') }}');">
+                      <input type="hidden" name="action" value="delete_procurement_article">
+                      <input type="hidden" name="article_id" value="{{ article.id }}">
+                      <button type="submit" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-trash me-1"></i>{{ t("btn_delete") }}
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-muted">{{ t("articles_none") }}</p>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" class="mt-2" action="{{ url_for('order_detail', order_id=order.id, tab='articles') }}">
+          <input type="hidden" name="action" value="create_procurement_article">
+          <div class="row g-2 mb-2">
+            <div class="col-md-6">
+              <label for="article_name" class="form-label">{{ t("articles_name_label") }}</label>
+              <input type="text" class="form-control" id="article_name" name="article_name" maxlength="255" required>
+            </div>
+            <div class="col-md-6">
+              <label for="article_supplier" class="form-label">{{ t("articles_supplier_label") }}</label>
+              <input type="text" class="form-control" id="article_supplier" name="article_supplier" maxlength="255">
+            </div>
+            <div class="col-12">
+              <label for="article_description" class="form-label">{{ t("articles_description_label") }}</label>
+              <textarea class="form-control" id="article_description" name="article_description" rows="2"></textarea>
+            </div>
+            <div class="col-md-6">
+              <label for="article_url" class="form-label">{{ t("articles_link_label") }}</label>
+              <input type="url" class="form-control" id="article_url" name="article_url" maxlength="1000" placeholder="https://">
+            </div>
+            <div class="col-md-3">
+              <label for="article_quantity" class="form-label">{{ t("articles_quantity_label") }}</label>
+              <input type="number" class="form-control" id="article_quantity" name="article_quantity" min="1" step="1" value="1">
+            </div>
+            <div class="col-md-3">
+              <label for="article_price_per_unit_incl_vat" class="form-label">{{ t("articles_price_label") }}</label>
+              <input type="number" class="form-control" id="article_price_per_unit_incl_vat" name="article_price_per_unit_incl_vat" min="0" step="0.01" value="0.00">
+            </div>
+            <div class="col-12">
+              <label for="article_note_file" class="form-label">{{ t("articles_note_upload_label") }}</label>
+              <input class="form-control"
+                     type="file"
+                     id="article_note_file"
+                     name="article_note_file"
+                     accept=".txt,.pdf,.doc,.docx,.odt,.ods,.odp,.odg,.odf,.rtf"
+                     data-upload-size-check="true"
+                     data-max-upload-size="{{ max_upload_size_bytes }}">
+              <div class="form-text">
+                {{ t("articles_note_upload_hint") }}
+                <br>{{ t("upload_max_size_hint") }} {{ max_upload_size_mb }} MB.
+              </div>
+              <div class="upload-size-feedback alert alert-danger mt-2 mb-0 d-none" role="alert">
+                {{ t("flash_upload_too_large") }}
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-secondary btn-sm">
+            <i class="bi bi-plus-circle me-1"></i>
+            {{ t("articles_add_button") }}
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   {% if 'print-jobs' in visible_tabs %}
   <div class="tab-pane fade {% if active_tab == 'print-jobs' %}show active{% endif %}" id="print-jobs-tab-pane" role="tabpanel" aria-labelledby="print-jobs-tab">
     <div class="card mb-3">
@@ -1327,6 +1464,57 @@
                      type="date"
                      id="edit_poster_due_date"
                      name="poster_due_date">
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 mt-3">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              {{ t("btn_cancel") }}
+            </button>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-save me-1"></i>{{ t("btn_save_changes") }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="articleEditModal" tabindex="-1" aria-labelledby="articleEditLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="articleEditLabel">{{ t("articles_edit_title") }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('btn_cancel') }}"></button>
+      </div>
+      <div class="modal-body">
+        <form method="post" action="{{ url_for('order_detail', order_id=order.id, tab='articles') }}">
+          <input type="hidden" name="action" value="update_procurement_article">
+          <input type="hidden" name="article_id" id="edit_article_id" value="">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="edit_article_name" class="form-label">{{ t("articles_name_label") }}</label>
+              <input class="form-control" type="text" id="edit_article_name" name="article_name" maxlength="255" required>
+            </div>
+            <div class="col-md-6">
+              <label for="edit_article_supplier" class="form-label">{{ t("articles_supplier_label") }}</label>
+              <input class="form-control" type="text" id="edit_article_supplier" name="article_supplier" maxlength="255">
+            </div>
+            <div class="col-12">
+              <label for="edit_article_description" class="form-label">{{ t("articles_description_label") }}</label>
+              <textarea class="form-control" id="edit_article_description" name="article_description" rows="2"></textarea>
+            </div>
+            <div class="col-md-6">
+              <label for="edit_article_url" class="form-label">{{ t("articles_link_label") }}</label>
+              <input class="form-control" type="url" id="edit_article_url" name="article_url" maxlength="1000" placeholder="https://">
+            </div>
+            <div class="col-md-3">
+              <label for="edit_article_quantity" class="form-label">{{ t("articles_quantity_label") }}</label>
+              <input class="form-control" type="number" min="1" step="1" id="edit_article_quantity" name="article_quantity">
+            </div>
+            <div class="col-md-3">
+              <label for="edit_article_price" class="form-label">{{ t("articles_price_label") }}</label>
+              <input class="form-control" type="number" min="0" step="0.01" id="edit_article_price" name="article_price_per_unit_incl_vat">
             </div>
           </div>
           <div class="d-flex justify-content-end gap-2 mt-3">
@@ -1905,6 +2093,40 @@
     if (noteInput) noteInput.value = posterNote;
     if (quantityInput) quantityInput.value = posterQuantity;
     if (dueDateInput) dueDateInput.value = posterDueDate;
+  });
+})();
+
+(function() {
+  const articleEditModal = document.getElementById("articleEditModal");
+  if (!articleEditModal) return;
+
+  articleEditModal.addEventListener("show.bs.modal", (event) => {
+    const button = event.relatedTarget;
+    if (!button) return;
+
+    const articleId = button.getAttribute("data-article-id") || "";
+    const articleName = button.getAttribute("data-article-name") || "";
+    const articleDescription = button.getAttribute("data-article-description") || "";
+    const articleSupplier = button.getAttribute("data-article-supplier") || "";
+    const articleUrl = button.getAttribute("data-article-url") || "";
+    const articleQuantity = button.getAttribute("data-article-quantity") || "1";
+    const articlePrice = button.getAttribute("data-article-price") || "";
+
+    const idInput = articleEditModal.querySelector("#edit_article_id");
+    const nameInput = articleEditModal.querySelector("#edit_article_name");
+    const descriptionInput = articleEditModal.querySelector("#edit_article_description");
+    const supplierInput = articleEditModal.querySelector("#edit_article_supplier");
+    const urlInput = articleEditModal.querySelector("#edit_article_url");
+    const quantityInput = articleEditModal.querySelector("#edit_article_quantity");
+    const priceInput = articleEditModal.querySelector("#edit_article_price");
+
+    if (idInput) idInput.value = articleId;
+    if (nameInput) nameInput.value = articleName;
+    if (descriptionInput) descriptionInput.value = articleDescription;
+    if (supplierInput) supplierInput.value = articleSupplier;
+    if (urlInput) urlInput.value = articleUrl;
+    if (quantityInput) quantityInput.value = articleQuantity;
+    if (priceInput) priceInput.value = articlePrice;
   });
 })();
 

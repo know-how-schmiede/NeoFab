@@ -94,6 +94,7 @@ from models import (
     OrderWorkJob,
     UserOrderCategoryPermission,
     OrderPosterFile,
+    OrderProcurementArticle,
     OrderMessage,
     OrderReadStatus,
     Announcement,
@@ -186,6 +187,9 @@ app.config["GCODE_UPLOAD_FOLDER"] = str(GCODE_UPLOAD_FOLDER)
 POSTER_UPLOAD_FOLDER = BASE_DIR / "uploads" / "posters"
 os.makedirs(POSTER_UPLOAD_FOLDER, exist_ok=True)
 app.config["POSTER_UPLOAD_FOLDER"] = str(POSTER_UPLOAD_FOLDER)
+PROCUREMENT_NOTE_UPLOAD_FOLDER = BASE_DIR / "uploads" / "procurement_notes"
+os.makedirs(PROCUREMENT_NOTE_UPLOAD_FOLDER, exist_ok=True)
+app.config["PROCUREMENT_NOTE_UPLOAD_FOLDER"] = str(PROCUREMENT_NOTE_UPLOAD_FOLDER)
 
 TRAINING_UPLOAD_FOLDER = BASE_DIR / "uploads" / "tutorials"
 os.makedirs(TRAINING_UPLOAD_FOLDER, exist_ok=True)
@@ -250,6 +254,13 @@ DEFAULT_ORDER_CATEGORIES = [
         "name": "CNC-Fraesen",
         "description": "Subtraktive Fertigung mit CNC-Fraesen.",
         "enabled_tabs": "general,files,communication",
+        "allowed_worker_roles": "admin",
+    },
+    {
+        "key": "procurement",
+        "name": "Beschaffung",
+        "description": "Beschaffung von Artikeln und Materialien inkl. Lieferanteninformationen.",
+        "enabled_tabs": "general,articles,communication",
         "allowed_worker_roles": "admin",
     },
 ]
@@ -328,7 +339,7 @@ def handle_request_entity_too_large(_error):
 
     if request.endpoint == "order_detail" and request.view_args and request.view_args.get("order_id"):
         tab = request.args.get("tab")
-        if tab not in {"files", "print-jobs"}:
+        if tab not in {"files", "print-jobs", "posters", "articles"}:
             tab = "files"
         return redirect(url_for("order_detail", order_id=request.view_args["order_id"], tab=tab), code=303)
 
@@ -350,6 +361,11 @@ def is_3d_print_order(order: Order) -> bool:
 def is_plotter_order(order: Order) -> bool:
     category = get_order_category(order)
     return bool(category and category.key == "plotter")
+
+
+def is_procurement_order(order: Order) -> bool:
+    category = get_order_category(order)
+    return bool(category and category.key == "procurement")
 
 
 def sync_plotter_order_status_from_posters(order: Order) -> bool:
@@ -456,6 +472,10 @@ def get_visible_order_tabs(order: Order, user: User) -> list[str]:
         tabs = ["posters" if tab == "files" else tab for tab in tabs]
     elif "posters" in tabs:
         tabs = [tab for tab in tabs if tab != "posters"]
+    if is_procurement_order(order):
+        tabs = ["articles" if tab == "files" else tab for tab in tabs]
+    elif "articles" in tabs:
+        tabs = [tab for tab in tabs if tab != "articles"]
     if "general" not in tabs:
         tabs.insert(0, "general")
     return tabs
@@ -995,8 +1015,14 @@ def ensure_order_category_schema():
         for item in DEFAULT_ORDER_CATEGORIES:
             existing = OrderCategory.query.filter_by(key=item["key"]).first()
             if existing:
-                if existing.key == "plotter" and existing.enabled_tabs != item["enabled_tabs"]:
+                if existing.enabled_tabs != item["enabled_tabs"]:
                     existing.enabled_tabs = item["enabled_tabs"]
+                    existing.updated_at = datetime.utcnow()
+                if existing.name != item["name"]:
+                    existing.name = item["name"]
+                    existing.updated_at = datetime.utcnow()
+                if existing.description != item["description"]:
+                    existing.description = item["description"]
                     existing.updated_at = datetime.utcnow()
                 if existing.allowed_worker_roles != item["allowed_worker_roles"]:
                     existing.allowed_worker_roles = item["allowed_worker_roles"]
@@ -1065,6 +1091,82 @@ def ensure_order_category_schema():
                 db.session.execute(
                     text("ALTER TABLE order_poster_files ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'open'")
                 )
+                db.session.commit()
+
+        procurement_articles_exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='order_procurement_articles'")
+        ).scalar()
+        if not procurement_articles_exists:
+            db.session.execute(
+                text(
+                    """
+                    CREATE TABLE order_procurement_articles (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        order_id INTEGER NOT NULL,
+                        article_name VARCHAR(255) NOT NULL,
+                        article_description TEXT,
+                        supplier VARCHAR(255),
+                        article_url VARCHAR(1000),
+                        quantity INTEGER NOT NULL DEFAULT 1,
+                        price_per_unit_incl_vat FLOAT,
+                        note_file_original_name VARCHAR(255),
+                        note_file_stored_name VARCHAR(255),
+                        note_file_type VARCHAR(20),
+                        note_file_size INTEGER,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+            )
+            db.session.commit()
+        else:
+            procurement_cols = {
+                row[1]
+                for row in db.session.execute(text("PRAGMA table_info(order_procurement_articles)"))
+            }
+            procurement_statements = []
+            if "article_description" not in procurement_cols:
+                procurement_statements.append("ALTER TABLE order_procurement_articles ADD COLUMN article_description TEXT")
+            if "supplier" not in procurement_cols:
+                procurement_statements.append("ALTER TABLE order_procurement_articles ADD COLUMN supplier VARCHAR(255)")
+            if "article_url" not in procurement_cols:
+                procurement_statements.append("ALTER TABLE order_procurement_articles ADD COLUMN article_url VARCHAR(1000)")
+            if "quantity" not in procurement_cols:
+                procurement_statements.append(
+                    "ALTER TABLE order_procurement_articles ADD COLUMN quantity INTEGER NOT NULL DEFAULT 1"
+                )
+            if "price_per_unit_incl_vat" not in procurement_cols:
+                procurement_statements.append(
+                    "ALTER TABLE order_procurement_articles ADD COLUMN price_per_unit_incl_vat FLOAT"
+                )
+            if "note_file_original_name" not in procurement_cols:
+                procurement_statements.append(
+                    "ALTER TABLE order_procurement_articles ADD COLUMN note_file_original_name VARCHAR(255)"
+                )
+            if "note_file_stored_name" not in procurement_cols:
+                procurement_statements.append(
+                    "ALTER TABLE order_procurement_articles ADD COLUMN note_file_stored_name VARCHAR(255)"
+                )
+            if "note_file_type" not in procurement_cols:
+                procurement_statements.append(
+                    "ALTER TABLE order_procurement_articles ADD COLUMN note_file_type VARCHAR(20)"
+                )
+            if "note_file_size" not in procurement_cols:
+                procurement_statements.append(
+                    "ALTER TABLE order_procurement_articles ADD COLUMN note_file_size INTEGER"
+                )
+            if "created_at" not in procurement_cols:
+                procurement_statements.append(
+                    "ALTER TABLE order_procurement_articles ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+                )
+            if "updated_at" not in procurement_cols:
+                procurement_statements.append(
+                    "ALTER TABLE order_procurement_articles ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+                )
+            for stmt in procurement_statements:
+                db.session.execute(text(stmt))
+            if procurement_statements:
                 db.session.commit()
     except Exception:
         app.logger.exception("Failed to ensure order category schema exists")
@@ -3445,6 +3547,171 @@ def order_detail(order_id):
             flash(trans("flash_poster_deleted"), "info")
             return order_detail_redirect("posters")
 
+        elif action == "create_procurement_article":
+            if not is_procurement_order(order):
+                abort(403)
+
+            article_name = (request.form.get("article_name") or "").strip()
+            article_description = (request.form.get("article_description") or "").strip() or None
+            supplier = (request.form.get("article_supplier") or "").strip() or None
+            article_url = (request.form.get("article_url") or "").strip() or None
+            quantity_raw = (request.form.get("article_quantity") or "").strip()
+            price_raw = (request.form.get("article_price_per_unit_incl_vat") or "").strip()
+            note_file = request.files.get("article_note_file")
+
+            if not article_name:
+                flash(trans("flash_procurement_article_name_required"), "warning")
+                return order_detail_redirect("articles")
+
+            try:
+                quantity = max(1, int(quantity_raw or "1"))
+            except ValueError:
+                quantity = 1
+
+            price_per_unit_incl_vat = None
+            if price_raw:
+                normalized_price = price_raw.replace(",", ".")
+                try:
+                    price_per_unit_incl_vat = float(normalized_price)
+                except ValueError:
+                    flash(trans("flash_procurement_invalid_price"), "danger")
+                    return order_detail_redirect("articles")
+
+            note_file_original_name = None
+            note_file_stored_name = None
+            note_file_type = None
+            note_file_size = None
+
+            if note_file and note_file.filename:
+                note_file_original_name = note_file.filename
+                safe_note_name = secure_filename(note_file_original_name)
+                _, ext = os.path.splitext(safe_note_name)
+                note_file_type = ext.lower().lstrip(".")
+                allowed_note_ext = {"txt", "pdf", "doc", "docx", "odt", "ods", "odp", "odg", "odf", "rtf"}
+                if note_file_type not in allowed_note_ext:
+                    flash(trans("flash_procurement_invalid_note_file"), "warning")
+                    return order_detail_redirect("articles")
+
+            article = OrderProcurementArticle(
+                order_id=order.id,
+                article_name=article_name[:255],
+                article_description=article_description,
+                supplier=supplier[:255] if supplier else None,
+                article_url=article_url[:1000] if article_url else None,
+                quantity=quantity,
+                price_per_unit_incl_vat=price_per_unit_incl_vat,
+                note_file_original_name=note_file_original_name,
+                note_file_stored_name="" if note_file_original_name else None,
+                note_file_type=note_file_type,
+            )
+            db.session.add(article)
+            db.session.flush()
+
+            if note_file and note_file.filename:
+                safe_note_name = secure_filename(note_file_original_name or "note")
+                note_file_stored_name = f"{article.id}_{safe_note_name}"
+                note_folder = Path(app.config["PROCUREMENT_NOTE_UPLOAD_FOLDER"]) / f"order_{order.id}"
+                note_folder.mkdir(parents=True, exist_ok=True)
+                note_full_path = note_folder / note_file_stored_name
+                note_file.save(str(note_full_path))
+                article.note_file_stored_name = note_file_stored_name
+                try:
+                    note_file_size = note_full_path.stat().st_size
+                except OSError:
+                    note_file_size = None
+                article.note_file_size = note_file_size
+
+            db.session.commit()
+            flash(trans("flash_procurement_article_created"), "success")
+            return order_detail_redirect("articles")
+
+        elif action == "update_procurement_article":
+            if not is_procurement_order(order):
+                abort(403)
+
+            try:
+                article_id = int(request.form.get("article_id", "0"))
+            except ValueError:
+                article_id = 0
+
+            if not article_id:
+                flash(trans("flash_procurement_article_not_found"), "warning")
+                return order_detail_redirect("articles")
+
+            article = OrderProcurementArticle.query.filter_by(id=article_id, order_id=order.id).first()
+            if not article:
+                flash(trans("flash_procurement_article_not_found"), "warning")
+                return order_detail_redirect("articles")
+
+            article_name = (request.form.get("article_name") or "").strip()
+            article_description = (request.form.get("article_description") or "").strip() or None
+            supplier = (request.form.get("article_supplier") or "").strip() or None
+            article_url = (request.form.get("article_url") or "").strip() or None
+            quantity_raw = (request.form.get("article_quantity") or "").strip()
+            price_raw = (request.form.get("article_price_per_unit_incl_vat") or "").strip()
+
+            if not article_name:
+                flash(trans("flash_procurement_article_name_required"), "warning")
+                return order_detail_redirect("articles")
+
+            try:
+                quantity = max(1, int(quantity_raw or "1"))
+            except ValueError:
+                quantity = 1
+
+            price_per_unit_incl_vat = None
+            if price_raw:
+                normalized_price = price_raw.replace(",", ".")
+                try:
+                    price_per_unit_incl_vat = float(normalized_price)
+                except ValueError:
+                    flash(trans("flash_procurement_invalid_price"), "danger")
+                    return order_detail_redirect("articles")
+
+            article.article_name = article_name[:255]
+            article.article_description = article_description
+            article.supplier = supplier[:255] if supplier else None
+            article.article_url = article_url[:1000] if article_url else None
+            article.quantity = quantity
+            article.price_per_unit_incl_vat = price_per_unit_incl_vat
+            db.session.commit()
+
+            flash(trans("flash_procurement_article_updated"), "success")
+            return order_detail_redirect("articles")
+
+        elif action == "delete_procurement_article":
+            if not is_procurement_order(order):
+                abort(403)
+
+            try:
+                article_id = int(request.form.get("article_id", "0"))
+            except ValueError:
+                article_id = 0
+
+            if not article_id:
+                flash(trans("flash_procurement_article_not_found"), "warning")
+                return order_detail_redirect("articles")
+
+            article = OrderProcurementArticle.query.filter_by(id=article_id, order_id=order.id).first()
+            if not article:
+                flash(trans("flash_procurement_article_not_found"), "warning")
+                return order_detail_redirect("articles")
+
+            if article.note_file_stored_name:
+                note_folder = Path(app.config["PROCUREMENT_NOTE_UPLOAD_FOLDER"]) / f"order_{order.id}"
+                note_full_path = note_folder / article.note_file_stored_name
+                if note_full_path.exists():
+                    try:
+                        note_full_path.unlink()
+                    except OSError:
+                        app.logger.warning("Could not delete procurement note file on disk: %s", note_full_path)
+
+            db.session.delete(article)
+            db.session.commit()
+
+            flash(trans("flash_procurement_article_deleted"), "info")
+            return order_detail_redirect("articles")
+
         # --- 6) G-Code hochladen (Admin + Mitarbeiter) ---------------------
         elif action == "upload_print_job":
             if current_user.role not in {"admin", "worker"} or not is_3d_print_order(order):
@@ -3984,6 +4251,15 @@ def order_detail(order_id):
         if poster_thumbnail_changed:
             db.session.commit()
 
+    procurement_articles = []
+    if is_procurement_order(order):
+        procurement_articles = (
+            OrderProcurementArticle.query
+            .filter_by(order_id=order.id)
+            .order_by(OrderProcurementArticle.created_at.desc())
+            .all()
+        )
+
     status_context = get_status_context(inject_globals().get("t"))
     app.logger.debug(
         f"[order_detail] Render detail for order {order.id}: status={order.status!r}, "
@@ -4001,6 +4277,7 @@ def order_detail(order_id):
         filament_materials=filament_materials,
         print_jobs=print_jobs,
         poster_files=poster_files,
+        procurement_articles=procurement_articles,
         print_job_statuses=status_context["print_job_statuses"],
         print_job_status_labels=status_context["print_job_status_labels"],
         print_job_status_styles=status_context["print_job_status_styles"],
@@ -4307,6 +4584,41 @@ def download_poster_file(order_id, poster_id):
     )
 
 
+@app.route("/orders/<int:order_id>/procurement-articles/<int:article_id>/note/download")
+@login_required
+def download_procurement_article_note_file(order_id, article_id):
+    trans = inject_globals().get("t")
+    order = Order.query.get_or_404(order_id)
+
+    if not can_view_order(order, current_user):
+        abort(403)
+    if not is_procurement_order(order):
+        abort(404)
+
+    article = OrderProcurementArticle.query.filter_by(
+        id=article_id,
+        order_id=order.id,
+    ).first_or_404()
+
+    if not article.note_file_stored_name:
+        flash(trans("flash_procurement_note_file_missing"), "warning")
+        return redirect(url_for("order_detail", order_id=order.id, tab="articles"))
+
+    note_folder = Path(app.config["PROCUREMENT_NOTE_UPLOAD_FOLDER"]) / f"order_{order.id}"
+    full_path = note_folder / article.note_file_stored_name
+
+    if not full_path.exists():
+        flash(trans("flash_file_missing_server"), "danger")
+        return redirect(url_for("order_detail", order_id=order.id, tab="articles"))
+
+    return send_from_directory(
+        directory=str(note_folder),
+        path=article.note_file_stored_name,
+        as_attachment=True,
+        download_name=article.note_file_original_name or article.note_file_stored_name,
+    )
+
+
 @app.route("/orders/<int:order_id>/posters/<int:poster_id>/thumbnail")
 @login_required
 def poster_file_thumbnail(order_id, poster_id):
@@ -4572,7 +4884,11 @@ def dashboard():
 
     order_ids = [o.id for o in paginated_orders]
     plotter_order_ids = [o.id for o in paginated_orders if is_plotter_order(o)]
-    print_order_ids = [o.id for o in paginated_orders if not is_plotter_order(o)]
+    procurement_order_ids = [o.id for o in paginated_orders if is_procurement_order(o)]
+    print_order_ids = [
+        o.id for o in paginated_orders
+        if not is_plotter_order(o) and not is_procurement_order(o)
+    ]
     for o in paginated_orders:
         app.logger.debug(
             f"[dashboard] Order id={o.id}, title={o.title!r}, status={o.status!r}"
@@ -4602,6 +4918,17 @@ def dashboard():
             .all()
         )
         file_counts.update({order_id: count for order_id, count in poster_count_rows})
+    if procurement_order_ids:
+        procurement_count_rows = (
+            db.session.query(
+                OrderProcurementArticle.order_id,
+                func.count(OrderProcurementArticle.id)
+            )
+            .filter(OrderProcurementArticle.order_id.in_(procurement_order_ids))
+            .group_by(OrderProcurementArticle.order_id)
+            .all()
+        )
+        file_counts.update({order_id: count for order_id, count in procurement_count_rows})
 
     app.logger.debug(f"[dashboard] file_counts: {file_counts}")
 

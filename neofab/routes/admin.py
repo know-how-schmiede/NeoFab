@@ -63,6 +63,8 @@ from models import (
     OrderFile,
     OrderImage,
     OrderMessage,
+    OrderPosterFile,
+    OrderProcurementArticle,
     OrderPrintJob,
     OrderReadStatus,
     OrderTag,
@@ -410,7 +412,13 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             details={"order_id": order_id},
             log_file=DELETE_LOG_FILE,
         )
-        for config_key in ("UPLOAD_FOLDER", "IMAGE_UPLOAD_FOLDER", "GCODE_UPLOAD_FOLDER"):
+        for config_key in (
+            "UPLOAD_FOLDER",
+            "IMAGE_UPLOAD_FOLDER",
+            "GCODE_UPLOAD_FOLDER",
+            "POSTER_UPLOAD_FOLDER",
+            "PROCUREMENT_NOTE_UPLOAD_FOLDER",
+        ):
             results.append(_remove_order_upload_folder(config_key, order_id))
         errors = [result for result in results if result.get("error")]
         if errors:
@@ -424,6 +432,8 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             "order_messages": OrderMessage.query.filter_by(order_id=order_id).delete(synchronize_session=False),
             "order_files": OrderFile.query.filter_by(order_id=order_id).delete(synchronize_session=False),
             "order_images": OrderImage.query.filter_by(order_id=order_id).delete(synchronize_session=False),
+            "order_poster_files": OrderPosterFile.query.filter_by(order_id=order_id).delete(synchronize_session=False),
+            "order_procurement_articles": OrderProcurementArticle.query.filter_by(order_id=order_id).delete(synchronize_session=False),
             "order_print_jobs": OrderPrintJob.query.filter_by(order_id=order_id).delete(synchronize_session=False),
             "order_tags": OrderTag.query.filter_by(order_id=order_id).delete(synchronize_session=False),
         }

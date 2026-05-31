@@ -1,5 +1,13 @@
 # Timeline NeoFab
 
+## Version 0.9.11
+
+Neue Auftragskategorie Beschaffung wurde hinzugefuegt
+Beschaffung verwendet in der Auftragsansicht den neuen Reiter Artikel anstelle des Reiters Plakate
+Im Reiter Artikel koennen jetzt Artikelname, Artikel-Beschreibung, Lieferant, Artikel-Link, Anzahl und Preis pro Stueck inkl. MwSt erfasst werden
+Pro Artikel kann eine Upload-Bemerkung als Datei hinterlegt und wieder heruntergeladen werden
+Fuer Upload-Bemerkungen im Reiter Artikel sind Text-, Word-, PDF- und LibreOffice-Dateien erlaubt
+
 ## Version 0.9.10
 
 Im Auftragsbereich wurde das neue Formularfeld Projekt-Gruppe ergaenzt
