@@ -445,7 +445,7 @@ def sync_procurement_order_status_from_articles(order: Order) -> bool:
     Synchronisiert den Auftragsstatus eines Beschaffungsauftrags anhand der Artikelstatus.
 
     Regeln:
-    - Alle Artikel "ordered" oder "delivered" -> Auftrag "completed"
+    - Alle Artikel "delivered" -> Auftrag "completed"
     - Mindestens ein Artikel "ordered" oder "delivered" -> Auftrag "in_progress"
     - Sonst (Artikel vorhanden) -> Auftrag "new"
     - Keine Artikel -> keine Aenderung
@@ -462,9 +462,9 @@ def sync_procurement_order_status_from_articles(order: Order) -> bool:
     ordered_like = {"ordered", "delivered"}
     statuses = [((article.status or "open").strip().lower()) for article in articles]
     has_ordered = any(status in ordered_like for status in statuses)
-    all_ordered = all(status in ordered_like for status in statuses)
+    all_delivered = all(status == "delivered" for status in statuses)
 
-    if all_ordered:
+    if all_delivered:
         target_status = "completed"
     elif has_ordered:
         target_status = "in_progress"

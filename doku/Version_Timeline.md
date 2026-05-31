@@ -4,7 +4,7 @@
 
 Im Reiter Artikel koennen Admin und Mitarbeiter den Artikelstatus jetzt auf Bestellt oder Geliefert setzen
 Sobald bei einem Beschaffungsauftrag ein Artikel auf Bestellt oder Geliefert gesetzt wird, wechselt der Auftragsstatus automatisch auf In progress
-Sobald alle Artikel eines Beschaffungsauftrags auf Bestellt oder Geliefert stehen, wird der Auftragsstatus automatisch auf Abgeschlossen gesetzt
+Sobald alle Artikel eines Beschaffungsauftrags auf Geliefert stehen, wird der Auftragsstatus automatisch auf Abgeschlossen gesetzt
 
 ## Version 0.9.11
 
