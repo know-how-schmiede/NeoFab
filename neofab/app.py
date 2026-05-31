@@ -440,6 +440,43 @@ def sync_3d_order_status_from_print_jobs(order: Order) -> bool:
     return False
 
 
+def sync_procurement_order_status_from_articles(order: Order) -> bool:
+    """
+    Synchronisiert den Auftragsstatus eines Beschaffungsauftrags anhand der Artikelstatus.
+
+    Regeln:
+    - Alle Artikel "ordered" oder "delivered" -> Auftrag "completed"
+    - Mindestens ein Artikel "ordered" oder "delivered" -> Auftrag "in_progress"
+    - Sonst (Artikel vorhanden) -> Auftrag "new"
+    - Keine Artikel -> keine Aenderung
+    """
+    if not is_procurement_order(order):
+        return False
+    if order.status == "cancelled":
+        return False
+
+    articles = OrderProcurementArticle.query.filter_by(order_id=order.id).all()
+    if not articles:
+        return False
+
+    ordered_like = {"ordered", "delivered"}
+    statuses = [((article.status or "open").strip().lower()) for article in articles]
+    has_ordered = any(status in ordered_like for status in statuses)
+    all_ordered = all(status in ordered_like for status in statuses)
+
+    if all_ordered:
+        target_status = "completed"
+    elif has_ordered:
+        target_status = "in_progress"
+    else:
+        target_status = "new"
+
+    if order.status != target_status:
+        order.status = target_status
+        return True
+    return False
+
+
 def can_manage_order_category(order: Order, user: User) -> bool:
     if getattr(user, "role", None) == "admin":
         return True
@@ -1104,6 +1141,7 @@ def ensure_order_category_schema():
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         order_id INTEGER NOT NULL,
                         article_name VARCHAR(255) NOT NULL,
+                        status VARCHAR(50) NOT NULL DEFAULT 'open',
                         article_description TEXT,
                         supplier VARCHAR(255),
                         article_url VARCHAR(1000),
@@ -1128,6 +1166,10 @@ def ensure_order_category_schema():
             procurement_statements = []
             if "article_description" not in procurement_cols:
                 procurement_statements.append("ALTER TABLE order_procurement_articles ADD COLUMN article_description TEXT")
+            if "status" not in procurement_cols:
+                procurement_statements.append(
+                    "ALTER TABLE order_procurement_articles ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'open'"
+                )
             if "supplier" not in procurement_cols:
                 procurement_statements.append("ALTER TABLE order_procurement_articles ADD COLUMN supplier VARCHAR(255)")
             if "article_url" not in procurement_cols:
@@ -3595,6 +3637,7 @@ def order_detail(order_id):
             article = OrderProcurementArticle(
                 order_id=order.id,
                 article_name=article_name[:255],
+                status="open",
                 article_description=article_description,
                 supplier=supplier[:255] if supplier else None,
                 article_url=article_url[:1000] if article_url else None,
@@ -3621,6 +3664,7 @@ def order_detail(order_id):
                     note_file_size = None
                 article.note_file_size = note_file_size
 
+            sync_procurement_order_status_from_articles(order)
             db.session.commit()
             flash(trans("flash_procurement_article_created"), "success")
             return order_detail_redirect("articles")
@@ -3674,9 +3718,74 @@ def order_detail(order_id):
             article.article_url = article_url[:1000] if article_url else None
             article.quantity = quantity
             article.price_per_unit_incl_vat = price_per_unit_incl_vat
+            sync_procurement_order_status_from_articles(order)
             db.session.commit()
 
             flash(trans("flash_procurement_article_updated"), "success")
+            return order_detail_redirect("articles")
+
+        elif action == "mark_procurement_article_ordered":
+            if not is_procurement_order(order):
+                abort(403)
+            if current_user.role not in {"admin", "worker"}:
+                abort(403)
+
+            try:
+                article_id = int(request.form.get("article_id", "0"))
+            except ValueError:
+                article_id = 0
+
+            if not article_id:
+                flash(trans("flash_procurement_article_not_found"), "warning")
+                return order_detail_redirect("articles")
+
+            article = OrderProcurementArticle.query.filter_by(id=article_id, order_id=order.id).first()
+            if not article:
+                flash(trans("flash_procurement_article_not_found"), "warning")
+                return order_detail_redirect("articles")
+
+            was_ordered = (article.status or "open").strip().lower() == "ordered"
+            if not was_ordered:
+                article.status = "ordered"
+            sync_procurement_order_status_from_articles(order)
+            db.session.commit()
+
+            if not was_ordered:
+                flash(trans("flash_procurement_article_marked_ordered"), "success")
+            else:
+                flash(trans("flash_procurement_article_already_ordered"), "info")
+            return order_detail_redirect("articles")
+
+        elif action == "mark_procurement_article_delivered":
+            if not is_procurement_order(order):
+                abort(403)
+            if current_user.role not in {"admin", "worker"}:
+                abort(403)
+
+            try:
+                article_id = int(request.form.get("article_id", "0"))
+            except ValueError:
+                article_id = 0
+
+            if not article_id:
+                flash(trans("flash_procurement_article_not_found"), "warning")
+                return order_detail_redirect("articles")
+
+            article = OrderProcurementArticle.query.filter_by(id=article_id, order_id=order.id).first()
+            if not article:
+                flash(trans("flash_procurement_article_not_found"), "warning")
+                return order_detail_redirect("articles")
+
+            was_delivered = (article.status or "open").strip().lower() == "delivered"
+            if not was_delivered:
+                article.status = "delivered"
+            sync_procurement_order_status_from_articles(order)
+            db.session.commit()
+
+            if not was_delivered:
+                flash(trans("flash_procurement_article_marked_delivered"), "success")
+            else:
+                flash(trans("flash_procurement_article_already_delivered"), "info")
             return order_detail_redirect("articles")
 
         elif action == "delete_procurement_article":
@@ -3707,6 +3816,8 @@ def order_detail(order_id):
                         app.logger.warning("Could not delete procurement note file on disk: %s", note_full_path)
 
             db.session.delete(article)
+            db.session.flush()
+            sync_procurement_order_status_from_articles(order)
             db.session.commit()
 
             flash(trans("flash_procurement_article_deleted"), "info")

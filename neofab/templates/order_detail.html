@@ -924,6 +924,14 @@
                     <div>
                       <strong>{{ article.article_name }}</strong>
                       <span class="badge bg-secondary ms-1">&times;{{ article.quantity or 1 }}</span>
+                      {% set article_status = (article.status or 'open') %}
+                      {% if article_status == 'delivered' %}
+                        <span class="badge bg-success ms-1">{{ t("articles_status_delivered") }}</span>
+                      {% elif article_status == 'ordered' %}
+                        <span class="badge bg-primary ms-1">{{ t("articles_status_ordered") }}</span>
+                      {% else %}
+                        <span class="badge bg-warning text-dark ms-1">{{ t("articles_status_open") }}</span>
+                      {% endif %}
                     </div>
                     <small class="text-muted d-block">
                       {% set parts = [] %}
@@ -950,6 +958,36 @@
                   </div>
 
                   <div class="d-flex gap-2">
+                    {% if current_user.role in ['admin', 'worker'] %}
+                      {% if article_status == 'ordered' %}
+                        <button type="button" class="btn btn-sm btn-primary" disabled>
+                          <i class="bi bi-bag-check me-1"></i>{{ t("articles_mark_ordered") }}
+                        </button>
+                      {% else %}
+                        <form method="post" class="d-inline">
+                          <input type="hidden" name="action" value="mark_procurement_article_ordered">
+                          <input type="hidden" name="article_id" value="{{ article.id }}">
+                          <button type="submit" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-bag-check me-1"></i>{{ t("articles_mark_ordered") }}
+                          </button>
+                        </form>
+                      {% endif %}
+
+                      {% if article_status == 'delivered' %}
+                        <button type="button" class="btn btn-sm btn-success" disabled>
+                          <i class="bi bi-box-seam me-1"></i>{{ t("articles_mark_delivered") }}
+                        </button>
+                      {% else %}
+                        <form method="post" class="d-inline">
+                          <input type="hidden" name="action" value="mark_procurement_article_delivered">
+                          <input type="hidden" name="article_id" value="{{ article.id }}">
+                          <button type="submit" class="btn btn-sm btn-outline-success">
+                            <i class="bi bi-box-seam me-1"></i>{{ t("articles_mark_delivered") }}
+                          </button>
+                        </form>
+                      {% endif %}
+                    {% endif %}
+
                     <button type="button"
                             class="btn btn-sm btn-outline-secondary"
                             data-bs-toggle="modal"
