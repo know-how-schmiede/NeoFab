@@ -2,7 +2,7 @@
 
 # NeoFab - Multilingual Workshop Order Management System
 
-NeoFab is a Flask-based web application for managing fabrication orders in labs, workshops, maker spaces, and research environments. It supports 3D printing workflows and now provides the foundation for additional order categories such as plotter and CNC work.
+NeoFab is a Flask-based web application for managing fabrication orders in labs, workshops, maker spaces, and research environments. It supports 3D printing workflows and additional order categories such as plotter, CNC, and procurement work.
 
 The application is built for multilingual use with English as the default language and German support through the included translation files.
 
@@ -15,13 +15,22 @@ The application is built for multilingual use with English as the default langua
   Structured order data, project metadata, deadlines, approval information, cost centers, and status tracking.
 
 - **Order categories**  
-  Orders can be assigned to categories such as 3D print, plotter, or CNC. The order detail view adapts its tabs and forms to the selected category.
+  Orders can be assigned to categories such as 3D print, plotter, CNC, or procurement. The order detail view adapts its tabs and forms to the selected category.
 
 - **Model and file handling**  
   Upload and manage 3D models, G-code files, and documentation attachments per order.
 
 - **Plotter poster handling**  
   Plotter orders use a dedicated poster tab instead of the 3D model/image tab. Users can upload multiple JPG, PNG, or PDF poster files with notes, quantity, and required print-ready date.
+
+- **Procurement article workflow**  
+  Procurement orders use a dedicated article tab. Users can maintain article name, description, supplier, article link, quantity, and unit price including VAT.
+
+- **Procurement note uploads**  
+  Each procurement article can include an optional note attachment. Supported formats are text files, Word documents, PDF files, and LibreOffice documents.
+
+- **Procurement status automation**  
+  Admins and workers can set article statuses to ordered or delivered. Procurement order status is updated automatically: any ordered/delivered article sets the order to in progress, and all delivered articles set the order to completed.
 
 - **Poster thumbnails**  
   Uploaded poster images show thumbnails in the order view. PDF files show a first-page preview when supported by the runtime, with a PDF fallback preview otherwise.
@@ -108,9 +117,9 @@ The main scripts are:
 
 ## Current Version
 
-Current application version: **0.9.5**
+Current application version: **0.9.12**
 
-Recent changes include order categories for 3D print, plotter, and CNC work, a dedicated poster workflow for plotter orders, poster thumbnails including PDF previews, and category-aware order tabs.
+Recent changes include the new procurement category with an article tab, procurement note attachments, article status actions (ordered/delivered), automatic procurement order status synchronization, and category-aware order tabs.
 
 The update script installs Python dependencies from `neofab/requirements.txt`, including PyMuPDF for rendering the first page of uploaded poster PDFs as thumbnails.
 
