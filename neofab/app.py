@@ -3735,6 +3735,10 @@ def order_detail(order_id):
                 flash(trans("flash_poster_not_found"), "warning")
                 return order_detail_redirect("posters")
 
+            if current_user.role == "user" and (poster_file.status or "open") == "printed":
+                flash(trans("flash_poster_delete_printed_forbidden"), "warning")
+                return order_detail_redirect("posters")
+
             order_folder = Path(app.config["POSTER_UPLOAD_FOLDER"]) / f"order_{order.id}"
             full_path = order_folder / poster_file.stored_name
             if full_path.exists():

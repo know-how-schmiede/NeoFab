@@ -1,5 +1,11 @@
 # Timeline NeoFab
 
+## Version 0.9.15
+
+In der Plakate-Uebersicht bleibt der Button Loeschen bei Status Gedruckt sichtbar, ist fuer normale Benutzer aber deaktiviert
+Solange ein Plakat noch nicht gedruckt ist, koennen normale Benutzer es weiterhin loeschen
+Serverseitig ist das Loeschen gedruckter Plakate durch normale Benutzer ebenfalls gesperrt
+
 ## Version 0.9.14
 
 Dashboard zeigt das aktuelle Datum und die aktuelle Uhrzeit direkt in der Uebersicht an

@@ -638,6 +638,7 @@
   "posters_status_printed": "Imprime",
   "flash_poster_marked_printed": "Le statut de l'affiche a ete defini sur imprime.",
   "flash_poster_already_printed": "L'affiche est deja marquee comme imprimee.",
+  "flash_poster_delete_printed_forbidden": "Les affiches imprimees ne peuvent pas etre supprimees par les utilisateurs normaux.",
   "label_language": "Langue",
   "role_admin": "Admin",
   "role_user": "Utilisateur",

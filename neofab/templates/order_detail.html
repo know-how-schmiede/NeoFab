@@ -841,7 +841,9 @@
                     <form method="post" onsubmit="return confirm('{{ t('confirm_delete_poster') }}');">
                       <input type="hidden" name="action" value="delete_poster_file">
                       <input type="hidden" name="poster_id" value="{{ poster.id }}">
-                      <button type="submit" class="btn btn-sm btn-outline-danger">
+                      <button type="submit"
+                              class="btn btn-sm btn-outline-danger"
+                              {% if current_user.role == 'user' and (poster.status or 'open') == 'printed' %}disabled title="{{ t('flash_poster_delete_printed_forbidden') }}"{% endif %}>
                         <i class="bi bi-trash me-1"></i>{{ t("btn_delete") }}
                       </button>
                     </form>

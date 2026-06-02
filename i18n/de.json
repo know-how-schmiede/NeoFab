@@ -636,6 +636,7 @@
   "posters_status_printed": "Gedruckt",
   "flash_poster_marked_printed": "Plakatstatus auf Gedruckt gesetzt.",
   "flash_poster_already_printed": "Plakat ist bereits auf Gedruckt gesetzt.",
+  "flash_poster_delete_printed_forbidden": "Gedruckte Plakate koennen von normalen Benutzern nicht geloescht werden.",
   "label_language": "Sprache",
   "role_admin": "Admin",
   "role_user": "User",
