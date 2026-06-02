@@ -42,8 +42,11 @@
           {% endfor %}
         </select>
       </form>
-      <div class="small text-muted">
-        {{ t("dashboard_page_summary").format(start=page_start, end=page_end, total=total_orders) }}
+      <div class="d-flex flex-column align-items-end gap-1">
+        <div class="small text-muted" id="dashboardCurrentDateTime" aria-live="polite"></div>
+        <div class="small text-muted">
+          {{ t("dashboard_page_summary").format(start=page_start, end=page_end, total=total_orders) }}
+        </div>
       </div>
     </div>
 
@@ -316,6 +319,18 @@
 {{ super() }}
 <script>
 (function() {
+  const dateTimeEl = document.getElementById("dashboardCurrentDateTime");
+  if (dateTimeEl) {
+    const updateDateTime = () => {
+      const now = new Date();
+      const datePart = now.toLocaleDateString();
+      const timePart = now.toLocaleTimeString();
+      dateTimeEl.textContent = "{{ t('dashboard_current_datetime_prefix') }} " + datePart + " " + timePart;
+    };
+    updateDateTime();
+    setInterval(updateDateTime, 1000);
+  }
+
   const modalEl = document.getElementById("announcementModal");
   if (!modalEl) return;
 

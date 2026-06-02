@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.9.14
+
+Dashboard zeigt das aktuelle Datum und die aktuelle Uhrzeit direkt in der Uebersicht an
+
 ## Version 0.9.13
 
 Systemeinstellungen enthalten einen neuen Reiter Bereiche zur Verwaltung von Bereichen

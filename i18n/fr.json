@@ -522,6 +522,7 @@
   "nav_dashboard": "Tableau de bord",
   "dashboard_next_page": "Page suivante",
   "dashboard_page_summary": "{start}-{end} sur {total} commandes",
+  "dashboard_current_datetime_prefix": "Actuel :",
   "dashboard_pagination_label": "Pages du tableau de bord",
   "dashboard_previous_page": "Page précédente",
   "dashboard_rows_per_page": "Lignes",

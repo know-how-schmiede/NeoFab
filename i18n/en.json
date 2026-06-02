@@ -552,6 +552,7 @@
   "nav_dashboard": "Dashboard",
   "dashboard_next_page": "Next page",
   "dashboard_page_summary": "{start}-{end} of {total} orders",
+  "dashboard_current_datetime_prefix": "Current:",
   "dashboard_pagination_label": "Dashboard pages",
   "dashboard_previous_page": "Previous page",
   "dashboard_rows_per_page": "Rows",

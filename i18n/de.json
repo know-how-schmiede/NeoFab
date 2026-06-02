@@ -520,6 +520,7 @@
   "nav_dashboard": "Dashboard",
   "dashboard_next_page": "Naechste Seite",
   "dashboard_page_summary": "{start}-{end} von {total} Auftraegen",
+  "dashboard_current_datetime_prefix": "Aktuell:",
   "dashboard_pagination_label": "Dashboard-Seiten",
   "dashboard_previous_page": "Vorherige Seite",
   "dashboard_rows_per_page": "Zeilen",
