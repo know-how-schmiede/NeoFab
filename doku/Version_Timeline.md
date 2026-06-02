@@ -1,5 +1,13 @@
 # Timeline NeoFab
 
+## Version 0.9.13
+
+Systemeinstellungen enthalten einen neuen Reiter Bereiche zur Verwaltung von Bereichen
+Bereiche koennen als JSON exportiert und importiert werden
+Ein Bereich besteht aktuell nur aus einem Bezeichner
+Beim Erstellen eines neuen Auftrags muss nach der Kategorie ein Bereich ausgewaehlt werden
+Mitarbeiter und Administratoren koennen im Profil auswaehlen, welche Bereiche im Dashboard angezeigt werden
+
 ## Version 0.9.12
 
 Im Reiter Artikel koennen Admin und Mitarbeiter den Artikelstatus jetzt auf Bestellt oder Geliefert setzen

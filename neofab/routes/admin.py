@@ -60,6 +60,7 @@ from models import (
     PrinterProfile,
     FilamentMaterial,
     Order,
+    OrderArea,
     OrderFile,
     OrderImage,
     OrderMessage,
@@ -70,6 +71,7 @@ from models import (
     OrderTag,
     OrderCategory,
     UserOrderCategoryPermission,
+    UserOrderAreaPreference,
     db,
 )
 from version import APP_VERSION
@@ -619,9 +621,15 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         """Systemweite Einstellungen (Session-Timeout etc.)."""
         trans = t
         settings = load_app_settings(current_app, force_reload=True)
+        active_tab = (request.args.get("tab") or "general").strip().lower()
+        if active_tab not in {"general", "email", "status-messages", "legal", "areas"}:
+            active_tab = "general"
 
         if request.method == "POST":
             form_type = request.form.get("form_type", "general")
+            active_tab = (request.form.get("active_tab") or active_tab or "general").strip().lower()
+            if active_tab not in {"general", "email", "status-messages", "legal", "areas"}:
+                active_tab = "general"
 
             if form_type == "general":
                 raw_timeout = (request.form.get("session_timeout_minutes") or "").strip()
@@ -786,6 +794,62 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 except Exception:
                     current_app.logger.exception("Failed to save legal settings")
                     flash(trans("flash_settings_save_error"), "danger")
+            elif form_type == "area_add":
+                area_name = (request.form.get("area_name") or "").strip()
+                if not area_name:
+                    flash(trans("flash_area_required"), "danger")
+                else:
+                    exists = OrderArea.query.filter(func.lower(OrderArea.name) == area_name.lower()).first()
+                    if exists:
+                        flash(trans("flash_area_exists"), "danger")
+                    else:
+                        db.session.add(OrderArea(name=area_name))
+                        db.session.commit()
+                        flash(trans("flash_area_created"), "success")
+                        return redirect(url_for(".admin_settings", tab="areas"))
+            elif form_type == "area_update":
+                area_id_raw = (request.form.get("area_id") or "").strip()
+                area_name = (request.form.get("area_name") or "").strip()
+                try:
+                    area_id = int(area_id_raw)
+                except ValueError:
+                    area_id = 0
+
+                area = OrderArea.query.get(area_id) if area_id else None
+                if not area:
+                    flash(trans("flash_area_not_found"), "warning")
+                elif not area_name:
+                    flash(trans("flash_area_required"), "danger")
+                else:
+                    duplicate = OrderArea.query.filter(func.lower(OrderArea.name) == area_name.lower()).first()
+                    if duplicate and duplicate.id != area.id:
+                        flash(trans("flash_area_exists"), "danger")
+                    else:
+                        area.name = area_name
+                        area.updated_at = datetime.utcnow()
+                        db.session.commit()
+                        flash(trans("flash_area_updated"), "success")
+                        return redirect(url_for(".admin_settings", tab="areas"))
+            elif form_type == "area_delete":
+                area_id_raw = (request.form.get("area_id") or "").strip()
+                try:
+                    area_id = int(area_id_raw)
+                except ValueError:
+                    area_id = 0
+
+                area = OrderArea.query.get(area_id) if area_id else None
+                if not area:
+                    flash(trans("flash_area_not_found"), "warning")
+                else:
+                    order_count = Order.query.filter_by(area_id=area.id).count()
+                    if order_count > 0:
+                        flash(trans("flash_area_delete_in_use"), "danger")
+                    else:
+                        UserOrderAreaPreference.query.filter_by(area_id=area.id).delete()
+                        db.session.delete(area)
+                        db.session.commit()
+                        flash(trans("flash_area_deleted"), "info")
+                        return redirect(url_for(".admin_settings", tab="areas"))
 
         status_resolved = resolve_status_messages(settings, trans)
         status_groups = []
@@ -845,11 +909,81 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             "admin_settings.html",
             settings=settings,
             settings_path=str(SETTINGS_FILE),
+            active_tab=active_tab,
             status_message_groups=status_groups,
             status_style_options=status_style_options,
             email_actions=email_actions,
             email_action_state_options=email_action_state_options,
+            order_areas=OrderArea.query.order_by(OrderArea.name.asc()).all(),
         )
+
+    @bp.route("/areas/export", endpoint="admin_area_export")
+    @roles_required("admin")
+    def admin_area_export():
+        areas = OrderArea.query.order_by(OrderArea.name.asc()).all()
+        payload = {
+            "version": APP_VERSION,
+            "areas": [
+                {"name": area.name}
+                for area in areas
+            ],
+        }
+        output = json.dumps(payload, ensure_ascii=False, indent=2)
+        return current_app.response_class(
+            output,
+            mimetype="application/json",
+            headers={"Content-Disposition": "attachment; filename=NeoFab_areas.json"},
+        )
+
+    @bp.route("/areas/import", methods=["POST"], endpoint="admin_area_import")
+    @roles_required("admin")
+    def admin_area_import():
+        trans = t
+        file = request.files.get("file")
+        if not file or not file.filename:
+            flash(trans("flash_json_choose_file"), "warning")
+            return redirect(url_for(".admin_settings", tab="areas"))
+
+        try:
+            content = file.read().decode("utf-8-sig")
+            data = json.loads(content)
+        except Exception:
+            flash(trans("flash_invalid_json"), "danger")
+            return redirect(url_for(".admin_settings", tab="areas"))
+
+        rows = data.get("areas", []) if isinstance(data, dict) else []
+        if not isinstance(rows, list):
+            flash(trans("flash_invalid_json"), "danger")
+            return redirect(url_for(".admin_settings", tab="areas"))
+
+        normalized_names: list[str] = []
+        seen_lower: set[str] = set()
+        skipped = 0
+        for entry in rows:
+            name = (entry.get("name") or "").strip() if isinstance(entry, dict) else ""
+            key = name.lower()
+            if not name or key in seen_lower:
+                skipped += 1
+                continue
+            seen_lower.add(key)
+            normalized_names.append(name)
+
+        if not normalized_names:
+            flash(trans("flash_invalid_json"), "danger")
+            return redirect(url_for(".admin_settings", tab="areas"))
+
+        UserOrderAreaPreference.query.delete()
+        Order.query.update({Order.area_id: None})
+        OrderArea.query.delete()
+
+        created = 0
+        for name in normalized_names:
+            db.session.add(OrderArea(name=name))
+            created += 1
+
+        db.session.commit()
+        flash(trans("flash_import_result_simple").format(created=created, skipped=skipped), "success")
+        return redirect(url_for(".admin_settings", tab="areas"))
 
     @bp.route("/logs", endpoint="admin_logs")
     @roles_required("admin")

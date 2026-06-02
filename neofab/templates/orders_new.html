@@ -39,6 +39,25 @@
           </select>
         </div>
 
+        <!-- Area -->
+        <div class="col-12">
+          <label for="area_id" class="form-label">
+            <i class="bi bi-grid-3x3-gap me-1"></i>
+            {{ t("new_order_area_label") }}*
+          </label>
+          <select
+            id="area_id"
+            name="area_id"
+            class="form-select"
+            required
+          >
+            <option value="">{{ t("select_placeholder") }}</option>
+            {% for area in order_areas %}
+              <option value="{{ area.id }}">{{ area.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
         <!-- Title -->
         <div class="col-12">
           <label for="title" class="form-label">

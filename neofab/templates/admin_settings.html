@@ -40,6 +40,11 @@
         </button>
       </li>
       <li class="nav-item" role="presentation">
+        <button class="nav-link" id="areas-tab" data-bs-toggle="tab" data-bs-target="#areas" type="button" role="tab" aria-controls="areas" aria-selected="false">
+          {{ t("admin_settings_tab_areas") }}
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
         <button class="nav-link" id="legal-tab" data-bs-toggle="tab" data-bs-target="#legal" type="button" role="tab" aria-controls="legal" aria-selected="false">
           {{ t("admin_settings_tab_legal") }}
         </button>
@@ -50,6 +55,7 @@
       <div class="tab-pane fade show active" id="general" role="tabpanel" aria-labelledby="general-tab">
         <form method="post" class="row g-3">
           <input type="hidden" name="form_type" value="general">
+          <input type="hidden" name="active_tab" value="general">
           <div class="col-md-6">
             <label for="session_timeout_minutes" class="form-label">
               {{ t("admin_settings_timeout_label") }}
@@ -103,6 +109,7 @@
       <div class="tab-pane fade" id="email" role="tabpanel" aria-labelledby="email-tab">
         <form method="post" class="row g-3">
           <input type="hidden" name="form_type" value="email">
+          <input type="hidden" name="active_tab" value="email">
 
           <div class="col-md-6">
             <label for="smtp_host" class="form-label">{{ t("email_smtp_host") }}</label>
@@ -148,6 +155,7 @@
         <hr>
         <form method="post" class="row g-3">
           <input type="hidden" name="form_type" value="email_test">
+          <input type="hidden" name="active_tab" value="email">
           <div class="col-md-6">
             <label for="test_email_to" class="form-label">{{ t("email_test_recipient") }}</label>
             <input type="email" class="form-control" id="test_email_to" name="test_email_to" placeholder="user@example.com" required>
@@ -163,6 +171,7 @@
         <hr>
         <form method="post" class="row g-3">
           <input type="hidden" name="form_type" value="email_actions">
+          <input type="hidden" name="active_tab" value="email">
           <div class="col-12">
             <h2 class="h5 mb-3">{{ t("email_actions_title") }}</h2>
             <div class="table-responsive">
@@ -204,6 +213,7 @@
       <div class="tab-pane fade" id="status-messages" role="tabpanel" aria-labelledby="status-messages-tab">
         <form method="post" class="row g-3">
           <input type="hidden" name="form_type" value="status_messages">
+          <input type="hidden" name="active_tab" value="status-messages">
           <div class="col-12">
             <div class="alert alert-secondary small mb-0">
               {{ t("status_messages_hint") }}
@@ -265,9 +275,92 @@
         {{ settings_export_import() }}
       </div>
 
+      <div class="tab-pane fade" id="areas" role="tabpanel" aria-labelledby="areas-tab">
+        <form method="post" class="row g-3">
+          <input type="hidden" name="form_type" value="area_add">
+          <input type="hidden" name="active_tab" value="areas">
+          <div class="col-md-8">
+            <label for="area_name" class="form-label">{{ t("admin_area_identifier_label") }}</label>
+            <input
+              type="text"
+              class="form-control"
+              id="area_name"
+              name="area_name"
+              maxlength="120"
+              required
+            >
+            <div class="form-text">{{ t("admin_area_identifier_help") }}</div>
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <button type="submit" class="btn btn-success w-100">{{ t("admin_areas_add") }}</button>
+          </div>
+        </form>
+
+        <hr>
+
+        {% if order_areas %}
+          <div class="table-responsive">
+            <table class="table table-striped align-middle">
+              <thead>
+                <tr>
+                  <th>{{ t("admin_areas_column_identifier") }}</th>
+                  <th class="text-end" style="width: 260px;">{{ t("table_actions") }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for area in order_areas %}
+                  <tr>
+                    <td>
+                      <form method="post" class="d-flex gap-2 align-items-center">
+                        <input type="hidden" name="form_type" value="area_update">
+                        <input type="hidden" name="active_tab" value="areas">
+                        <input type="hidden" name="area_id" value="{{ area.id }}">
+                        <input
+                          type="text"
+                          name="area_name"
+                          class="form-control"
+                          maxlength="120"
+                          value="{{ area.name }}"
+                          required
+                        >
+                        <button type="submit" class="btn btn-sm btn-primary">{{ t("btn_save") }}</button>
+                      </form>
+                    </td>
+                    <td class="text-end">
+                      <form method="post" class="d-inline">
+                        <input type="hidden" name="form_type" value="area_delete">
+                        <input type="hidden" name="active_tab" value="areas">
+                        <input type="hidden" name="area_id" value="{{ area.id }}">
+                        <button type="submit" class="btn btn-sm btn-danger">{{ t("btn_delete") }}</button>
+                      </form>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="text-muted mb-0">{{ t("admin_areas_none") }}</p>
+        {% endif %}
+
+        <div class="mt-3 d-flex gap-2 flex-wrap align-items-center">
+          <a href="{{ url_for('admin.admin_area_export') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-download me-1"></i>{{ t("btn_export_json") }}
+          </a>
+          <form action="{{ url_for('admin.admin_area_import') }}" method="post" enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
+            <label class="form-label mb-0 small">{{ t("label_import_json") }}</label>
+            <input type="file" name="file" accept=".json,application/json" class="form-control form-control-sm" required>
+            <button type="submit" class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-upload me-1"></i>{{ t("btn_import") }}
+            </button>
+          </form>
+        </div>
+      </div>
+
       <div class="tab-pane fade" id="legal" role="tabpanel" aria-labelledby="legal-tab">
         <form method="post" class="row g-3">
           <input type="hidden" name="form_type" value="legal">
+          <input type="hidden" name="active_tab" value="legal">
           <div class="col-12">
             <label for="imprint_markdown" class="form-label">
               <i class="bi bi-file-text me-1"></i>
@@ -308,4 +401,17 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+(function() {
+  const activeTab = "{{ active_tab or 'general' }}";
+  const tabButton = document.getElementById(activeTab + "-tab");
+  if (!tabButton) return;
+  const tab = bootstrap.Tab.getOrCreateInstance(tabButton);
+  tab.show();
+})();
+</script>
 {% endblock %}

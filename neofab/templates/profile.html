@@ -208,6 +208,33 @@
           </div>
         {% endif %}
 
+        {% if user.role in ['worker', 'admin'] %}
+          <div class="col-12">
+            <label class="form-label d-block">
+              <i class="bi bi-diagram-3 me-1"></i>
+              {{ t("profile_dashboard_areas_label") }}
+            </label>
+            <div class="row g-2">
+              {% for area in dashboard_areas %}
+                <div class="col-md-4">
+                  <div class="form-check">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           id="dashboard_area_{{ area.id }}"
+                           name="dashboard_area_ids"
+                           value="{{ area.id }}"
+                           {% if area.id in selected_dashboard_area_ids %}checked{% endif %}>
+                    <label class="form-check-label" for="dashboard_area_{{ area.id }}">
+                      {{ area.name }}
+                    </label>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+            <div class="form-text">{{ t("profile_dashboard_areas_help") }}</div>
+          </div>
+        {% endif %}
+
       </div>
 
       <div class="d-flex gap-2 mt-3">

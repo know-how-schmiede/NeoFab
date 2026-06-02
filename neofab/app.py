@@ -91,8 +91,10 @@ from models import (
     User,
     Order,
     OrderCategory,
+    OrderArea,
     OrderWorkJob,
     UserOrderCategoryPermission,
+    UserOrderAreaPreference,
     OrderPosterFile,
     OrderProcurementArticle,
     OrderMessage,
@@ -1214,6 +1216,66 @@ def ensure_order_category_schema():
         app.logger.exception("Failed to ensure order category schema exists")
 
 
+def ensure_order_area_schema():
+    """
+    Ensures order areas and user dashboard area preferences exist.
+    """
+    try:
+        areas_exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='order_areas'")
+        ).scalar()
+        if not areas_exists:
+            db.session.execute(
+                text(
+                    """
+                    CREATE TABLE order_areas (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name VARCHAR(120) NOT NULL UNIQUE,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+            )
+            db.session.commit()
+
+        orders_exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='orders'")
+        ).scalar()
+        if orders_exists:
+            order_cols = {
+                row[1]
+                for row in db.session.execute(text("PRAGMA table_info(orders)"))
+            }
+            if "area_id" not in order_cols:
+                db.session.execute(text("ALTER TABLE orders ADD COLUMN area_id INTEGER"))
+                db.session.commit()
+
+        prefs_exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='user_order_area_preferences'")
+        ).scalar()
+        if not prefs_exists:
+            db.session.execute(
+                text(
+                    """
+                    CREATE TABLE user_order_area_preferences (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        area_id INTEGER NOT NULL,
+                        UNIQUE(user_id, area_id)
+                    )
+                    """
+                )
+            )
+            db.session.commit()
+
+        if not OrderArea.query.first():
+            db.session.add(OrderArea(name="Standard"))
+            db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure order area schema exists")
+
+
 def ensure_order_print_jobs_table():
     """
     Ensures the order_print_jobs table and required columns exist.
@@ -1504,6 +1566,7 @@ with app.app_context():
     ensure_order_estimation_columns()
     ensure_order_archive_columns()
     ensure_order_category_schema()
+    ensure_order_area_schema()
     ensure_order_print_jobs_table()
     ensure_order_read_status_table()
     ensure_announcements_table()
@@ -2389,6 +2452,8 @@ def profile():
     Profilseite fuer eingeloggte User, um eigene Stammdaten zu pflegen.
     """
     user = User.query.get_or_404(current_user.id)
+    dashboard_areas = OrderArea.query.order_by(OrderArea.name.asc()).all()
+    dashboard_area_ids = {area.id for area in dashboard_areas}
 
     if request.method == "POST":
         trans = inject_globals().get("t")
@@ -2470,6 +2535,25 @@ def profile():
                 else:
                     UserOrderCategoryPermission.query.filter_by(user_id=user.id).delete()
 
+                if user.role in {"admin", "worker"}:
+                    selected_area_ids = set()
+                    for raw_id in request.form.getlist("dashboard_area_ids"):
+                        try:
+                            selected_area_ids.add(int(raw_id))
+                        except (TypeError, ValueError):
+                            continue
+                    valid_area_ids = {area_id for area_id in selected_area_ids if area_id in dashboard_area_ids}
+                    UserOrderAreaPreference.query.filter_by(user_id=user.id).delete()
+                    for area_id in sorted(valid_area_ids):
+                        db.session.add(
+                            UserOrderAreaPreference(
+                                user_id=user.id,
+                                area_id=area_id,
+                            )
+                        )
+                else:
+                    UserOrderAreaPreference.query.filter_by(user_id=user.id).delete()
+
                 db.session.commit()
                 flash(trans("flash_profile_updated"), "success")
                 return redirect(url_for("profile"))
@@ -2486,12 +2570,18 @@ def profile():
             can_manage=True,
         ).all()
     }
+    selected_dashboard_area_ids = {
+        preference.area_id
+        for preference in UserOrderAreaPreference.query.filter_by(user_id=user.id).all()
+    }
 
     return render_template(
         "profile.html",
         user=user,
         worker_categories=worker_categories,
         selected_worker_category_ids=selected_worker_category_ids,
+        dashboard_areas=dashboard_areas,
+        selected_dashboard_area_ids=selected_dashboard_area_ids,
         announcements_read=announcements_read,
         announcement_priority_meta=ANNOUNCEMENT_PRIORITY_META,
         announcement_form_token=_new_announcement_form_token() if current_user.role == "admin" else "",
@@ -2654,9 +2744,11 @@ def new_order():
     ensure_order_estimation_columns()
     ensure_order_archive_columns()
     ensure_order_category_schema()
+    ensure_order_area_schema()
 
     cost_centers = CostCenter.query.filter_by(is_active=True).order_by(CostCenter.name.asc()).all()
     order_categories = OrderCategory.query.filter_by(active=True).order_by(OrderCategory.name.asc()).all()
+    order_areas = OrderArea.query.order_by(OrderArea.name.asc()).all()
     trans = inject_globals().get("t")
     status_context = get_status_context(trans)
 
@@ -2693,7 +2785,9 @@ def new_order():
         # Kostenstelle / Druckerprofil / Filament (optional)
         cost_center_id = request.form.get("cost_center_id") or None
         category_id = request.form.get("category_id") or None
+        area_id = request.form.get("area_id") or None
         selected_category = None
+        selected_area = None
         if category_id:
             try:
                 selected_category_id = int(category_id)
@@ -2706,6 +2800,14 @@ def new_order():
                 ).first()
         if selected_category is None:
             selected_category = OrderCategory.query.filter_by(key="3d_print", active=True).first()
+
+        if area_id:
+            try:
+                selected_area_id = int(area_id)
+            except ValueError:
+                selected_area_id = None
+            if selected_area_id:
+                selected_area = OrderArea.query.filter_by(id=selected_area_id).first()
 
         # ├ûffentlichkeits-Felder
         def _default_public_flag(field_name: str) -> bool:
@@ -2741,6 +2843,19 @@ def new_order():
                 form_token=form_token,
                 cost_centers=cost_centers,
                 order_categories=order_categories,
+                order_areas=order_areas,
+            )
+
+        if selected_area is None:
+            form_token = secrets.token_urlsafe(24)
+            session["new_order_form_token"] = form_token
+            flash(trans("flash_order_area_required"), "danger")
+            return render_template(
+                "orders_new.html",
+                form_token=form_token,
+                cost_centers=cost_centers,
+                order_categories=order_categories,
+                order_areas=order_areas,
             )
 
         order = Order(
@@ -2748,6 +2863,7 @@ def new_order():
             description=description or None,
             status=status,
             category_id=selected_category.id if selected_category else None,
+            area_id=selected_area.id if selected_area else None,
             user_id=current_user.id,
             public_allow_poster=public_allow_poster,
             public_allow_web=public_allow_web,
@@ -2798,6 +2914,7 @@ def new_order():
                 "title": order.title,
                 "status": order.status,
                 "category_id": order.category_id,
+                "area_id": order.area_id,
                 "cost_center_id": order.cost_center_id,
             },
         )
@@ -2894,6 +3011,7 @@ def new_order():
         form_token=form_token,
         cost_centers=cost_centers,
         order_categories=order_categories,
+        order_areas=order_areas,
     )
 
 
@@ -2938,6 +3056,7 @@ def order_detail(order_id):
         if action == "update_order":
             title = request.form.get("title", "").strip()
             description = request.form.get("description", "").strip()
+            area_id_raw = request.form.get("area_id", "").strip()
             status = request.form.get("status", order.status)
             previous_status = order.status
 
@@ -2965,8 +3084,19 @@ def order_detail(order_id):
             if not title:
                 flash(trans("flash_title_required"), "danger")
             else:
+                try:
+                    selected_area_id = int(area_id_raw)
+                except (TypeError, ValueError):
+                    selected_area_id = None
+                selected_area = OrderArea.query.filter_by(id=selected_area_id).first() if selected_area_id else None
+
+                if selected_area is None:
+                    flash(trans("flash_order_area_required"), "danger")
+                    return redirect(url_for("order_detail", order_id=order.id, tab="general"))
+
                 order.title = title
                 order.description = description or None
+                order.area_id = selected_area.id
 
                 # Kostenstelle aktualisieren (f├╝r alle Rollen erlaubt)
                 cost_center_id = request.form.get("cost_center_id") or None
@@ -4290,6 +4420,7 @@ def order_detail(order_id):
     # Stammdaten f├╝r Auswahlfelder laden
     materials = Material.query.order_by(Material.name.asc()).all()
     colors = Color.query.order_by(Color.name.asc()).all()
+    order_areas = OrderArea.query.order_by(OrderArea.name.asc()).all()
     cost_centers = CostCenter.query.filter_by(is_active=True).order_by(CostCenter.name.asc()).all()
     printer_profiles = PrinterProfile.query.filter_by(active=True).order_by(PrinterProfile.name.asc()).all()
     filament_materials = FilamentMaterial.query.filter_by(active=True).order_by(FilamentMaterial.name.asc()).all()
@@ -4383,6 +4514,7 @@ def order_detail(order_id):
         order_statuses=status_context["order_statuses"],
         materials=materials,
         colors=colors,
+        order_areas=order_areas,
         cost_centers=cost_centers,
         printer_profiles=printer_profiles,
         filament_materials=filament_materials,
@@ -4811,7 +4943,7 @@ def dashboard():
     status_context = get_status_context(trans)
     sort_by = (request.args.get("sort") or "created").strip().lower()
     sort_dir = (request.args.get("dir") or "desc").strip().lower()
-    if sort_by not in {"category", "title", "status", "owner", "created"}:
+    if sort_by not in {"category", "area", "title", "status", "owner", "created"}:
         sort_by = "created"
     if sort_dir not in {"asc", "desc"}:
         sort_dir = "desc"
@@ -4967,12 +5099,22 @@ def dashboard():
             .all()
         )
 
+    if current_user.role in {"admin", "worker"}:
+        visible_area_ids = {
+            pref.area_id
+            for pref in UserOrderAreaPreference.query.filter_by(user_id=current_user.id).all()
+        }
+        if visible_area_ids:
+            orders = [order for order in orders if order.area_id in visible_area_ids]
+
     app.logger.debug(f"[dashboard] Loaded {len(orders)} orders")
 
     def _dashboard_sort_value(order):
         if sort_by == "category":
             category = get_order_category(order)
             return ((category.name if category else "") or "").lower()
+        if sort_by == "area":
+            return ((order.area.name if order.area else "") or "").lower()
         if sort_by == "title":
             return (order.title or "").lower()
         if sort_by == "status":

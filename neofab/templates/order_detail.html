@@ -236,6 +236,24 @@
           </div>
         </div>
 
+        <div class="col-md-6">
+          <label for="area_id" class="form-label">
+            <i class="bi bi-grid-3x3-gap me-1"></i>
+            {{ t("order_area_label") }}*
+          </label>
+          <select
+            id="area_id"
+            name="area_id"
+            class="form-select"
+            required
+          >
+            <option value="">{{ t("select_placeholder") }}</option>
+            {% for area in order_areas %}
+              <option value="{{ area.id }}" {% if order.area_id == area.id %}selected{% endif %}>{{ area.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
         <div class="col-md-4">
           <label class="form-label">
             <i class="bi bi-person-circle me-1"></i>

@@ -79,6 +79,7 @@ class Order(db.Model):
 
     # Material & Farbe (FK)
     category_id = db.Column(db.Integer, db.ForeignKey("order_categories.id"), nullable=True)
+    area_id = db.Column(db.Integer, db.ForeignKey("order_areas.id"), nullable=True)
     material_id = db.Column(db.Integer, db.ForeignKey("materials.id"), nullable=True)
     color_id = db.Column(db.Integer, db.ForeignKey("colors.id"), nullable=True)
     cost_center_id = db.Column(db.Integer, db.ForeignKey("cost_centers.id"), nullable=True)
@@ -104,6 +105,7 @@ class Order(db.Model):
     # Beziehungen
     user = db.relationship("User", back_populates="orders")
     category = db.relationship("OrderCategory")
+    area = db.relationship("OrderArea")
     material = db.relationship("Material")
     color = db.relationship("Color")
     cost_center = db.relationship("CostCenter")
@@ -176,6 +178,30 @@ class UserOrderCategoryPermission(db.Model):
 
     __table_args__ = (
         db.UniqueConstraint("user_id", "category_id", name="uq_user_order_category_permission"),
+    )
+
+
+class OrderArea(db.Model):
+    __tablename__ = "order_areas"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), unique=True, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class UserOrderAreaPreference(db.Model):
+    __tablename__ = "user_order_area_preferences"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    area_id = db.Column(db.Integer, db.ForeignKey("order_areas.id"), nullable=False)
+
+    user = db.relationship("User")
+    area = db.relationship("OrderArea")
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "area_id", name="uq_user_order_area_preference"),
     )
 
 
@@ -519,8 +545,10 @@ __all__ = [
     "User",
     "Order",
     "OrderCategory",
+    "OrderArea",
     "OrderWorkJob",
     "UserOrderCategoryPermission",
+    "UserOrderAreaPreference",
     "OrderPosterFile",
     "OrderProcurementArticle",
     "OrderMessage",

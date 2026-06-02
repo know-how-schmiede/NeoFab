@@ -53,6 +53,7 @@
           <thead>
             <tr>
               <th>{{ sort_link('category', t("order_category_label")) }}</th>
+              <th>{{ sort_link('area', t("order_area_label")) }}</th>
               <th>{{ sort_link('title', t("title")) }}</th>
               <th>{{ sort_link('status', t("status")) }}</th>
               <th>{{ sort_link('owner', t("owner")) }}</th>
@@ -70,6 +71,14 @@
                   <span class="badge bg-light text-dark border">{{ o.category.name }}</span>
                 {% else %}
                   <span class="badge bg-light text-dark border">{{ t("order_category_3d_print") }}</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if o.area %}
+                  <span class="badge bg-light text-dark border">{{ o.area.name }}</span>
+                {% else %}
+                  <span class="text-muted">-</span>
                 {% endif %}
               </td>
 
