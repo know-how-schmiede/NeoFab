@@ -88,6 +88,23 @@
             </div>
           </div>
 
+          <div class="col-md-6">
+            <label for="time_display_offset_hours" class="form-label">
+              {{ t("admin_settings_time_display_offset_label") }}
+            </label>
+            <input type="number"
+                   class="form-control"
+                   id="time_display_offset_hours"
+                   name="time_display_offset_hours"
+                   min="-23"
+                   max="23"
+                   required
+                   value="{{ settings.get('time_display_offset_hours', 0) }}">
+            <div class="form-text">
+              {{ t("admin_settings_time_display_offset_help") }}
+            </div>
+          </div>
+
           <div class="col-12">
             <div class="alert alert-secondary small mb-0">
               {{ t("admin_settings_storage_hint").format(path=settings_path) }}

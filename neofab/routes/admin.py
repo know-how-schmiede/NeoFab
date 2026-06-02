@@ -34,6 +34,7 @@ from config import (
     EMAIL_ACTION_STATE_ENABLED,
     SETTINGS_FILE,
     coerce_dashboard_rows_per_page,
+    coerce_time_display_offset_hours,
     coerce_positive_int,
     load_app_settings,
     normalize_email_actions,
@@ -635,16 +636,23 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 raw_timeout = (request.form.get("session_timeout_minutes") or "").strip()
                 timeout_value = coerce_positive_int(raw_timeout, None)
                 rows_value = coerce_dashboard_rows_per_page(request.form.get("dashboard_rows_per_page"), None)
+                offset_value = coerce_time_display_offset_hours(
+                    request.form.get("time_display_offset_hours"),
+                    None,
+                )
 
                 if timeout_value is None:
                     flash(trans("flash_settings_invalid_timeout"), "danger")
                 elif rows_value not in DASHBOARD_ROWS_PER_PAGE_OPTIONS:
                     flash(trans("flash_settings_invalid_dashboard_rows"), "danger")
+                elif offset_value is None:
+                    flash(trans("flash_settings_invalid_time_display_offset"), "danger")
                 else:
                     try:
                         updated_settings = settings.copy()
                         updated_settings["session_timeout_minutes"] = timeout_value
                         updated_settings["dashboard_rows_per_page"] = rows_value
+                        updated_settings["time_display_offset_hours"] = offset_value
                         save_app_settings(current_app, updated_settings)
                         flash(trans("flash_settings_saved"), "success")
                         return redirect(url_for(".admin_settings"))
@@ -1027,6 +1035,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             "settings": {
                 "session_timeout_minutes": settings.get("session_timeout_minutes"),
                 "dashboard_rows_per_page": settings.get("dashboard_rows_per_page"),
+                "time_display_offset_hours": settings.get("time_display_offset_hours", 0),
                 "smtp_host": settings.get("smtp_host", ""),
                 "smtp_port": settings.get("smtp_port", 0),
                 "smtp_use_tls": bool(settings.get("smtp_use_tls")),
@@ -1086,6 +1095,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             for key in (
                 "session_timeout_minutes",
                 "dashboard_rows_per_page",
+                "time_display_offset_hours",
                 "smtp_host",
                 "smtp_port",
                 "smtp_use_tls",

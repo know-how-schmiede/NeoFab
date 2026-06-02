@@ -24,6 +24,7 @@ DEFAULT_EMAIL_ACTION_SETTINGS = {
 DEFAULT_SETTINGS = {
     "session_timeout_minutes": 30,
     "dashboard_rows_per_page": 25,
+    "time_display_offset_hours": 0,
     "smtp_host": "",
     "smtp_port": 0,
     "smtp_use_tls": False,
@@ -59,6 +60,17 @@ def coerce_dashboard_rows_per_page(value: Any, fallback: int | None = None) -> i
     fallback_value = fallback if fallback in DASHBOARD_ROWS_PER_PAGE_OPTIONS else DEFAULT_SETTINGS["dashboard_rows_per_page"]
     value_int = coerce_positive_int(value, fallback_value)
     return value_int if value_int in DASHBOARD_ROWS_PER_PAGE_OPTIONS else fallback_value
+
+
+def coerce_time_display_offset_hours(value: Any, fallback: int | None = None) -> int:
+    fallback_value = fallback if isinstance(fallback, int) else DEFAULT_SETTINGS["time_display_offset_hours"]
+    try:
+        value_int = int(value)
+    except (TypeError, ValueError):
+        return fallback_value
+    if -23 <= value_int <= 23:
+        return value_int
+    return fallback_value
 
 
 def normalize_email_actions(value: Any) -> Dict[str, str]:
@@ -160,6 +172,10 @@ def load_app_settings(app, force_reload: bool = False) -> Dict[str, Any]:
                     loaded.get("dashboard_rows_per_page"),
                     DEFAULT_SETTINGS["dashboard_rows_per_page"],
                 )
+                settings["time_display_offset_hours"] = coerce_time_display_offset_hours(
+                    loaded.get("time_display_offset_hours"),
+                    DEFAULT_SETTINGS["time_display_offset_hours"],
+                )
                 settings["smtp_host"] = str(loaded.get("smtp_host", "") or "").strip()
                 settings["smtp_port"] = coerce_positive_int(loaded.get("smtp_port"), 0)
                 settings["smtp_use_tls"] = bool(loaded.get("smtp_use_tls"))
@@ -210,6 +226,10 @@ def save_app_settings(app, new_settings: Dict[str, Any]) -> Dict[str, Any]:
         settings["dashboard_rows_per_page"] = coerce_dashboard_rows_per_page(
             new_settings.get("dashboard_rows_per_page"),
             DEFAULT_SETTINGS["dashboard_rows_per_page"],
+        )
+        settings["time_display_offset_hours"] = coerce_time_display_offset_hours(
+            new_settings.get("time_display_offset_hours"),
+            DEFAULT_SETTINGS["time_display_offset_hours"],
         )
         settings["smtp_host"] = str(new_settings.get("smtp_host", "") or "").strip()
         settings["smtp_port"] = coerce_positive_int(new_settings.get("smtp_port"), 0)

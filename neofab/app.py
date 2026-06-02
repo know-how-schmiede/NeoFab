@@ -10,8 +10,9 @@
 # ============================================================
 
 from version import APP_VERSION
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 import base64
 import binascii
 import mimetypes
@@ -287,6 +288,42 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 load_app_settings(app)
 
 
+APP_TIMEZONE_NAME = os.environ.get("NEOFAB_TIMEZONE", "Europe/Berlin")
+try:
+    APP_LOCAL_TIMEZONE = ZoneInfo(APP_TIMEZONE_NAME)
+except Exception:
+    APP_LOCAL_TIMEZONE = ZoneInfo("UTC")
+APP_UTC_TIMEZONE = ZoneInfo("UTC")
+
+
+def to_local_datetime(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    try:
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=APP_UTC_TIMEZONE)
+        return value.astimezone(APP_LOCAL_TIMEZONE)
+    except Exception:
+        return value
+
+
+def format_local_datetime(value: datetime | None, fmt: str = "%Y-%m-%d %H:%M") -> str:
+    local_value = to_local_datetime(value)
+    if local_value is None:
+        return ""
+    try:
+        settings = load_app_settings(app)
+        offset_hours = int(settings.get("time_display_offset_hours", 0) or 0)
+    except Exception:
+        offset_hours = 0
+    if offset_hours:
+        local_value = local_value + timedelta(hours=offset_hours)
+    try:
+        return local_value.strftime(fmt)
+    except Exception:
+        return ""
+
+
 def get_status_context(translator=None) -> dict:
     settings = load_app_settings(app)
     return build_status_context(settings, translator)
@@ -318,6 +355,7 @@ def inject_globals():
         return lang_trans.get(key, default_trans.get(key, key))
 
     status_context = get_status_context(t)
+    settings = load_app_settings(app)
     return {
         "app_version": APP_VERSION,
         "max_upload_size_mb": MAX_UPLOAD_SIZE_MB,
@@ -330,6 +368,8 @@ def inject_globals():
         "print_job_statuses": status_context["print_job_statuses"],
         "current_language": current_language,
         "t": t,
+        "fmt_datetime": format_local_datetime,
+        "time_display_offset_hours": int(settings.get("time_display_offset_hours", 0) or 0),
         "render_markdown": render_legal_markdown,
     }
 

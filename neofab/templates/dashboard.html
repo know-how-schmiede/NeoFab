@@ -107,7 +107,7 @@
 
               <td>{{ o.user.email }}</td>
 
-              <td>{{ o.created_at.strftime('%Y-%m-%d %H:%M') if o.created_at else '' }}</td>
+              <td>{{ fmt_datetime(o.created_at) }}</td>
 
               <td class="text-center">
                 {{ file_counts.get(o.id, 0) }}
@@ -321,8 +321,12 @@
 (function() {
   const dateTimeEl = document.getElementById("dashboardCurrentDateTime");
   if (dateTimeEl) {
+    const offsetHours = {{ time_display_offset_hours|default(0) }};
     const updateDateTime = () => {
       const now = new Date();
+      if (offsetHours) {
+        now.setHours(now.getHours() + offsetHours);
+      }
       const datePart = now.toLocaleDateString();
       const timePart = now.toLocaleTimeString();
       dateTimeEl.textContent = "{{ t('dashboard_current_datetime_prefix') }} " + datePart + " " + timePart;
