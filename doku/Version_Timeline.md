@@ -2,9 +2,10 @@
 
 ## Version 0.9.16
 
-Dashboard zeigt eine neue Spalte Kommunikation fuer alle User-Rollen
-In der Spalte Kommunikation wird bei neuen Chat-Nachrichten ein Mail-Icon als Badge angezeigt
+Dashboard zeigt eine neue Spalte Chat fuer alle User-Rollen
+In der Spalte Chat wird bei neuen Chat-Nachrichten ein Mail-Icon als Badge angezeigt
 Nach dem Lesen der Chat-Nachrichten im Auftrag wird das Icon beim erneuten Dashboard-Aufruf nicht mehr angezeigt
+Die Reiter-Beschriftung wurde auf allen Seiten von Kommunikation auf Chat umbenannt
 
 ## Version 0.9.15
 
