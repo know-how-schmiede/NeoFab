@@ -63,6 +63,7 @@
               <th>{{ sort_link('created', t("created")) }}</th>
               <th class="text-center">{{ t("files") }}</th>
               <th class="text-center">{{ t("print_jobs_header") }}</th>
+              <th class="text-center">{{ t("communication_header") }}</th>
               <th class="text-end">{{ t("actions") }}</th>
             </tr>
           </thead>
@@ -89,9 +90,6 @@
                 <a href="{{ url_for('order_detail', order_id=o.id) }}">
                   {{ o.title }}
                 </a>
-                {% if last_new_message.get(o.id) %}
-                  <span class="badge bg-warning text-dark ms-1">{{ t("new_message") }}</span>
-                {% endif %}
               </td>
 
               <td>
@@ -131,6 +129,16 @@
                     <span class="badge print-job-summary-badge text-danger border-danger-subtle"
                           title="{{ t('print_jobs_summary_error') }}">{{ job_counts.get('error', 0) }}</span>
                   </span>
+                {% endif %}
+              </td>
+
+              <td class="text-center">
+                {% if last_new_message.get(o.id) %}
+                  <span class="badge rounded-pill bg-warning text-dark" title="{{ t('new_message') }}" aria-label="{{ t('new_message') }}">
+                    <i class="bi bi-envelope-fill"></i>
+                  </span>
+                {% else %}
+                  <span class="text-muted">-</span>
                 {% endif %}
               </td>
 

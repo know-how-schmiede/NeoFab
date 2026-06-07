@@ -1,5 +1,11 @@
 # Timeline NeoFab
 
+## Version 0.9.16
+
+Dashboard zeigt eine neue Spalte Kommunikation fuer alle User-Rollen
+In der Spalte Kommunikation wird bei neuen Chat-Nachrichten ein Mail-Icon als Badge angezeigt
+Nach dem Lesen der Chat-Nachrichten im Auftrag wird das Icon beim erneuten Dashboard-Aufruf nicht mehr angezeigt
+
 ## Version 0.9.15
 
 In der Plakate-Uebersicht bleibt der Button Loeschen bei Status Gedruckt sichtbar, ist fuer normale Benutzer aber deaktiviert
