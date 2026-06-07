@@ -4427,12 +4427,24 @@ def order_detail(order_id):
             flash(trans("flash_image_deleted"), "info")
             return redirect(url_for("order_detail", order_id=order.id))
 
-    # --- Lese-Status aktualisieren (GET + nach POST-Redirect) --------------
-    now = datetime.utcnow()
+    # --- Ungelesene Nachrichten vor Read-Update pruefen ---------------------
     read_status = OrderReadStatus.query.filter_by(
         order_id=order.id,
         user_id=current_user.id,
     ).first()
+
+    previous_last_read = read_status.last_read_at if read_status else None
+    latest_message_at = (
+        db.session.query(func.max(OrderMessage.created_at))
+        .filter(OrderMessage.order_id == order.id)
+        .scalar()
+    )
+    expand_chat_panel = bool(
+        latest_message_at and (previous_last_read is None or latest_message_at > previous_last_read)
+    )
+
+    # --- Lese-Status aktualisieren (GET + nach POST-Redirect) --------------
+    now = datetime.utcnow()
 
     if read_status is None:
         read_status = OrderReadStatus(
@@ -4571,6 +4583,7 @@ def order_detail(order_id):
         tags_value=order.tags_entry.tags if order.tags_entry else "",
         active_tab=active_tab,
         visible_tabs=visible_tabs,
+        expand_chat_panel=expand_chat_panel,
     )
 
 

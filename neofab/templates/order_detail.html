@@ -1861,11 +1861,11 @@
       <i class="bi bi-chat-dots me-2"></i>
       {{ t("communication_header") }}
     </h3>
-    <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#communicationCollapse" aria-expanded="false" aria-controls="communicationCollapse">
+    <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#communicationCollapse" aria-expanded="{{ 'true' if expand_chat_panel else 'false' }}" aria-controls="communicationCollapse">
       {{ t("btn_show_hide") }}
     </button>
   </div>
-  <div id="communicationCollapse" class="collapse">
+  <div id="communicationCollapse" class="collapse{% if expand_chat_panel %} show{% endif %}">
     <div class="card-body">
       {{ communication_panel("messagesContainerBottom", url_for("order_detail", order_id=order.id)) }}
     </div>
