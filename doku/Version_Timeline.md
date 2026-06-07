@@ -1,5 +1,10 @@
 # Timeline NeoFab
 
+## Version 0.9.17
+
+Auf der Register-Seite sind die Felder Anrede, Vorname und Nachname jetzt Pflichtfelder
+Die Pruefung erfolgt sowohl im Formular als auch serverseitig bei der Registrierung
+
 ## Version 0.9.16
 
 Dashboard zeigt eine neue Spalte Chat fuer alle User-Rollen

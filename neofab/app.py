@@ -2439,9 +2439,12 @@ def register():
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         password2 = request.form.get("password2", "")
+        salutation = request.form.get("salutation", "").strip()
+        first_name = request.form.get("first_name", "").strip()
+        last_name = request.form.get("last_name", "").strip()
 
         # einfache Validierung
-        if not email or not password:
+        if not email or not password or not salutation or not first_name or not last_name:
             flash(trans("flash_required_fields"), "danger")
         elif password != password2:
             flash(trans("flash_passwords_mismatch"), "danger")
@@ -2451,9 +2454,9 @@ def register():
             user = User(
                 email=email,
                 role="user",
-                salutation=request.form.get("salutation") or None,
-                first_name=request.form.get("first_name") or None,
-                last_name=request.form.get("last_name") or None,
+                salutation=salutation,
+                first_name=first_name,
+                last_name=last_name,
                 address=request.form.get("address") or None,
                 position=request.form.get("position") or None,
                 cost_center=request.form.get("cost_center") or None,
