@@ -65,6 +65,7 @@ from config import (
     SETTINGS_FILE,
     coerce_positive_int,
     load_app_settings,
+    normalize_registration_domains,
     save_app_settings,
 )
 from i18n_utils import DEFAULT_LANG, SUPPORTED_LANGS, get_translations
@@ -2435,6 +2436,10 @@ def register():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard"))
 
+    settings = load_app_settings(app)
+    registration_domain_check_enabled = bool(settings.get("registration_domain_check_enabled"))
+    registration_allowed_domains = normalize_registration_domains(settings.get("registration_allowed_domains", ""))
+
     if request.method == "POST":
         trans = inject_globals().get("t")
         action = (request.form.get("action") or "").strip()
@@ -2487,6 +2492,16 @@ def register():
             flash(trans("flash_required_fields"), "danger")
         elif password != password2:
             flash(trans("flash_passwords_mismatch"), "danger")
+        elif registration_domain_check_enabled:
+            email_domain = email.rsplit("@", 1)[-1].lower() if "@" in email else ""
+            allowed_domain_set = set(registration_allowed_domains)
+            if not email_domain or email_domain not in allowed_domain_set:
+                flash(
+                    trans("flash_registration_domain_not_allowed").format(
+                        domains="; ".join(registration_allowed_domains)
+                    ),
+                    "danger",
+                )
         elif User.query.filter_by(email=email).first():
             flash(trans("flash_email_registered"), "warning")
         else:
@@ -2519,7 +2534,11 @@ def register():
             flash(trans("flash_registration_success"), "success")
             return redirect(url_for("login"))
 
-    return render_template("register.html")
+    return render_template(
+        "register.html",
+        registration_domain_check_enabled=registration_domain_check_enabled,
+        registration_allowed_domains_display="; ".join(registration_allowed_domains),
+    )
 
 
 # ============================================================

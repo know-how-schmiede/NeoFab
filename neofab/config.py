@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 from datetime import timedelta
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -25,6 +26,8 @@ DEFAULT_SETTINGS = {
     "session_timeout_minutes": 30,
     "dashboard_rows_per_page": 25,
     "time_display_offset_hours": 0,
+    "registration_domain_check_enabled": False,
+    "registration_allowed_domains": "",
     "smtp_host": "",
     "smtp_port": 0,
     "smtp_use_tls": False,
@@ -71,6 +74,43 @@ def coerce_time_display_offset_hours(value: Any, fallback: int | None = None) ->
     if -23 <= value_int <= 23:
         return value_int
     return fallback_value
+
+
+def coerce_bool(value: Any, fallback: bool = False) -> bool:
+    if value is None:
+        return fallback
+    if isinstance(value, bool):
+        return value
+    text_value = str(value).strip().lower()
+    if text_value in {"1", "true", "yes", "on", "ja"}:
+        return True
+    if text_value in {"0", "false", "no", "off", "nein"}:
+        return False
+    return fallback
+
+
+def normalize_registration_domains(value: Any) -> list[str]:
+    """Normalize semicolon-separated domain input to unique lower-case entries."""
+    text_value = str(value or "")
+    parts = re.split(r"[;,\n\r]+", text_value)
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for part in parts:
+        domain = part.strip().lower().lstrip("@")
+        if not domain:
+            continue
+        if not re.fullmatch(r"[a-z0-9.-]+", domain):
+            continue
+        domain = domain.strip(".")
+        if not domain or domain in seen:
+            continue
+        seen.add(domain)
+        normalized.append(domain)
+    return normalized
+
+
+def serialize_registration_domains(domains: list[str]) -> str:
+    return "; ".join(domains)
 
 
 def normalize_email_actions(value: Any) -> Dict[str, str]:
@@ -176,6 +216,13 @@ def load_app_settings(app, force_reload: bool = False) -> Dict[str, Any]:
                     loaded.get("time_display_offset_hours"),
                     DEFAULT_SETTINGS["time_display_offset_hours"],
                 )
+                settings["registration_domain_check_enabled"] = coerce_bool(
+                    loaded.get("registration_domain_check_enabled"),
+                    DEFAULT_SETTINGS["registration_domain_check_enabled"],
+                )
+                settings["registration_allowed_domains"] = serialize_registration_domains(
+                    normalize_registration_domains(loaded.get("registration_allowed_domains", ""))
+                )
                 settings["smtp_host"] = str(loaded.get("smtp_host", "") or "").strip()
                 settings["smtp_port"] = coerce_positive_int(loaded.get("smtp_port"), 0)
                 settings["smtp_use_tls"] = bool(loaded.get("smtp_use_tls"))
@@ -230,6 +277,13 @@ def save_app_settings(app, new_settings: Dict[str, Any]) -> Dict[str, Any]:
         settings["time_display_offset_hours"] = coerce_time_display_offset_hours(
             new_settings.get("time_display_offset_hours"),
             DEFAULT_SETTINGS["time_display_offset_hours"],
+        )
+        settings["registration_domain_check_enabled"] = coerce_bool(
+            new_settings.get("registration_domain_check_enabled"),
+            DEFAULT_SETTINGS["registration_domain_check_enabled"],
+        )
+        settings["registration_allowed_domains"] = serialize_registration_domains(
+            normalize_registration_domains(new_settings.get("registration_allowed_domains", ""))
         )
         settings["smtp_host"] = str(new_settings.get("smtp_host", "") or "").strip()
         settings["smtp_port"] = coerce_positive_int(new_settings.get("smtp_port"), 0)

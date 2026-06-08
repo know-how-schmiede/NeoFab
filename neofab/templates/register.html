@@ -14,6 +14,12 @@
     </h1>
   </div>
   <div class="card-body">
+    {% if registration_domain_check_enabled %}
+      <div class="alert alert-info small" role="alert">
+        {{ t("registration_domain_restriction_notice").format(domains=registration_allowed_domains_display) }}
+      </div>
+    {% endif %}
+
     <form method="post">
 
       <div class="row g-3">

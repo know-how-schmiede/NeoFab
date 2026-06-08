@@ -1,5 +1,13 @@
 # Timeline NeoFab
 
+## Version 0.9.19
+
+Systemeinstellungen (General) erweitert: Domain-Pruefung fuer Benutzerregistrierung kann per Checkbox aktiviert werden
+Freigegebene Registrierungsdomains sind in den Systemeinstellungen als Semikolon-getrennte Liste konfigurierbar
+Serverseitige Registrierung validiert E-Mail-Domain gegen die freigegebene Liste, wenn die Pruefung aktiv ist
+Registrierungsseite zeigt bei aktiver Domain-Pruefung einen klaren Hinweis auf die erlaubten E-Mail-Domains
+Neue Einstellungen sind im JSON-Export/-Import der Systemeinstellungen enthalten
+
 ## Version 0.9.18
 
 Globales Design-Token-System in custom.css eingefuehrt (Farben, Statusfarben, Abstaende, Radien, Schatten)
