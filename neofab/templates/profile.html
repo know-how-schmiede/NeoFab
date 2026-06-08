@@ -74,6 +74,16 @@
           </select>
         </div>
 
+        <div class="col-md-6">
+          <label for="theme_mode" class="form-label">
+            {{ t("profile_theme_mode_label") }}
+          </label>
+          <select class="form-select" id="theme_mode" name="theme_mode">
+            <option value="light" {% if (user.theme_mode or 'light') == 'light' %}selected{% endif %}>{{ t("profile_theme_light") }}</option>
+            <option value="dark" {% if (user.theme_mode or 'light') == 'dark' %}selected{% endif %}>{{ t("profile_theme_dark") }}</option>
+          </select>
+        </div>
+
         <!-- Salutation -->
         <div class="col-md-4">
           <label for="salutation" class="form-label">

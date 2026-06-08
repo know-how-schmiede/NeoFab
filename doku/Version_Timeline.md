@@ -9,6 +9,7 @@ Karten, Listen und Dialoge nutzen ein einheitliches Schatten- und Border-System 
 Formulare vereinheitlicht mit konsistenten Label-Stilen, Radius- und Fokusregeln
 Dashboard-Auftragsliste fuer kleine Bildschirme optimiert und als strukturierte Kartenansicht dargestellt
 Mobile Aktionsbuttons in Dashboard- und Admin-Listen fuer Touch-Bedienung als vollbreite, vertikale Button-Gruppen optimiert
+Theme-Auswahl aus der Navbar entfernt und stattdessen eine persistente Hell/Dunkel-Auswahl in den Benutzereinstellungen ergaenzt
 
 ## Version 0.9.17
 

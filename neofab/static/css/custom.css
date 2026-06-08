@@ -12,10 +12,18 @@
 
 	/* Surfaces + Text */
 	--nf-bg: #f8fafc;
+	--nf-bg-accent: #eef4ff;
 	--nf-surface: #ffffff;
 	--nf-border: #d9e2ec;
 	--nf-text: #1e2327;
 	--nf-muted: #5f6b76;
+	--nf-nav-bg-start: #ffffff;
+	--nf-nav-bg-end: #f3f7fc;
+	--nf-nav-hover-bg: #f1f5f9;
+	--nf-version-bg: #eef2f7;
+	--nf-avatar-bg: #e2e8f0;
+	--nf-avatar-border: #cbd5e1;
+	--nf-avatar-text: #0f172a;
 
 	/* Radius */
 	--nf-radius-sm: 6px;
@@ -36,8 +44,26 @@
 	--nf-shadow-md: 0 10px 24px rgba(17, 24, 39, 0.08);
 }
 
+html[data-theme-mode="dark"] {
+	--nf-bg: #0f172a;
+	--nf-bg-accent: #111827;
+	--nf-surface: #1f2937;
+	--nf-border: #334155;
+	--nf-text: #e5e7eb;
+	--nf-muted: #94a3b8;
+	--nf-nav-bg-start: #0f172a;
+	--nf-nav-bg-end: #1e293b;
+	--nf-nav-hover-bg: #334155;
+	--nf-version-bg: #1e293b;
+	--nf-avatar-bg: #334155;
+	--nf-avatar-border: #475569;
+	--nf-avatar-text: #e5e7eb;
+	--nf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+	--nf-shadow-md: 0 10px 24px rgba(0, 0, 0, 0.38);
+}
+
 body {
-	background: radial-gradient(circle at top right, #eef4ff 0%, var(--nf-bg) 45%);
+	background: radial-gradient(circle at top right, var(--nf-bg-accent) 0%, var(--nf-bg) 45%);
 	color: var(--nf-text);
 }
 
@@ -98,7 +124,7 @@ body {
 
 /* Navbar */
 .navbar {
-	background: linear-gradient(180deg, #ffffff 0%, #f3f7fc 100%) !important;
+	background: linear-gradient(180deg, var(--nf-nav-bg-start) 0%, var(--nf-nav-bg-end) 100%) !important;
 	border-bottom: 1px solid var(--nf-border);
 	box-shadow: var(--nf-shadow-sm);
 }
@@ -124,7 +150,7 @@ body {
 
 .navbar .nav-link:hover {
 	color: var(--nf-text) !important;
-	background-color: #f1f5f9;
+	background-color: var(--nf-nav-hover-bg);
 }
 
 .navbar .nav-link.active {
@@ -145,7 +171,7 @@ body {
 .nf-version-tag {
 	font-size: 0.72rem;
 	color: var(--nf-muted);
-	background: #eef2f7;
+	background: var(--nf-version-bg);
 	border: 1px solid var(--nf-border);
 	border-radius: var(--nf-radius-pill);
 	padding: 0.1rem 0.5rem;
@@ -160,9 +186,9 @@ body {
 	border-radius: 50%;
 	font-size: 0.72rem;
 	font-weight: 700;
-	background: #e2e8f0;
-	color: #0f172a;
-	border: 1px solid #cbd5e1;
+	background: var(--nf-avatar-bg);
+	color: var(--nf-avatar-text);
+	border: 1px solid var(--nf-avatar-border);
 }
 
 /* Unified badges */

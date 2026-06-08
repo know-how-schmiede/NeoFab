@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ current_language() }}">
+<html lang="{{ current_language() }}" data-theme-mode="{{ current_theme_mode() }}">
 <head>
   <meta charset="utf-8">
   <title>{% block title %}NeoFab{% endblock %}</title>
@@ -10,7 +10,7 @@
   <link
     id="themeStylesheet"
     rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css"
+    href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/{{ theme_bootswatch_slug }}/bootstrap.min.css"
   >
 
   <!-- Bootstrap Icons -->
@@ -99,7 +99,7 @@
           {% endif %}
         </ul>
 
-        <!-- Rechts: Benutzer + Theme-Auswahl / Login -->
+        <!-- Rechts: Benutzer / Login -->
         <div class="d-flex align-items-center gap-3 nf-nav-secondary">
 
           <span class="nf-version-tag">v{{ app_version }}</span>
@@ -124,27 +124,6 @@
             </a>
           {% endif %}
 
-          <!-- Theme-Auswahl wie bei PrintFleet -->
-          <div class="d-flex align-items-center">
-            <label for="themeSelect" class="me-2 mb-0 small text-light">
-              {{ t("nav_theme") }}
-            </label>
-            <select id="themeSelect" class="form-select form-select-sm">
-              <option value="spacelab">Spacelab</option>
-              <option value="yeti">Yeti</option>
-              <option value="brite">Brite</option>
-              <option value="journal">Journal</option>
-              <option value="sandstone">Sandstone</option>
-              <option value="slate">Slate</option>
-              <option value="cerulean">Cerulean</option>
-              <option value="pulse">Pulse</option>
-              <option value="solar">Solar</option>
-              <option value="united">United</option>
-              <option value="cosmo">Cosmo</option>
-              <option value="flatly">Flatly</option>
-              <option value="lumen">Lumen</option>
-            </select>
-          </div>
         </div>
       </div>
     </div>
@@ -173,52 +152,6 @@
       {% block content %}{% endblock %}
     </main>
   </div>
-
-  <!-- Theme-Script (Bootswatch) – identisch zu PrintFleet, nur anderer KEY -->
-  <script>
-    (function() {
-      const THEME_KEY = 'neofab-theme';
-      const select = document.getElementById('themeSelect');
-      const linkEl = document.getElementById('themeStylesheet');
-
-      if (!select || !linkEl) return;
-
-      const BASE_URL = 'https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/';
-
-      const THEMES = {
-        spacelab:  'spacelab',
-        yeti:      'yeti',
-        brite:     'litera',   // Brite mapped to Litera (closest Bootswatch)
-        journal:   'journal',
-        sandstone: 'sandstone',
-        slate:     'slate',
-        cerulean:  'cerulean',
-        pulse:     'pulse',
-        solar:     'solar',
-        united:    'united',
-        cosmo:     'cosmo',
-        flatly:    'flatly',
-        lumen:     'lumen'
-      };
-
-      function applyTheme(themeKey) {
-        const slug = THEMES[themeKey] || THEMES['spacelab'];
-        linkEl.href = BASE_URL + slug + '/bootstrap.min.css';
-      }
-
-      const savedTheme = localStorage.getItem(THEME_KEY);
-      const initialTheme = (savedTheme && THEMES[savedTheme]) ? savedTheme : 'spacelab';
-
-      applyTheme(initialTheme);
-      select.value = initialTheme;
-
-      select.addEventListener('change', function() {
-        const value = this.value;
-        applyTheme(value);
-        localStorage.setItem(THEME_KEY, value);
-      });
-    })();
-  </script>
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"

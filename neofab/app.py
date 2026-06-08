@@ -354,8 +354,16 @@ def inject_globals():
         default_trans = get_translations(DEFAULT_LANG)
         return lang_trans.get(key, default_trans.get(key, key))
 
+    def current_theme_mode():
+        mode = "light"
+        if current_user.is_authenticated and getattr(current_user, "theme_mode", None):
+            mode = (current_user.theme_mode or "light").strip().lower()
+        return "dark" if mode == "dark" else "light"
+
     status_context = get_status_context(t)
     settings = load_app_settings(app)
+    theme_mode = current_theme_mode()
+    theme_bootswatch_slug = "slate" if theme_mode == "dark" else "lux"
     return {
         "app_version": APP_VERSION,
         "max_upload_size_mb": MAX_UPLOAD_SIZE_MB,
@@ -367,6 +375,8 @@ def inject_globals():
         "order_statuses": status_context["order_statuses"],
         "print_job_statuses": status_context["print_job_statuses"],
         "current_language": current_language,
+        "current_theme_mode": current_theme_mode,
+        "theme_bootswatch_slug": theme_bootswatch_slug,
         "t": t,
         "fmt_datetime": format_local_datetime,
         "time_display_offset_hours": int(settings.get("time_display_offset_hours", 0) or 0),
@@ -1595,7 +1605,35 @@ def ensure_user_status_columns():
         app.logger.exception("Failed to ensure user status columns exist")
 
 
+def ensure_user_preference_columns():
+    """
+    Adds user preference columns used by profile settings.
+    """
+    try:
+        exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='user'")
+        ).scalar()
+        if not exists:
+            return
+
+        cols = {
+            row[1]
+            for row in db.session.execute(text("PRAGMA table_info(user)"))
+        }
+        statements = []
+        if "theme_mode" not in cols:
+            statements.append("ALTER TABLE user ADD COLUMN theme_mode VARCHAR(10) NOT NULL DEFAULT 'light'")
+
+        for stmt in statements:
+            db.session.execute(text(stmt))
+        if statements:
+            db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure user preference columns exist")
+
+
 with app.app_context():
+    ensure_user_preference_columns()
     ensure_user_status_columns()
     ensure_order_file_columns()
     ensure_order_image_columns()
@@ -2516,6 +2554,9 @@ def profile():
         language = request.form.get("language", "").strip().lower() or "en"
         if language not in SUPPORTED_LANGS:
             language = "en"
+        theme_mode = request.form.get("theme_mode", "").strip().lower() or "light"
+        if theme_mode not in {"light", "dark"}:
+            theme_mode = "light"
 
         # Basisvalidierungen
         if not email:
@@ -2537,6 +2578,7 @@ def profile():
                 user.study_program = study_program
                 user.note = note
                 user.language = language
+                user.theme_mode = theme_mode
 
                 if new_password:
                     user.set_password(new_password)
