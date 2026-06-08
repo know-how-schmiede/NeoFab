@@ -114,9 +114,19 @@
                 </span>
               </td>
 
-              <td data-label="{{ t('owner') }}">{{ o.user.email }}</td>
+              <td data-label="{{ t('owner') }}">
+                {% set full_name = ((o.user.first_name or '') ~ ' ' ~ (o.user.last_name or '')) | trim %}
+                {% if full_name %}
+                  <span title="{{ full_name }}">{{ o.user.email }}</span>
+                {% else %}
+                  {{ o.user.email }}
+                {% endif %}
+              </td>
 
-              <td data-label="{{ t('created') }}">{{ fmt_datetime(o.created_at) }}</td>
+              <td data-label="{{ t('created') }}" class="nf-date-cell">
+                <span class="nf-date-line">{{ fmt_datetime(o.created_at, '%Y-%m-%d') }}</span>
+                <span class="nf-time-line">{{ fmt_datetime(o.created_at, '%H:%M') }}</span>
+              </td>
 
               <td class="text-center" data-label="{{ t('files') }}">
                 {{ file_counts.get(o.id, 0) }}

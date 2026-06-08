@@ -410,6 +410,22 @@ html[data-theme-mode="dark"] .pagination .page-link:hover {
 	border-radius: var(--nf-radius-pill);
 }
 
+/* Dashboard: date cell two-line layout */
+.nf-date-cell {
+	white-space: nowrap;
+}
+
+.nf-date-line,
+.nf-time-line {
+	display: block;
+	font-size: 0.8rem;
+	line-height: 1.3;
+}
+
+.nf-time-line {
+	color: var(--nf-muted);
+}
+
 /* Desktop: keep sortable table headers and icons on one line */
 @media (min-width: 769px) {
 	.nf-orders-table thead th,
