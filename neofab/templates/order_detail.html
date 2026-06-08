@@ -503,7 +503,7 @@
                         {% set _ = parts.append(((f.filesize / 1024)|round(1)) ~ " KB") %}
                       {% endif %}
                       {% if f.uploaded_at %}
-                        {% set _ = parts.append("uploaded " ~ f.uploaded_at.strftime("%Y-%m-%d %H:%M")) %}
+                        {% set _ = parts.append("uploaded " ~ fmt_datetime(f.uploaded_at)) %}
                       {% endif %}
                       {% if f.note %}
                         {% set _ = parts.append(f.note) %}
@@ -681,7 +681,7 @@
                       <small class="text-muted d-block">
                         {% set parts = [] %}
                         {% if img.filesize %}{% set _ = parts.append(((img.filesize / 1024)|round(1)) ~ " KB") %}{% endif %}
-                        {% if img.uploaded_at %}{% set _ = parts.append("uploaded " ~ img.uploaded_at.strftime("%Y-%m-%d %H:%M")) %}{% endif %}
+                        {% if img.uploaded_at %}{% set _ = parts.append("uploaded " ~ fmt_datetime(img.uploaded_at)) %}{% endif %}
                         {% if img.note %}{% set _ = parts.append(img.note) %}{% endif %}
                         {{ " | ".join(parts) }}
                       </small>
@@ -800,7 +800,7 @@
                       <small class="text-muted d-block">
                         {% set parts = [] %}
                         {% if poster.filesize %}{% set _ = parts.append(((poster.filesize / 1024)|round(1)) ~ " KB") %}{% endif %}
-                        {% if poster.uploaded_at %}{% set _ = parts.append("uploaded " ~ poster.uploaded_at.strftime("%Y-%m-%d %H:%M")) %}{% endif %}
+                        {% if poster.uploaded_at %}{% set _ = parts.append("uploaded " ~ fmt_datetime(poster.uploaded_at)) %}{% endif %}
                         {% if poster.due_date %}{% set _ = parts.append(t("posters_due_date_label") ~ ": " ~ poster.due_date.strftime("%Y-%m-%d")) %}{% endif %}
                         {% if poster.note %}{% set _ = parts.append(poster.note) %}{% endif %}
                         {{ " | ".join(parts) }}
@@ -957,7 +957,7 @@
                       {% set parts = [] %}
                       {% if article.supplier %}{% set _ = parts.append(t("articles_supplier_label") ~ ": " ~ article.supplier) %}{% endif %}
                       {% if article.price_per_unit_incl_vat is not none %}{% set _ = parts.append(t("articles_price_label") ~ ": " ~ ("%.2f"|format(article.price_per_unit_incl_vat)) ~ " EUR") %}{% endif %}
-                      {% if article.created_at %}{% set _ = parts.append("uploaded " ~ article.created_at.strftime("%Y-%m-%d %H:%M")) %}{% endif %}
+                      {% if article.created_at %}{% set _ = parts.append("uploaded " ~ fmt_datetime(article.created_at)) %}{% endif %}
                       {{ " | ".join(parts) }}
                     </small>
                     {% if article.article_description %}
@@ -1144,7 +1144,7 @@
                       <div class="text-muted small">
                         {% set parts = [] %}
                         {% if job.filesize %}{% set _ = parts.append(((job.filesize / 1024)|round(1)) ~ " KB") %}{% endif %}
-                        {% if job.uploaded_at %}{% set _ = parts.append(job.uploaded_at.strftime("%Y-%m-%d %H:%M")) %}{% endif %}
+                        {% if job.uploaded_at %}{% set _ = parts.append(fmt_datetime(job.uploaded_at)) %}{% endif %}
                         {{ " | ".join(parts) }}
                       </div>
                     </td>
@@ -1152,7 +1152,7 @@
                       <span class="badge {{ status_style }}">{{ status_label }}</span>
                     </td>
                     <td>
-                      {{ job.started_at.strftime("%Y-%m-%d %H:%M") if job.started_at else "-" }}
+                      {{ fmt_datetime(job.started_at) if job.started_at else "-" }}
                     </td>
                     <td>
                       {% if job.duration_min is not none %}
@@ -1185,7 +1185,7 @@
                                 data-bs-target="#printJobEditModal"
                                 data-job-id="{{ job.id }}"
                                 data-job-status="{{ status_value }}"
-                                data-job-started-at="{{ job.started_at.strftime('%Y-%m-%dT%H:%M') if job.started_at else '' }}"
+                                data-job-started-at="{{ fmt_datetime(job.started_at, '%Y-%m-%dT%H:%M') if job.started_at else '' }}"
                                 data-job-duration="{{ job.duration_min if job.duration_min is not none else '' }}"
                                 data-job-filament-m="{{ job.filament_m if job.filament_m is not none else '' }}"
                                 data-job-filament-g="{{ job.filament_g if job.filament_g is not none else '' }}"

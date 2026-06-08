@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
+import os
 import secrets
 import json
 import shutil
@@ -9,6 +10,7 @@ from typing import Callable, Optional
 from urllib.parse import parse_qs, urlparse
 import smtplib
 from email.message import EmailMessage
+from zoneinfo import ZoneInfo
 
 from flask import (
     Blueprint,
@@ -230,6 +232,39 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
     bp = Blueprint("admin", __name__, url_prefix="/admin")
 
     t = lambda key: _translator(get_translator)(key)
+
+    def _fmt_datetime(value: datetime | None) -> str:
+        if value is None:
+            return ""
+
+        try:
+            app_timezone_name = os.environ.get("NEOFAB_TIMEZONE", "Europe/Berlin")
+            try:
+                app_local_tz = ZoneInfo(app_timezone_name)
+            except Exception:
+                app_local_tz = ZoneInfo("UTC")
+            app_utc_tz = ZoneInfo("UTC")
+
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=app_utc_tz)
+            value = value.astimezone(app_local_tz)
+        except Exception:
+            pass
+
+        try:
+            settings = load_app_settings(current_app)
+            offset_hours = int(settings.get("time_display_offset_hours", 0) or 0)
+        except Exception:
+            offset_hours = 0
+
+        if offset_hours:
+            value = value + timedelta(hours=offset_hours)
+
+        try:
+            return value.strftime("%Y-%m-%d %H:%M")
+        except Exception:
+            return ""
+
     admin_announcement_form_token_key = "admin_announcement_form_token"
     announcement_priority_meta = {
         "info": {"label": "announcement_priority_info", "icon": "bi-info-circle", "class": "text-primary"},
@@ -3050,7 +3085,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         orders, order_costs, total_cost = _cost_center_orders_with_costs(cost_center.id)
         status_context = build_status_context(load_app_settings(current_app), trans)
         status_labels = status_context.get("order_status_labels", {})
-        generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
+        generated_at = _fmt_datetime(datetime.utcnow())
 
         lines = [
             "NeoFab",
@@ -3081,7 +3116,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             lines.append(_format_pdf_table_row(table_headers, table_widths, {4}))
             lines.append(_format_pdf_table_row(["-" * width for width in table_widths], table_widths))
             for order in orders:
-                created_at = order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else ""
+                created_at = _fmt_datetime(order.created_at)
                 owner = order.user.email if order.user else ""
                 status = status_labels.get(order.status, order.status or "")
                 lines.append(

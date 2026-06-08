@@ -1,15 +1,50 @@
 from __future__ import annotations
 
+import os
 import smtplib
+from datetime import datetime, timedelta
 from email.utils import getaddresses
 from email.message import EmailMessage
 from typing import Mapping
+from zoneinfo import ZoneInfo
 
 from flask import url_for
 from flask_login import current_user
 
 from config import is_email_action_enabled, load_app_settings
 from models import Announcement, Order, User
+
+
+def _format_app_datetime(value: datetime | None, settings: Mapping[str, object]) -> str:
+    if value is None:
+        return ""
+
+    try:
+        app_timezone_name = os.environ.get("NEOFAB_TIMEZONE", "Europe/Berlin")
+        try:
+            app_local_tz = ZoneInfo(app_timezone_name)
+        except Exception:
+            app_local_tz = ZoneInfo("UTC")
+        app_utc_tz = ZoneInfo("UTC")
+
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=app_utc_tz)
+        value = value.astimezone(app_local_tz)
+    except Exception:
+        pass
+
+    try:
+        offset_hours = int(settings.get("time_display_offset_hours", 0) or 0)
+    except Exception:
+        offset_hours = 0
+
+    if offset_hours:
+        value = value + timedelta(hours=offset_hours)
+
+    try:
+        return value.strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        return ""
 
 
 def _split_email_recipients(raw: str | None) -> list[str]:
@@ -121,7 +156,7 @@ def send_admin_order_notification(app, order: Order, status_labels: Mapping[str,
         status_labels = status_labels or {}
         status_label = status_labels.get(order.status, order.status)
         created_by = current_user.email if current_user.is_authenticated else ""
-        created_at = order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else ""
+        created_at = _format_app_datetime(order.created_at, settings)
 
         msg = EmailMessage()
         msg["Subject"] = f"NeoFab: New order #{order.id}"

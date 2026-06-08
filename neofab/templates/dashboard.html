@@ -218,7 +218,7 @@
                   {{ a.title }}
                 </div>
                 <div class="text-muted small">
-                  {{ t(meta["label"]) }}{% if a.created_at %} · {{ a.created_at.strftime("%Y-%m-%d %H:%M") }}{% endif %}
+                  {{ t(meta["label"]) }}{% if a.created_at %} · {{ fmt_datetime(a.created_at) }}{% endif %}
                 </div>
               </div>
               <div class="d-flex gap-2">

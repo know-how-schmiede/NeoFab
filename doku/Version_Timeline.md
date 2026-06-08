@@ -1,5 +1,13 @@
 # Timeline NeoFab
 
+## Version 0.9.20
+
+Systemweite Pruefung und Vereinheitlichung der Zeitdarstellung umgesetzt
+Alle relevanten UI-Stellen mit Zeitangaben auf gemeinsame Formatter-Logik (`fmt_datetime`) umgestellt
+Chat-, Dashboard-, Profil- und Admin-Ansichten zeigen Zeitangaben jetzt konsistent mit der konfigurierten Zeitdifferenz
+Order-Detail und abgeleitete Listen/Metadaten verwenden ebenfalls die einheitliche Zeitformatierung
+PDF-/Export-Kontexte fuer Auftragsdaten auf dieselbe Zeitlogik umgestellt, um Zeitabweichungen zu vermeiden
+
 ## Version 0.9.19
 
 Systemeinstellungen (General) erweitert: Domain-Pruefung fuer Benutzerregistrierung kann per Checkbox aktiviert werden

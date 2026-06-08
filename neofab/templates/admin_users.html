@@ -65,8 +65,8 @@
                   <span class="badge bg-warning text-dark">{{ t("user_status_inactive") }}</span>
                 {% endif %}
               </td>
-              <td data-label="{{ t('table_created') }}">{{ u.created_at.strftime('%Y-%m-%d') if u.created_at else '' }}</td>
-              <td data-label="{{ t('table_last_login') }}">{{ u.last_login_at.strftime('%Y-%m-%d %H:%M') if u.last_login_at else '-' }}</td>
+              <td data-label="{{ t('table_created') }}">{{ fmt_datetime(u.created_at, '%Y-%m-%d') if u.created_at else '' }}</td>
+              <td data-label="{{ t('table_last_login') }}">{{ fmt_datetime(u.last_login_at) if u.last_login_at else '-' }}</td>
               <td class="text-end" data-label="{{ t('table_actions') }}">
                 <a href="{{ url_for('admin.admin_user_edit', user_id=u.id) }}"
                    class="btn btn-outline-secondary btn-sm">

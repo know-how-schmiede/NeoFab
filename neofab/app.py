@@ -5524,7 +5524,7 @@ def _pdf_escape(text_value: str) -> str:
 
 def build_order_context(order, translator) -> dict:
     def fmt_dt(dt):
-        return dt.strftime("%Y-%m-%d %H:%M") if dt else ""
+        return format_local_datetime(dt) if dt else ""
 
     def image_thumb_data_uri(image_entry: OrderImage) -> str:
         """
@@ -5844,8 +5844,8 @@ def _build_order_pdf(order, translator) -> bytes:
     add(translator("order_status_label"), status_labels.get(order.status, order.status))
     add(translator("order_owner_label"), order.user.email if order.user else "")
     add(translator("order_cost_center_label"), order.cost_center.name if order.cost_center else "")
-    add(translator("order_created_label"), order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else "")
-    add(translator("order_updated_label"), order.updated_at.strftime("%Y-%m-%d %H:%M") if order.updated_at else "")
+    add(translator("order_created_label"), fmt_dt(order.created_at))
+    add(translator("order_updated_label"), fmt_dt(order.updated_at))
     add(translator("order_summary_short"), order.summary_short or "")
     add(translator("order_summary_long"), order.summary_long or "")
     add(translator("order_project_group"), order.project_group or "")
@@ -5866,7 +5866,7 @@ def _build_order_pdf(order, translator) -> bytes:
     for msg in order.messages:
         meta = []
         if msg.created_at:
-            meta.append(msg.created_at.strftime("%Y-%m-%d %H:%M"))
+            meta.append(fmt_dt(msg.created_at))
         if msg.user:
             meta.append(msg.user.email)
         meta_str = " - ".join(meta)
@@ -5896,7 +5896,7 @@ def _build_order_pdf(order, translator) -> bytes:
             if poster.filesize:
                 parts.append(f"{(poster.filesize / 1024):.1f} KB")
             if poster.uploaded_at:
-                parts.append(poster.uploaded_at.strftime("%Y-%m-%d %H:%M"))
+                parts.append(fmt_dt(poster.uploaded_at))
             add(f"- {poster.original_name}", " | ".join(parts))
 
         add("", "")
@@ -5906,7 +5906,7 @@ def _build_order_pdf(order, translator) -> bytes:
             if img.filesize:
                 meta.append(f"{(img.filesize / 1024):.1f} KB")
             if img.uploaded_at:
-                meta.append(img.uploaded_at.strftime("%Y-%m-%d %H:%M"))
+                meta.append(fmt_dt(img.uploaded_at))
             add(f"- {img.original_name}", " | ".join(meta))
 
         text_rows: List[str] = []
@@ -5947,7 +5947,7 @@ def _build_order_pdf(order, translator) -> bytes:
             parts.append(status_label)
         if job.started_at:
             parts.append(
-                f"{translator('print_jobs_table_started_at')} {job.started_at.strftime('%Y-%m-%d %H:%M')}"
+                f"{translator('print_jobs_table_started_at')} {fmt_dt(job.started_at)}"
             )
         if job.duration_min is not None:
             parts.append(
@@ -5968,7 +5968,7 @@ def _build_order_pdf(order, translator) -> bytes:
         if job.filesize:
             meta.append(f"{(job.filesize / 1024):.1f} KB")
         if job.uploaded_at:
-            meta.append(job.uploaded_at.strftime("%Y-%m-%d %H:%M"))
+            meta.append(fmt_dt(job.uploaded_at))
         if meta:
             parts.append(" | ".join(meta))
         add(f"- {job.original_name}", " | ".join(parts))
@@ -5980,7 +5980,7 @@ def _build_order_pdf(order, translator) -> bytes:
         if img.filesize:
             meta.append(f"{(img.filesize / 1024):.1f} KB")
         if img.uploaded_at:
-            meta.append(img.uploaded_at.strftime("%Y-%m-%d %H:%M"))
+            meta.append(fmt_dt(img.uploaded_at))
         add(f"ÔÇó {img.original_name}", " | ".join(meta))
 
     text_rows: List[str] = []

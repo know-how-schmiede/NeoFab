@@ -15,7 +15,7 @@
                             {{ user_name if user_name else msg.user.email }}
                         {% endif %}
                     </strong>
-                    — {{ msg.created_at.strftime("%Y-%m-%d %H:%M") }}
+                    — {{ fmt_datetime(msg.created_at) }}
                 </div>
                 <div class="neo-chat-text">
                     {{ msg.content | nl2br }}

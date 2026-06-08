@@ -46,7 +46,7 @@
             <td data-label="{{ t('announcement_body_label') }}">
               <div class="small">{{ render_markdown(a.body) }}</div>
             </td>
-            <td data-label="{{ t('created') }}">{{ a.created_at.strftime("%Y-%m-%d %H:%M") if a.created_at else "-" }}</td>
+            <td data-label="{{ t('created') }}">{{ fmt_datetime(a.created_at) if a.created_at else "-" }}</td>
             <td class="text-end" data-label="{{ t('table_actions') }}">
               <button type="button"
                       class="btn btn-sm btn-primary"

@@ -46,7 +46,7 @@
                     {{ status_labels.get(o.status, o.status) }}
                   </span>
                 </td>
-                <td data-label="{{ t('table_created') }}">{{ o.created_at.strftime('%Y-%m-%d %H:%M') if o.created_at else '' }}</td>
+                <td data-label="{{ t('table_created') }}">{{ fmt_datetime(o.created_at) if o.created_at else '' }}</td>
                 <td class="text-center" data-label="{{ t('print_jobs_header') }}">
                   {% set job_counts = print_job_counts.get(o.id, {}) %}
                   <span class="print-job-summary" aria-label="{{ t('print_jobs_summary_title') }}">
@@ -67,7 +67,7 @@
                   {% if o.is_archived %}
                     <span class="badge bg-secondary">{{ t("admin_orders_archived") }}</span>
                     {% if o.archived_at %}
-                      <span class="text-muted small">{{ o.archived_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                      <span class="text-muted small">{{ fmt_datetime(o.archived_at) }}</span>
                     {% endif %}
                   {% else %}
                     <span class="badge bg-success">{{ t("admin_orders_active") }}</span>
