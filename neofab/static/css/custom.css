@@ -142,6 +142,51 @@ html[data-theme-mode="dark"] .btn-outline-secondary {
 	--bs-btn-active-border-color: #7b8ca3;
 }
 
+html[data-theme-mode="dark"] .form-control,
+html[data-theme-mode="dark"] .form-select,
+html[data-theme-mode="dark"] .form-control:focus,
+html[data-theme-mode="dark"] .form-select:focus {
+	background-color: #f8fafc;
+	color: #1f2937;
+	border-color: #7b8ca3;
+}
+
+html[data-theme-mode="dark"] textarea.form-control,
+html[data-theme-mode="dark"] select.form-select {
+	color: #1f2937;
+}
+
+html[data-theme-mode="dark"] .form-control::placeholder {
+	color: #64748b;
+	opacity: 1;
+}
+
+html[data-theme-mode="dark"] .form-control:disabled,
+html[data-theme-mode="dark"] .form-select:disabled {
+	background-color: #d8e0ea;
+	color: #4b5563;
+	opacity: 1;
+}
+
+html[data-theme-mode="dark"] .input-group-text {
+	background-color: #e2e8f0;
+	color: #334155;
+	border-color: #7b8ca3;
+}
+
+/* Keep browser autofill readable on light input backgrounds in dark mode */
+html[data-theme-mode="dark"] .form-control:-webkit-autofill,
+html[data-theme-mode="dark"] .form-control:-webkit-autofill:hover,
+html[data-theme-mode="dark"] .form-control:-webkit-autofill:focus,
+html[data-theme-mode="dark"] .form-select:-webkit-autofill,
+html[data-theme-mode="dark"] .form-select:-webkit-autofill:hover,
+html[data-theme-mode="dark"] .form-select:-webkit-autofill:focus {
+	-webkit-text-fill-color: #1f2937;
+	transition: background-color 5000s ease-in-out 0s;
+	box-shadow: 0 0 0 1000px #f8fafc inset;
+	caret-color: #1f2937;
+}
+
 html[data-theme-mode="dark"] .card-header {
 	background-color: #4f5d6d;
 	color: #f8fafc;
@@ -363,6 +408,27 @@ html[data-theme-mode="dark"] .pagination .page-link:hover {
 /* Keep compact summary badges legible */
 .print-job-summary-badge {
 	border-radius: var(--nf-radius-pill);
+}
+
+/* Desktop: keep sortable table headers and icons on one line */
+@media (min-width: 769px) {
+	.nf-orders-table thead th,
+	.nf-admin-table thead th {
+		white-space: nowrap;
+		vertical-align: middle;
+	}
+
+	.nf-sort-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		white-space: nowrap;
+	}
+
+	.nf-sort-link .bi {
+		line-height: 1;
+		font-size: 0.85em;
+	}
 }
 
 /* Mobile: Dashboard orders table becomes card-like rows */

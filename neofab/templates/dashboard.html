@@ -1,11 +1,12 @@
 {% extends "base.html" %}
 
 {% block title %}Dashboard – NeoFab{% endblock %}
+{% block container_class %}container-xxl{% endblock %}
 
 {% block content %}
 {% macro sort_link(key, label) %}
   {% set next_dir = 'desc' if sort_by == key and sort_dir == 'asc' else 'asc' %}
-  <a class="link-dark text-decoration-none" href="{{ url_for('dashboard', sort=key, dir=next_dir, per_page=per_page, page=1) }}">
+  <a class="link-dark text-decoration-none nf-sort-link" href="{{ url_for('dashboard', sort=key, dir=next_dir, per_page=per_page, page=1) }}">
     {{ label }}
     {% if sort_by == key %}
       <i class="bi {% if sort_dir == 'asc' %}bi-caret-up-fill{% else %}bi-caret-down-fill{% endif %} ms-1"></i>

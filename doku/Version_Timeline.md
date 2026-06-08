@@ -18,6 +18,8 @@ Design-Kontrast-Smoke-Test um eine Druckansicht erweitert (A4-optimierte Ausgabe
 Druckansicht des Design-Kontrast-Smoke-Tests um Metadaten erweitert (Erstellzeitpunkt, aktuelles Theme, Version)
 Light- und Dark-Theme visuell angeglichen: einheitliches Basis-Theme und Dark-Mode ueber CSS-Variablen statt Theme-Familienwechsel
 Dark-Mode Feintuning fuer Dashboard/Admin vorgenommen (Tabellenkopf, Link-Kontrast, Paginierung, Outline-Buttons) fuer naehere Light/Dark-Anmutung
+Lesbarkeit von Eingabefeldern im Dark-Mode weiter gehaertet (Input-/Textarea-/Select-Text, Placeholder, Disabled-Zustaende und Browser-Autofill)
+Dashboard-Layout fuer breite Tabellen verbessert: breiterer Container und no-wrap fuer sortierbare Spaltenkoepfe inkl. Sortier-Icons
 
 ## Version 0.9.17
 
