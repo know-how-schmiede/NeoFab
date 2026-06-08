@@ -15,60 +15,62 @@
 </div>
 
 {% if materials %}
-    <table class="table table-striped align-middle">
-        <thead>
-            <tr>
-                <th style="width: 14%;">{{ t("table_name") }}</th>
-                <th style="width: 9%;">{{ t("table_diameter") }}</th>
-                <th style="width: 9%;">{{ t("table_density") }}</th>
-                <th>{{ t("table_description") }}</th>
-                <th style="width: 9%;">{{ t("table_price_per_kg") }}</th>
-                <th style="width: 9%;">{{ t("table_price_per_g") }}</th>
-                <th style="width: 9%;">{{ t("table_markup_percent") }}</th>
-                <th style="width: 9%;">{{ t("table_drying_fee") }}</th>
-                <th style="width: 9%;">{{ t("table_handling_fee") }}</th>
-                <th style="width: 8%;">{{ t("table_active") }}</th>
-                <th class="text-end" style="width: 14%;">{{ t("table_actions") }}</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for m in materials %}
-            <tr>
-                <td>{{ m.name }}</td>
-                <td>{{ "%.2f"|format(m.filament_diameter_mm or 0) }}</td>
-                <td>{{ "%.2f"|format(m.density_g_cm3 or 0) }}</td>
-                <td>{{ m.description or '' }}</td>
-                <td>{{ "%.2f"|format(m.price_per_kg or 0) }}</td>
-                <td>{{ "%.4f"|format(m.price_per_g) }}</td>
-                <td>{{ "%.2f"|format(m.markup_percent or 0) }}</td>
-                <td>{{ "%.2f"|format(m.drying_fee or 0) }}</td>
-                <td>{{ "%.2f"|format(m.handling_fee or 0) }}</td>
-                <td>
-                    <span class="badge {% if m.active %}bg-success{% else %}bg-secondary{% endif %}">
-                        {{ m.active and t("badge_yes") or t("badge_no") }}
-                    </span>
-                </td>
-                <td class="text-end">
-                    <a href="{{ url_for('admin.admin_filament_material_edit', material_id=m.id) }}"
-                       class="btn btn-sm btn-primary">
-                        {{ t("btn_edit") }}
-                    </a>
-                    <form action="{{ url_for('admin.admin_filament_material_delete', material_id=m.id) }}"
-                          method="post"
-                          class="d-inline"
-                          id="delete-filament-material-form-{{ m.id }}">
-                        <button type="button"
-                                class="btn btn-sm btn-danger btn-delete-filament-material"
-                                data-form-id="delete-filament-material-form-{{ m.id }}"
-                                data-material-name="{{ m.name }}">
-                            {{ t("btn_delete") }}
-                        </button>
-                    </form>
-                </td>
-            </tr>
-        {% endfor %}
-        </tbody>
+  <div class="table-responsive nf-admin-wrap">
+    <table class="table table-striped align-middle nf-admin-table">
+      <thead>
+        <tr>
+          <th style="width: 14%;">{{ t("table_name") }}</th>
+          <th style="width: 9%;">{{ t("table_diameter") }}</th>
+          <th style="width: 9%;">{{ t("table_density") }}</th>
+          <th>{{ t("table_description") }}</th>
+          <th style="width: 9%;">{{ t("table_price_per_kg") }}</th>
+          <th style="width: 9%;">{{ t("table_price_per_g") }}</th>
+          <th style="width: 9%;">{{ t("table_markup_percent") }}</th>
+          <th style="width: 9%;">{{ t("table_drying_fee") }}</th>
+          <th style="width: 9%;">{{ t("table_handling_fee") }}</th>
+          <th style="width: 8%;">{{ t("table_active") }}</th>
+          <th class="text-end" style="width: 14%;">{{ t("table_actions") }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for m in materials %}
+        <tr>
+          <td data-label="{{ t('table_name') }}">{{ m.name }}</td>
+          <td data-label="{{ t('table_diameter') }}">{{ "%.2f"|format(m.filament_diameter_mm or 0) }}</td>
+          <td data-label="{{ t('table_density') }}">{{ "%.2f"|format(m.density_g_cm3 or 0) }}</td>
+          <td data-label="{{ t('table_description') }}">{{ m.description or '' }}</td>
+          <td data-label="{{ t('table_price_per_kg') }}">{{ "%.2f"|format(m.price_per_kg or 0) }}</td>
+          <td data-label="{{ t('table_price_per_g') }}">{{ "%.4f"|format(m.price_per_g) }}</td>
+          <td data-label="{{ t('table_markup_percent') }}">{{ "%.2f"|format(m.markup_percent or 0) }}</td>
+          <td data-label="{{ t('table_drying_fee') }}">{{ "%.2f"|format(m.drying_fee or 0) }}</td>
+          <td data-label="{{ t('table_handling_fee') }}">{{ "%.2f"|format(m.handling_fee or 0) }}</td>
+          <td data-label="{{ t('table_active') }}">
+            <span class="badge {% if m.active %}bg-success{% else %}bg-secondary{% endif %}">
+              {{ m.active and t("badge_yes") or t("badge_no") }}
+            </span>
+          </td>
+          <td class="text-end" data-label="{{ t('table_actions') }}">
+            <a href="{{ url_for('admin.admin_filament_material_edit', material_id=m.id) }}"
+               class="btn btn-sm btn-primary">
+              {{ t("btn_edit") }}
+            </a>
+            <form action="{{ url_for('admin.admin_filament_material_delete', material_id=m.id) }}"
+                method="post"
+                class="d-inline"
+                id="delete-filament-material-form-{{ m.id }}">
+              <button type="button"
+                  class="btn btn-sm btn-danger btn-delete-filament-material"
+                  data-form-id="delete-filament-material-form-{{ m.id }}"
+                  data-material-name="{{ m.name }}">
+                {{ t("btn_delete") }}
+              </button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
     </table>
+  </div>
 {% else %}
     <p>{{ t("admin_filament_materials_none") }}</p>
 {% endif %}

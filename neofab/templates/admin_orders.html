@@ -18,8 +18,8 @@
 
   <div class="card-body p-2">
     {% if orders %}
-      <div class="table-responsive">
-        <table class="table table-striped table-hover table-sm align-middle mb-0">
+      <div class="table-responsive nf-admin-wrap">
+        <table class="table table-striped table-hover table-sm align-middle mb-0 nf-admin-table">
           <thead>
             <tr>
               <th>{{ t("table_id") }}</th>
@@ -35,19 +35,19 @@
           <tbody>
             {% for o in orders %}
               <tr>
-                <td>{{ o.id }}</td>
-                <td>
+                <td data-label="{{ t('table_id') }}">{{ o.id }}</td>
+                <td data-label="{{ t('title') }}">
                   <a href="{{ url_for('order_detail', order_id=o.id) }}">{{ o.title }}</a>
                 </td>
-                <td>{{ o.user.email if o.user else "" }}</td>
-                <td>
+                <td data-label="{{ t('owner') }}">{{ o.user.email if o.user else "" }}</td>
+                <td data-label="{{ t('table_status') }}">
                   {% set status_style = status_styles.get(o.status, "bg-light text-dark") %}
                   <span class="badge {{ status_style }}">
                     {{ status_labels.get(o.status, o.status) }}
                   </span>
                 </td>
-                <td>{{ o.created_at.strftime('%Y-%m-%d %H:%M') if o.created_at else '' }}</td>
-                <td class="text-center">
+                <td data-label="{{ t('table_created') }}">{{ o.created_at.strftime('%Y-%m-%d %H:%M') if o.created_at else '' }}</td>
+                <td class="text-center" data-label="{{ t('print_jobs_header') }}">
                   {% set job_counts = print_job_counts.get(o.id, {}) %}
                   <span class="print-job-summary" aria-label="{{ t('print_jobs_summary_title') }}">
                     <span class="badge print-job-summary-badge text-secondary border-secondary-subtle"
@@ -63,7 +63,7 @@
                           title="{{ t('print_jobs_summary_error') }}">{{ job_counts.get('error', 0) }}</span>
                   </span>
                 </td>
-                <td>
+                <td data-label="{{ t('admin_orders_archive_state') }}">
                   {% if o.is_archived %}
                     <span class="badge bg-secondary">{{ t("admin_orders_archived") }}</span>
                     {% if o.archived_at %}
@@ -73,7 +73,7 @@
                     <span class="badge bg-success">{{ t("admin_orders_active") }}</span>
                   {% endif %}
                 </td>
-                <td class="text-end">
+                <td class="text-end" data-label="{{ t('table_actions') }}">
                   <div class="d-inline-flex flex-wrap justify-content-end gap-1">
                     {% if not o.is_archived %}
                       <button type="button"

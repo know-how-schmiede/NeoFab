@@ -15,51 +15,53 @@
 </div>
 
 {% if playlists %}
-    <table class="table table-striped align-middle">
-        <thead>
-            <tr>
-                <th style="width: 30%;">{{ t("admin_training_playlist_table_title") }}</th>
-                <th style="width: 45%;">{{ t("admin_training_playlist_table_description") }}</th>
-                <th style="width: 10%;">{{ t("admin_training_playlist_table_active") }}</th>
-                <th class="text-end" style="width: 15%;">{{ t("table_actions") }}</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for playlist in playlists %}
-            <tr>
-                <td>{{ playlist.title }}</td>
-                <td>
-                    {% set desc = playlist.short_description or '' %}
-                    {{ desc[:140] }}{% if desc|length > 140 %}...{% endif %}
-                </td>
-                <td>
-                    {% if playlist.active %}
-                        <span class="badge bg-success">{{ t("badge_yes") }}</span>
-                    {% else %}
-                        <span class="badge bg-secondary">{{ t("badge_no") }}</span>
-                    {% endif %}
-                </td>
-                <td class="text-end">
-                    <a href="{{ url_for('admin.admin_training_playlist_edit', playlist_id=playlist.id) }}"
-                       class="btn btn-sm btn-primary">
-                        {{ t("btn_edit") }}
-                    </a>
-                    <form action="{{ url_for('admin.admin_training_playlist_delete', playlist_id=playlist.id) }}"
-                          method="post"
-                          class="d-inline"
-                          id="delete-playlist-{{ playlist.id }}">
-                        <button type="button"
-                                class="btn btn-sm btn-danger btn-delete-playlist"
-                                data-form-id="delete-playlist-{{ playlist.id }}"
-                                data-playlist-title="{{ playlist.title }}">
-                            {{ t("btn_delete") }}
-                        </button>
-                    </form>
-                </td>
-            </tr>
-        {% endfor %}
-        </tbody>
+  <div class="table-responsive nf-admin-wrap">
+    <table class="table table-striped align-middle nf-admin-table">
+      <thead>
+        <tr>
+          <th style="width: 30%;">{{ t("admin_training_playlist_table_title") }}</th>
+          <th style="width: 45%;">{{ t("admin_training_playlist_table_description") }}</th>
+          <th style="width: 10%;">{{ t("admin_training_playlist_table_active") }}</th>
+          <th class="text-end" style="width: 15%;">{{ t("table_actions") }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for playlist in playlists %}
+        <tr>
+          <td data-label="{{ t('admin_training_playlist_table_title') }}">{{ playlist.title }}</td>
+          <td data-label="{{ t('admin_training_playlist_table_description') }}">
+            {% set desc = playlist.short_description or '' %}
+            {{ desc[:140] }}{% if desc|length > 140 %}...{% endif %}
+          </td>
+          <td data-label="{{ t('admin_training_playlist_table_active') }}">
+            {% if playlist.active %}
+              <span class="badge bg-success">{{ t("badge_yes") }}</span>
+            {% else %}
+              <span class="badge bg-secondary">{{ t("badge_no") }}</span>
+            {% endif %}
+          </td>
+          <td class="text-end" data-label="{{ t('table_actions') }}">
+            <a href="{{ url_for('admin.admin_training_playlist_edit', playlist_id=playlist.id) }}"
+               class="btn btn-sm btn-primary">
+              {{ t("btn_edit") }}
+            </a>
+            <form action="{{ url_for('admin.admin_training_playlist_delete', playlist_id=playlist.id) }}"
+                method="post"
+                class="d-inline"
+                id="delete-playlist-{{ playlist.id }}">
+              <button type="button"
+                  class="btn btn-sm btn-danger btn-delete-playlist"
+                  data-form-id="delete-playlist-{{ playlist.id }}"
+                  data-playlist-title="{{ playlist.title }}">
+                {{ t("btn_delete") }}
+              </button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
     </table>
+  </div>
 {% else %}
     <p>{{ t("admin_training_playlists_none") }}</p>
 {% endif %}

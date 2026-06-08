@@ -15,40 +15,42 @@
 </div>
 
 {% if materials %}
-    <table class="table table-striped align-middle">
-        <thead>
-            <tr>
-                <th style="width: 25%;">{{ t("table_name") }}</th>
-                <th>{{ t("table_description") }}</th>
-                <th class="text-end" style="width: 20%;">{{ t("table_actions") }}</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for m in materials %}
-            <tr>
-                <td>{{ m.name }}</td>
-                <td>{{ m.description or '' }}</td>
-                <td class="text-end">
-                    <a href="{{ url_for('admin.admin_material_edit', material_id=m.id) }}"
-                       class="btn btn-sm btn-primary">
-                        {{ t("btn_edit") }}
-                    </a>
-                    <form action="{{ url_for('admin.admin_material_delete', material_id=m.id) }}"
-                          method="post"
-                          class="d-inline"
-                          id="delete-material-form-{{ m.id }}">
-                        <button type="button"
-                                class="btn btn-sm btn-danger btn-delete-material"
-                                data-form-id="delete-material-form-{{ m.id }}"
-                                data-material-name="{{ m.name }}">
-                            {{ t("btn_delete") }}
-                        </button>
-                    </form>
-                </td>
-            </tr>
-        {% endfor %}
-        </tbody>
+  <div class="table-responsive nf-admin-wrap">
+    <table class="table table-striped align-middle nf-admin-table">
+      <thead>
+        <tr>
+          <th style="width: 25%;">{{ t("table_name") }}</th>
+          <th>{{ t("table_description") }}</th>
+          <th class="text-end" style="width: 20%;">{{ t("table_actions") }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for m in materials %}
+        <tr>
+          <td data-label="{{ t('table_name') }}">{{ m.name }}</td>
+          <td data-label="{{ t('table_description') }}">{{ m.description or '' }}</td>
+          <td class="text-end" data-label="{{ t('table_actions') }}">
+            <a href="{{ url_for('admin.admin_material_edit', material_id=m.id) }}"
+               class="btn btn-sm btn-primary">
+              {{ t("btn_edit") }}
+            </a>
+            <form action="{{ url_for('admin.admin_material_delete', material_id=m.id) }}"
+                method="post"
+                class="d-inline"
+                id="delete-material-form-{{ m.id }}">
+              <button type="button"
+                  class="btn btn-sm btn-danger btn-delete-material"
+                  data-form-id="delete-material-form-{{ m.id }}"
+                  data-material-name="{{ m.name }}">
+                {{ t("btn_delete") }}
+              </button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
     </table>
+  </div>
 {% else %}
     <p>{{ t("admin_materials_none") }}</p>
 {% endif %}

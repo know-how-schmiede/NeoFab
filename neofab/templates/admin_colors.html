@@ -15,48 +15,50 @@
 </div>
 
 {% if colors %}
-    <table class="table table-striped align-middle">
-        <thead>
-            <tr>
-                <th style="width: 25%;">{{ t("table_name") }}</th>
-                <th style="width: 15%;">{{ t("table_preview") }}</th>
-                <th>{{ t("table_hex_code") }}</th>
-                <th class="text-end" style="width: 20%;">{{ t("table_actions") }}</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for c in colors %}
-            <tr>
-                <td>{{ c.name }}</td>
-                <td>
-                    {% if c.hex_code %}
-                        <span class="d-inline-block rounded"
-                              style="width: 32px; height: 32px; border: 1px solid #ccc; background-color: {{ c.hex_code }};">
-                        </span>
-                    {% endif %}
-                </td>
-                <td>{{ c.hex_code or '' }}</td>
-                <td class="text-end">
-                    <a href="{{ url_for('admin.admin_color_edit', color_id=c.id) }}"
-                       class="btn btn-sm btn-primary">
-                        {{ t("btn_edit") }}
-                    </a>
-                    <form action="{{ url_for('admin.admin_color_delete', color_id=c.id) }}"
-                          method="post"
-                          class="d-inline"
-                          id="delete-form-{{ c.id }}">
-                        <button type="button"
-                                class="btn btn-sm btn-danger btn-delete-color"
-                                data-form-id="delete-form-{{ c.id }}"
-                                data-color-name="{{ c.name }}">
-                            {{ t("btn_delete") }}
-                        </button>
-                    </form>
-                </td>
-            </tr>
-        {% endfor %}
-        </tbody>
+  <div class="table-responsive nf-admin-wrap">
+    <table class="table table-striped align-middle nf-admin-table">
+      <thead>
+        <tr>
+          <th style="width: 25%;">{{ t("table_name") }}</th>
+          <th style="width: 15%;">{{ t("table_preview") }}</th>
+          <th>{{ t("table_hex_code") }}</th>
+          <th class="text-end" style="width: 20%;">{{ t("table_actions") }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for c in colors %}
+        <tr>
+          <td data-label="{{ t('table_name') }}">{{ c.name }}</td>
+          <td data-label="{{ t('table_preview') }}">
+            {% if c.hex_code %}
+              <span class="d-inline-block rounded"
+                  style="width: 32px; height: 32px; border: 1px solid #ccc; background-color: {{ c.hex_code }};">
+              </span>
+            {% endif %}
+          </td>
+          <td data-label="{{ t('table_hex_code') }}">{{ c.hex_code or '' }}</td>
+          <td class="text-end" data-label="{{ t('table_actions') }}">
+            <a href="{{ url_for('admin.admin_color_edit', color_id=c.id) }}"
+               class="btn btn-sm btn-primary">
+              {{ t("btn_edit") }}
+            </a>
+            <form action="{{ url_for('admin.admin_color_delete', color_id=c.id) }}"
+                method="post"
+                class="d-inline"
+                id="delete-form-{{ c.id }}">
+              <button type="button"
+                  class="btn btn-sm btn-danger btn-delete-color"
+                  data-form-id="delete-form-{{ c.id }}"
+                  data-color-name="{{ c.name }}">
+                {{ t("btn_delete") }}
+              </button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
     </table>
+  </div>
 {% else %}
     <p>{{ t("admin_colors_none") }}</p>
 {% endif %}

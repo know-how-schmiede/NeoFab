@@ -71,8 +71,8 @@
     <div class="mt-4">
         <h2 class="h5 mb-3">{{ t("admin_cost_center_orders_title") }}</h2>
         {% if cost_center_orders %}
-            <div class="table-responsive">
-                <table class="table table-striped table-hover align-middle">
+            <div class="table-responsive nf-admin-wrap">
+                <table class="table table-striped table-hover align-middle nf-admin-table">
                     <thead>
                         <tr>
                             <th>{{ t("table_id") }}</th>
@@ -86,21 +86,21 @@
                     <tbody>
                         {% for order in cost_center_orders %}
                             <tr>
-                                <td>{{ order.id }}</td>
-                                <td>
+                                <td data-label="{{ t('table_id') }}">{{ order.id }}</td>
+                                <td data-label="{{ t('title') }}">
                                     <a href="{{ url_for('order_detail', order_id=order.id) }}">{{ order.title }}</a>
                                 </td>
-                                <td>{{ order.user.email if order.user else "" }}</td>
-                                <td>
+                                <td data-label="{{ t('owner') }}">{{ order.user.email if order.user else "" }}</td>
+                                <td data-label="{{ t('table_status') }}">
                                     {% set status_style = status_styles.get(order.status, "bg-light text-dark") %}
                                     <span class="badge {{ status_style }}">
                                         {{ status_labels.get(order.status, order.status) }}
                                     </span>
                                 </td>
-                                <td class="text-end">
+                                <td class="text-end" data-label="{{ t('print_jobs_table_total_cost') }}">
                                     {{ "%.2f"|format(cost_center_order_costs.get(order.id, 0)) }} EUR
                                 </td>
-                                <td>{{ order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else "" }}</td>
+                                <td data-label="{{ t('table_created') }}">{{ order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else "" }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>

@@ -1,5 +1,15 @@
 # Timeline NeoFab
 
+## Version 0.9.18
+
+Globales Design-Token-System in custom.css eingefuehrt (Farben, Statusfarben, Abstaende, Radien, Schatten)
+Navbar modernisiert mit klarer Hierarchie, aktivem Link-Highlight, Initialen-Avatar und diskreter Versionsanzeige
+Status-Badges visuell vereinheitlicht (Pill-Form, konsistente Groessen und Farbverhalten)
+Karten, Listen und Dialoge nutzen ein einheitliches Schatten- und Border-System fuer konsistente Tiefe
+Formulare vereinheitlicht mit konsistenten Label-Stilen, Radius- und Fokusregeln
+Dashboard-Auftragsliste fuer kleine Bildschirme optimiert und als strukturierte Kartenansicht dargestellt
+Mobile Aktionsbuttons in Dashboard- und Admin-Listen fuer Touch-Bedienung als vollbreite, vertikale Button-Gruppen optimiert
+
 ## Version 0.9.17
 
 Auf der Register-Seite sind die Felder Anrede, Vorname und Nachname jetzt Pflichtfelder

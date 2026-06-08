@@ -29,8 +29,8 @@
 
   <div class="card-body p-2">
     {% if users %}
-      <div class="table-responsive">
-        <table class="table table-striped table-hover table-sm align-middle mb-0">
+      <div class="table-responsive nf-admin-wrap">
+        <table class="table table-striped table-hover table-sm align-middle mb-0 nf-admin-table">
           <thead>
             <tr>
               <th>{{ t("table_id") }}</th>
@@ -46,17 +46,17 @@
           <tbody>
             {% for u in users %}
             <tr>
-              <td>{{ u.id }}</td>
-              <td>{{ u.email }}</td>
-              <td>
+              <td data-label="{{ t('table_id') }}">{{ u.id }}</td>
+              <td data-label="{{ t('table_email') }}">{{ u.email }}</td>
+              <td data-label="{{ t('table_name') }}">
                 {{ (u.first_name or '') ~ ' ' ~ (u.last_name or '') }}
               </td>
-              <td>
+              <td data-label="{{ t('table_role') }}">
                 <span class="badge {% if u.role == 'admin' %}bg-primary{% elif u.role == 'worker' %}bg-info text-dark{% else %}bg-secondary{% endif %}">
                   {{ role_labels.get(u.role, u.role) }}
                 </span>
               </td>
-              <td>
+              <td data-label="{{ t('table_status') }}">
                 {% if u.deleted_at %}
                   <span class="badge bg-dark">{{ t("user_status_deleted") }}</span>
                 {% elif u.is_active %}
@@ -65,9 +65,9 @@
                   <span class="badge bg-warning text-dark">{{ t("user_status_inactive") }}</span>
                 {% endif %}
               </td>
-              <td>{{ u.created_at.strftime('%Y-%m-%d') if u.created_at else '' }}</td>
-              <td>{{ u.last_login_at.strftime('%Y-%m-%d %H:%M') if u.last_login_at else '-' }}</td>
-              <td class="text-end">
+              <td data-label="{{ t('table_created') }}">{{ u.created_at.strftime('%Y-%m-%d') if u.created_at else '' }}</td>
+              <td data-label="{{ t('table_last_login') }}">{{ u.last_login_at.strftime('%Y-%m-%d %H:%M') if u.last_login_at else '-' }}</td>
+              <td class="text-end" data-label="{{ t('table_actions') }}">
                 <a href="{{ url_for('admin.admin_user_edit', user_id=u.id) }}"
                    class="btn btn-outline-secondary btn-sm">
                   <i class="bi bi-pencil-square me-1"></i>

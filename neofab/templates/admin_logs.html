@@ -53,8 +53,8 @@
         <span>{{ selected_file or t("admin_logs_no_file_selected") }}</span>
         <span class="badge bg-secondary">{{ entries|length }}</span>
       </div>
-      <div class="table-responsive">
-        <table class="table table-sm table-striped align-middle mb-0">
+      <div class="table-responsive nf-admin-wrap">
+        <table class="table table-sm table-striped align-middle mb-0 nf-admin-table">
           <thead>
             <tr>
               <th>{{ t("admin_logs_time") }}</th>
@@ -69,10 +69,10 @@
           <tbody>
             {% for entry in entries %}
               <tr>
-                <td class="text-nowrap">{{ entry.timestamp_utc or "" }}</td>
-                <td>{{ entry.level or "" }}</td>
-                <td>{{ entry.event or entry.raw or "" }}</td>
-                <td class="small">
+                <td class="text-nowrap" data-label="{{ t('admin_logs_time') }}">{{ entry.timestamp_utc or "" }}</td>
+                <td data-label="{{ t('admin_logs_level') }}">{{ entry.level or "" }}</td>
+                <td data-label="{{ t('admin_logs_event') }}">{{ entry.event or entry.raw or "" }}</td>
+                <td class="small" data-label="{{ t('admin_logs_details') }}">
                   {% if entry.details %}
                     {% set details_json = entry.details|tojson %}
                     <code class="d-inline-block text-truncate"
@@ -84,13 +84,13 @@
                     </code>
                   {% endif %}
                 </td>
-                <td>{{ entry.email or "" }}</td>
-                <td>{{ entry.role or "" }}</td>
-                <td>{{ entry.remote_addr or "" }}</td>
+                <td data-label="{{ t('table_email') }}">{{ entry.email or "" }}</td>
+                <td data-label="{{ t('table_role') }}">{{ entry.role or "" }}</td>
+                <td data-label="{{ t('admin_logs_ip') }}">{{ entry.remote_addr or "" }}</td>
               </tr>
             {% else %}
               <tr>
-                <td colspan="7" class="text-muted">{{ t("admin_logs_no_entries") }}</td>
+                <td colspan="7" class="text-muted" data-label="{{ t('admin_logs_details') }}">{{ t("admin_logs_no_entries") }}</td>
               </tr>
             {% endfor %}
           </tbody>

@@ -15,56 +15,58 @@
 </div>
 
 {% if profiles %}
-    <table class="table table-striped align-middle">
-        <thead>
-            <tr>
-                <th style="width: 18%;">{{ t("table_name") }}</th>
-                <th>{{ t("table_description") }}</th>
-                <th style="width: 10%;">{{ t("table_time_factor") }}</th>
-                <th style="width: 10%;">{{ t("table_time_offset") }}</th>
-                <th style="width: 10%;">{{ t("table_machine_hourly_rate") }}</th>
-                <th style="width: 10%;">{{ t("table_maintenance_hourly_rate") }}</th>
-                <th style="width: 10%;">{{ t("table_setup_fee") }}</th>
-                <th style="width: 8%;">{{ t("table_active") }}</th>
-                <th class="text-end" style="width: 14%;">{{ t("table_actions") }}</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for p in profiles %}
-            <tr>
-                <td>{{ p.name }}</td>
-                <td>{{ p.description or '' }}</td>
-                <td>{{ "%.2f"|format(p.time_factor or 0) }}</td>
-                <td>{{ p.time_offset_min }}</td>
-                <td>{{ "%.2f"|format(p.machine_hourly_rate or 0) }}</td>
-                <td>{{ "%.2f"|format(p.maintenance_hourly_rate or 0) }}</td>
-                <td>{{ "%.2f"|format(p.setup_fee or 0) }}</td>
-                <td>
-                    <span class="badge {% if p.active %}bg-success{% else %}bg-secondary{% endif %}">
-                        {{ p.active and t("badge_yes") or t("badge_no") }}
-                    </span>
-                </td>
-                <td class="text-end">
-                    <a href="{{ url_for('admin.admin_printer_profile_edit', profile_id=p.id) }}"
-                       class="btn btn-sm btn-primary">
-                        {{ t("btn_edit") }}
-                    </a>
-                    <form action="{{ url_for('admin.admin_printer_profile_delete', profile_id=p.id) }}"
-                          method="post"
-                          class="d-inline"
-                          id="delete-printer-profile-form-{{ p.id }}">
-                        <button type="button"
-                                class="btn btn-sm btn-danger btn-delete-printer-profile"
-                                data-form-id="delete-printer-profile-form-{{ p.id }}"
-                                data-profile-name="{{ p.name }}">
-                            {{ t("btn_delete") }}
-                        </button>
-                    </form>
-                </td>
-            </tr>
-        {% endfor %}
-        </tbody>
+  <div class="table-responsive nf-admin-wrap">
+    <table class="table table-striped align-middle nf-admin-table">
+      <thead>
+        <tr>
+          <th style="width: 18%;">{{ t("table_name") }}</th>
+          <th>{{ t("table_description") }}</th>
+          <th style="width: 10%;">{{ t("table_time_factor") }}</th>
+          <th style="width: 10%;">{{ t("table_time_offset") }}</th>
+          <th style="width: 10%;">{{ t("table_machine_hourly_rate") }}</th>
+          <th style="width: 10%;">{{ t("table_maintenance_hourly_rate") }}</th>
+          <th style="width: 10%;">{{ t("table_setup_fee") }}</th>
+          <th style="width: 8%;">{{ t("table_active") }}</th>
+          <th class="text-end" style="width: 14%;">{{ t("table_actions") }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for p in profiles %}
+        <tr>
+          <td data-label="{{ t('table_name') }}">{{ p.name }}</td>
+          <td data-label="{{ t('table_description') }}">{{ p.description or '' }}</td>
+          <td data-label="{{ t('table_time_factor') }}">{{ "%.2f"|format(p.time_factor or 0) }}</td>
+          <td data-label="{{ t('table_time_offset') }}">{{ p.time_offset_min }}</td>
+          <td data-label="{{ t('table_machine_hourly_rate') }}">{{ "%.2f"|format(p.machine_hourly_rate or 0) }}</td>
+          <td data-label="{{ t('table_maintenance_hourly_rate') }}">{{ "%.2f"|format(p.maintenance_hourly_rate or 0) }}</td>
+          <td data-label="{{ t('table_setup_fee') }}">{{ "%.2f"|format(p.setup_fee or 0) }}</td>
+          <td data-label="{{ t('table_active') }}">
+            <span class="badge {% if p.active %}bg-success{% else %}bg-secondary{% endif %}">
+              {{ p.active and t("badge_yes") or t("badge_no") }}
+            </span>
+          </td>
+          <td class="text-end" data-label="{{ t('table_actions') }}">
+            <a href="{{ url_for('admin.admin_printer_profile_edit', profile_id=p.id) }}"
+               class="btn btn-sm btn-primary">
+              {{ t("btn_edit") }}
+            </a>
+            <form action="{{ url_for('admin.admin_printer_profile_delete', profile_id=p.id) }}"
+                method="post"
+                class="d-inline"
+                id="delete-printer-profile-form-{{ p.id }}">
+              <button type="button"
+                  class="btn btn-sm btn-danger btn-delete-printer-profile"
+                  data-form-id="delete-printer-profile-form-{{ p.id }}"
+                  data-profile-name="{{ p.name }}">
+                {{ t("btn_delete") }}
+              </button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
     </table>
+  </div>
 {% else %}
     <p>{{ t("admin_printer_profiles_none") }}</p>
 {% endif %}

@@ -51,8 +51,8 @@
     </div>
 
     {% if orders %}
-      <div class="table-responsive">
-        <table class="table table-striped table-hover table-sm align-middle mb-0">
+      <div class="table-responsive nf-orders-wrap">
+        <table class="table table-striped table-hover table-sm align-middle mb-0 nf-orders-table">
           <thead>
             <tr>
               <th>{{ sort_link('category', t("order_category_label")) }}</th>
@@ -70,7 +70,7 @@
           <tbody>
             {% for o in orders %}
             <tr>
-              <td>
+              <td data-label="{{ t('order_category_label') }}">
                 {% if o.category %}
                   <span class="badge bg-light text-dark border">{{ o.category.name }}</span>
                 {% else %}
@@ -78,7 +78,7 @@
                 {% endif %}
               </td>
 
-              <td class="text-center">
+              <td class="text-center" data-label="{{ t('communication_header') }}">
                 {% if last_new_message.get(o.id) %}
                   <span class="badge rounded-pill bg-warning text-dark" title="{{ t('new_message') }}" aria-label="{{ t('new_message') }}">
                     <i class="bi bi-envelope-fill"></i>
@@ -88,7 +88,7 @@
                 {% endif %}
               </td>
 
-              <td>
+              <td data-label="{{ t('order_area_label') }}">
                 {% if o.area %}
                   <span class="badge bg-light text-dark border">{{ o.area.name }}</span>
                 {% else %}
@@ -96,13 +96,13 @@
                 {% endif %}
               </td>
 
-              <td>
+              <td data-label="{{ t('title') }}">
                 <a href="{{ url_for('order_detail', order_id=o.id) }}">
                   {{ o.title }}
                 </a>
               </td>
 
-              <td>
+              <td data-label="{{ t('status') }}">
                 {% set status_style = status_styles.get(o.status, "bg-light text-dark") %}
                 {% set status_text = status_labels.get(o.status, o.status) %}
                 {% if o.id in plotter_order_ids and o.status == 'completed' %}
@@ -113,15 +113,15 @@
                 </span>
               </td>
 
-              <td>{{ o.user.email }}</td>
+              <td data-label="{{ t('owner') }}">{{ o.user.email }}</td>
 
-              <td>{{ fmt_datetime(o.created_at) }}</td>
+              <td data-label="{{ t('created') }}">{{ fmt_datetime(o.created_at) }}</td>
 
-              <td class="text-center">
+              <td class="text-center" data-label="{{ t('files') }}">
                 {{ file_counts.get(o.id, 0) }}
               </td>
 
-              <td class="text-center">
+              <td class="text-center" data-label="{{ t('print_jobs_header') }}">
                 {% if o.id in plotter_order_ids %}
                   <span class="text-muted">-</span>
                 {% else %}
@@ -142,7 +142,7 @@
                 {% endif %}
               </td>
 
-              <td class="text-end">
+              <td class="text-end" data-label="{{ t('actions') }}">
                 <a href="{{ url_for('order_detail', order_id=o.id) }}"
                    class="btn btn-outline-secondary btn-sm">
                   <i class="bi bi-pencil-square me-1"></i>

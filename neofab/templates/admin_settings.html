@@ -191,8 +191,8 @@
           <input type="hidden" name="active_tab" value="email">
           <div class="col-12">
             <h2 class="h5 mb-3">{{ t("email_actions_title") }}</h2>
-            <div class="table-responsive">
-              <table class="table table-striped align-middle">
+            <div class="table-responsive nf-admin-wrap">
+              <table class="table table-striped align-middle nf-admin-table">
                 <thead>
                   <tr>
                     <th>{{ t("email_actions_action") }}</th>
@@ -203,9 +203,9 @@
                 <tbody>
                   {% for action in email_actions %}
                     <tr>
-                      <td class="fw-semibold">{{ action.label }}</td>
-                      <td>{{ action.description }}</td>
-                      <td>
+                      <td class="fw-semibold" data-label="{{ t('email_actions_action') }}">{{ action.label }}</td>
+                      <td data-label="{{ t('email_actions_description') }}">{{ action.description }}</td>
+                      <td data-label="{{ t('email_actions_setting') }}">
                         <select class="form-select" name="email_action_{{ action.key }}">
                           {% for option in email_action_state_options %}
                             <option value="{{ option.value }}" {% if option.value == action.value %}selected{% endif %}>
@@ -238,8 +238,8 @@
           </div>
 
           <div class="col-12">
-            <div class="table-responsive">
-              <table class="table table-striped align-middle">
+            <div class="table-responsive nf-admin-wrap">
+              <table class="table table-striped align-middle nf-admin-table">
                 <thead>
                   <tr>
                     <th style="width: 20%;">{{ t("status_messages_group") }}</th>
@@ -253,15 +253,15 @@
                   {% for group in status_message_groups %}
                     {% for item in group.items_list %}
                       <tr>
-                        <td>{{ group.label }}</td>
-                        <td><code>{{ item.key }}</code></td>
-                        <td>
+                        <td data-label="{{ t('status_messages_group') }}">{{ group.label }}</td>
+                        <td data-label="{{ t('status_messages_key') }}"><code>{{ item.key }}</code></td>
+                        <td data-label="{{ t('status_messages_text') }}">
                           <input type="text"
                                  class="form-control"
                                  name="{{ item.label_name }}"
                                  value="{{ item.label }}">
                         </td>
-                        <td>
+                        <td data-label="{{ t('status_messages_style') }}">
                           <select class="form-select" name="{{ item.style_name }}">
                             {% for option in status_style_options %}
                               <option value="{{ option.value }}" {% if option.value == item.style %}selected{% endif %}>
@@ -270,7 +270,7 @@
                             {% endfor %}
                           </select>
                         </td>
-                        <td>
+                        <td data-label="{{ t('status_messages_preview') }}">
                           <span class="badge {{ item.style }}">{{ item.label }}</span>
                         </td>
                       </tr>
@@ -316,8 +316,8 @@
         <hr>
 
         {% if order_areas %}
-          <div class="table-responsive">
-            <table class="table table-striped align-middle">
+          <div class="table-responsive nf-admin-wrap">
+            <table class="table table-striped align-middle nf-admin-table">
               <thead>
                 <tr>
                   <th>{{ t("admin_areas_column_identifier") }}</th>
@@ -327,7 +327,7 @@
               <tbody>
                 {% for area in order_areas %}
                   <tr>
-                    <td>
+                    <td data-label="{{ t('admin_areas_column_identifier') }}">
                       <form method="post" class="d-flex gap-2 align-items-center">
                         <input type="hidden" name="form_type" value="area_update">
                         <input type="hidden" name="active_tab" value="areas">
@@ -343,7 +343,7 @@
                         <button type="submit" class="btn btn-sm btn-primary">{{ t("btn_save") }}</button>
                       </form>
                     </td>
-                    <td class="text-end">
+                    <td class="text-end" data-label="{{ t('table_actions') }}">
                       <form method="post" class="d-inline">
                         <input type="hidden" name="form_type" value="area_delete">
                         <input type="hidden" name="active_tab" value="areas">

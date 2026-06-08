@@ -22,8 +22,8 @@
 </div>
 
 {% if announcements %}
-  <div class="table-responsive">
-    <table class="table table-striped align-middle">
+  <div class="table-responsive nf-admin-wrap">
+    <table class="table table-striped align-middle nf-admin-table">
       <thead>
         <tr>
           <th style="width: 24%;">{{ t("announcement_title_label") }}</th>
@@ -37,17 +37,17 @@
         {% for a in announcements %}
           {% set meta = announcement_priority_meta.get(a.priority, announcement_priority_meta.get("info")) %}
           <tr>
-            <td class="fw-semibold">{{ a.title }}</td>
-            <td>
+            <td class="fw-semibold" data-label="{{ t('announcement_title_label') }}">{{ a.title }}</td>
+            <td data-label="{{ t('announcement_priority_label') }}">
               <span class="{{ meta['class'] }}">
                 <i class="bi {{ meta['icon'] }} me-1"></i>{{ t(meta["label"]) }}
               </span>
             </td>
-            <td>
+            <td data-label="{{ t('announcement_body_label') }}">
               <div class="small">{{ render_markdown(a.body) }}</div>
             </td>
-            <td>{{ a.created_at.strftime("%Y-%m-%d %H:%M") if a.created_at else "-" }}</td>
-            <td class="text-end">
+            <td data-label="{{ t('created') }}">{{ a.created_at.strftime("%Y-%m-%d %H:%M") if a.created_at else "-" }}</td>
+            <td class="text-end" data-label="{{ t('table_actions') }}">
               <button type="button"
                       class="btn btn-sm btn-primary"
                       data-bs-toggle="modal"
