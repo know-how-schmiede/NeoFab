@@ -493,6 +493,12 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         """Einfache Admin-Startseite."""
         return render_template("admin.html")
 
+    @bp.route("/design-smoke-test", endpoint="admin_design_smoke_test")
+    @roles_required("admin")
+    def admin_design_smoke_test():
+        """Visual smoke-test page for contrast-sensitive UI components."""
+        return render_template("admin_design_smoke_test.html")
+
     @bp.route("/3d-print-master-data", endpoint="admin_3d_print_master_data")
     @roles_required("admin")
     def admin_3d_print_master_data():

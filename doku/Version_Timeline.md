@@ -10,6 +10,12 @@ Formulare vereinheitlicht mit konsistenten Label-Stilen, Radius- und Fokusregeln
 Dashboard-Auftragsliste fuer kleine Bildschirme optimiert und als strukturierte Kartenansicht dargestellt
 Mobile Aktionsbuttons in Dashboard- und Admin-Listen fuer Touch-Bedienung als vollbreite, vertikale Button-Gruppen optimiert
 Theme-Auswahl aus der Navbar entfernt und stattdessen eine persistente Hell/Dunkel-Auswahl in den Benutzereinstellungen ergaenzt
+Badge-Farbkontraste fuer Light- und Dark-Theme vereinheitlicht und verbessert (inklusive Info-Variante)
+Interne Admin-Seite fuer Design-Kontrast-Smoke-Tests hinzugefuegt (Alerts, Badges, Buttons, Formulare, Tabellen)
+Design-Kontrast-Smoke-Test um eine Pass/Fail-Legende mit klarer Pruef-Checkliste erweitert
+Design-Kontrast-Smoke-Test um Worst-Case-Szenarien erweitert (lange Texte, deaktivierte Controls, dichte Tabellenzeilen)
+Design-Kontrast-Smoke-Test um eine Druckansicht erweitert (A4-optimierte Ausgabe ohne Navigation und Aktionsbuttons)
+Druckansicht des Design-Kontrast-Smoke-Tests um Metadaten erweitert (Erstellzeitpunkt, aktuelles Theme, Version)
 
 ## Version 0.9.17
 

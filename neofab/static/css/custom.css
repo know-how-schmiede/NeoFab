@@ -25,6 +25,21 @@
 	--nf-avatar-border: #cbd5e1;
 	--nf-avatar-text: #0f172a;
 
+	/* Badge palette */
+	--nf-badge-primary-bg: rgba(37, 99, 235, 0.16);
+	--nf-badge-primary-text: #1d4ed8;
+	--nf-badge-success-bg: rgba(22, 163, 74, 0.15);
+	--nf-badge-success-text: #166534;
+	--nf-badge-warning-bg: rgba(245, 158, 11, 0.18);
+	--nf-badge-warning-text: #92400e;
+	--nf-badge-danger-bg: rgba(220, 38, 38, 0.15);
+	--nf-badge-danger-text: #991b1b;
+	--nf-badge-info-bg: rgba(6, 182, 212, 0.18);
+	--nf-badge-info-text: #0e7490;
+	--nf-badge-neutral-bg: #e2e8f0;
+	--nf-badge-neutral-text: #334155;
+	--nf-badge-neutral-border: #cbd5e1;
+
 	/* Radius */
 	--nf-radius-sm: 6px;
 	--nf-radius-md: 10px;
@@ -58,6 +73,19 @@ html[data-theme-mode="dark"] {
 	--nf-avatar-bg: #334155;
 	--nf-avatar-border: #475569;
 	--nf-avatar-text: #e5e7eb;
+	--nf-badge-primary-bg: #1e3a8a;
+	--nf-badge-primary-text: #dbeafe;
+	--nf-badge-success-bg: #14532d;
+	--nf-badge-success-text: #dcfce7;
+	--nf-badge-warning-bg: #78350f;
+	--nf-badge-warning-text: #fef3c7;
+	--nf-badge-danger-bg: #7f1d1d;
+	--nf-badge-danger-text: #fee2e2;
+	--nf-badge-info-bg: #164e63;
+	--nf-badge-info-text: #cffafe;
+	--nf-badge-neutral-bg: #334155;
+	--nf-badge-neutral-text: #e2e8f0;
+	--nf-badge-neutral-border: #475569;
 	--nf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
 	--nf-shadow-md: 0 10px 24px rgba(0, 0, 0, 0.38);
 }
@@ -202,26 +230,32 @@ body {
 
 .badge.bg-primary,
 .badge.text-bg-primary {
-	background-color: rgba(37, 99, 235, 0.16) !important;
-	color: #1d4ed8 !important;
+	background-color: var(--nf-badge-primary-bg) !important;
+	color: var(--nf-badge-primary-text) !important;
 }
 
 .badge.bg-success,
 .badge.text-bg-success {
-	background-color: rgba(22, 163, 74, 0.15) !important;
-	color: #166534 !important;
+	background-color: var(--nf-badge-success-bg) !important;
+	color: var(--nf-badge-success-text) !important;
 }
 
 .badge.bg-warning,
 .badge.text-bg-warning {
-	background-color: rgba(245, 158, 11, 0.18) !important;
-	color: #92400e !important;
+	background-color: var(--nf-badge-warning-bg) !important;
+	color: var(--nf-badge-warning-text) !important;
 }
 
 .badge.bg-danger,
 .badge.text-bg-danger {
-	background-color: rgba(220, 38, 38, 0.15) !important;
-	color: #991b1b !important;
+	background-color: var(--nf-badge-danger-bg) !important;
+	color: var(--nf-badge-danger-text) !important;
+}
+
+.badge.bg-info,
+.badge.text-bg-info {
+	background-color: var(--nf-badge-info-bg) !important;
+	color: var(--nf-badge-info-text) !important;
 }
 
 .badge.bg-secondary,
@@ -230,9 +264,9 @@ body {
 .badge.text-bg-light,
 .badge.bg-dark,
 .badge.text-bg-dark {
-	background-color: #e2e8f0 !important;
-	color: #334155 !important;
-	border: 1px solid #cbd5e1;
+	background-color: var(--nf-badge-neutral-bg) !important;
+	color: var(--nf-badge-neutral-text) !important;
+	border: 1px solid var(--nf-badge-neutral-border);
 }
 
 /* Keep compact summary badges legible */
@@ -346,4 +380,81 @@ body {
 	.nf-orders-table td.text-end .btn-group .btn {
 		flex: 1 1 auto;
 	}
+}
+
+@media print {
+	@page {
+		size: A4;
+		margin: 12mm;
+	}
+
+	body {
+		background: #ffffff !important;
+		color: #111827 !important;
+	}
+
+	.navbar,
+	.site-footer,
+	.nf-print-hide,
+	.btn,
+	.btn-close {
+		display: none !important;
+	}
+
+	.layout-container {
+		flex: none;
+	}
+
+	.nf-smoke-test-page .card {
+		border: 1px solid #cbd5e1 !important;
+		box-shadow: none !important;
+		break-inside: avoid;
+		margin-bottom: 0.75rem !important;
+	}
+
+	.nf-print-only {
+		display: block !important;
+	}
+
+	.nf-print-meta {
+		font-size: 0.85rem;
+		line-height: 1.45;
+		padding-top: 0.4rem;
+		border-top: 1px solid #cbd5e1;
+	}
+
+	.nf-smoke-test-page .card-header,
+	.nf-smoke-test-page .card-body {
+		background: #ffffff !important;
+		color: #111827 !important;
+	}
+
+	.nf-smoke-test-page .text-muted {
+		color: #374151 !important;
+	}
+
+	.nf-smoke-test-page .alert {
+		border: 1px solid #9ca3af !important;
+		box-shadow: none !important;
+	}
+
+	.nf-smoke-test-page .badge {
+		border: 1px solid #9ca3af !important;
+	}
+
+	.nf-smoke-test-page .table,
+	.nf-smoke-test-page .table th,
+	.nf-smoke-test-page .table td {
+		color: #111827 !important;
+		background: #ffffff !important;
+	}
+
+	.nf-smoke-test-page a {
+		color: #111827 !important;
+		text-decoration: none !important;
+	}
+}
+
+.nf-print-only {
+	display: none;
 }
