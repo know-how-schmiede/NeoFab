@@ -63,6 +63,7 @@ from config import (
     DASHBOARD_ROWS_PER_PAGE_OPTIONS,
     DEFAULT_SETTINGS,
     SETTINGS_FILE,
+    is_registration_domain_allowed,
     coerce_positive_int,
     load_app_settings,
     normalize_registration_domains,
@@ -2494,8 +2495,7 @@ def register():
             flash(trans("flash_passwords_mismatch"), "danger")
         elif registration_domain_check_enabled:
             email_domain = email.rsplit("@", 1)[-1].lower() if "@" in email else ""
-            allowed_domain_set = set(registration_allowed_domains)
-            if not email_domain or email_domain not in allowed_domain_set:
+            if not is_registration_domain_allowed(email_domain, registration_allowed_domains):
                 flash(
                     trans("flash_registration_domain_not_allowed").format(
                         domains="; ".join(registration_allowed_domains)

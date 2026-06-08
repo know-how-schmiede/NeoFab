@@ -7,6 +7,7 @@ Freigegebene Registrierungsdomains sind in den Systemeinstellungen als Semikolon
 Serverseitige Registrierung validiert E-Mail-Domain gegen die freigegebene Liste, wenn die Pruefung aktiv ist
 Registrierungsseite zeigt bei aktiver Domain-Pruefung einen klaren Hinweis auf die erlaubten E-Mail-Domains
 Neue Einstellungen sind im JSON-Export/-Import der Systemeinstellungen enthalten
+Domain-Abgleich bei Registrierung gehaertet: robustere Normalisierung und Freigabepruefung inklusive Unterdomains
 
 ## Version 0.9.18
 

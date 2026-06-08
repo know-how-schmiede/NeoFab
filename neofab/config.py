@@ -96,8 +96,18 @@ def normalize_registration_domains(value: Any) -> list[str]:
     normalized: list[str] = []
     seen: set[str] = set()
     for part in parts:
-        domain = part.strip().lower().lstrip("@")
+        domain = part.strip().lower()
+        # Normalize common Unicode dash variants to a plain hyphen.
+        domain = re.sub(r"[‐-―−]", "-", domain)
+        # If an email address was pasted accidentally, keep only its domain part.
+        if "@" in domain:
+            domain = domain.rsplit("@", 1)[-1]
+        domain = domain.lstrip("@")
         if not domain:
+            continue
+        try:
+            domain = domain.encode("idna").decode("ascii")
+        except Exception:
             continue
         if not re.fullmatch(r"[a-z0-9.-]+", domain):
             continue
@@ -111,6 +121,19 @@ def normalize_registration_domains(value: Any) -> list[str]:
 
 def serialize_registration_domains(domains: list[str]) -> str:
     return "; ".join(domains)
+
+
+def is_registration_domain_allowed(email_domain: str, allowed_domains: list[str]) -> bool:
+    domain = str(email_domain or "").strip().lower().strip(".")
+    if not domain:
+        return False
+    for allowed in allowed_domains:
+        allowed_domain = str(allowed or "").strip().lower().strip(".")
+        if not allowed_domain:
+            continue
+        if domain == allowed_domain or domain.endswith(f".{allowed_domain}"):
+            return True
+    return False
 
 
 def normalize_email_actions(value: Any) -> Dict[str, str]:
