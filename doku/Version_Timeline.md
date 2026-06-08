@@ -8,6 +8,8 @@ Serverseitige Registrierung validiert E-Mail-Domain gegen die freigegebene Liste
 Registrierungsseite zeigt bei aktiver Domain-Pruefung einen klaren Hinweis auf die erlaubten E-Mail-Domains
 Neue Einstellungen sind im JSON-Export/-Import der Systemeinstellungen enthalten
 Domain-Abgleich bei Registrierung gehaertet: robustere Normalisierung und Freigabepruefung inklusive Unterdomains
+Registrierungs-Abbrueche schreiben jetzt detaillierte Audit-Logeintraege zur Fehleranalyse (inkl. Domain-Pruefdetails)
+Delete-Log-Dateiname verkuerzt auf NeoFab_DelLog.log (Legacy-Name wird weiter als Delete-Log erkannt)
 
 ## Version 0.9.18
 

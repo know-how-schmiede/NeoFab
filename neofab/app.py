@@ -2490,12 +2490,47 @@ def register():
 
         # einfache Validierung
         if not email or not password or not salutation or not first_name or not last_name:
+            write_audit_log(
+                app,
+                "registration_rejected",
+                level="warning",
+                details={
+                    "reason": "required_fields_missing",
+                    "email": email,
+                    "has_password": bool(password),
+                    "has_salutation": bool(salutation),
+                    "has_first_name": bool(first_name),
+                    "has_last_name": bool(last_name),
+                },
+            )
             flash(trans("flash_required_fields"), "danger")
         elif password != password2:
+            write_audit_log(
+                app,
+                "registration_rejected",
+                level="warning",
+                details={
+                    "reason": "password_mismatch",
+                    "email": email,
+                },
+            )
             flash(trans("flash_passwords_mismatch"), "danger")
         elif registration_domain_check_enabled:
             email_domain = email.rsplit("@", 1)[-1].lower() if "@" in email else ""
-            if not is_registration_domain_allowed(email_domain, registration_allowed_domains):
+            domain_allowed = is_registration_domain_allowed(email_domain, registration_allowed_domains)
+            if not domain_allowed:
+                write_audit_log(
+                    app,
+                    "registration_rejected",
+                    level="warning",
+                    details={
+                        "reason": "domain_not_allowed",
+                        "email": email,
+                        "email_domain": email_domain,
+                        "allowed_domains": registration_allowed_domains,
+                        "registration_domain_check_enabled": registration_domain_check_enabled,
+                    },
+                )
                 flash(
                     trans("flash_registration_domain_not_allowed").format(
                         domains="; ".join(registration_allowed_domains)
@@ -2503,6 +2538,15 @@ def register():
                     "danger",
                 )
         elif User.query.filter_by(email=email).first():
+            write_audit_log(
+                app,
+                "registration_rejected",
+                level="warning",
+                details={
+                    "reason": "email_already_registered",
+                    "email": email,
+                },
+            )
             flash(trans("flash_email_registered"), "warning")
         else:
             user = User(

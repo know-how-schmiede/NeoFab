@@ -9,7 +9,8 @@ from flask import has_request_context, request
 
 
 DEFAULT_LOG_FILE = "NeoFab_Log.log"
-DELETE_LOG_FILE = "NeoFab_DeleteLog.log"
+DELETE_LOG_FILE = "NeoFab_DelLog.log"
+LEGACY_DELETE_LOG_FILE = "NeoFab_DeleteLog.log"
 
 
 def get_log_root(app) -> Path:
@@ -74,7 +75,7 @@ def list_log_files(app) -> list[dict[str, Any]]:
         if not path.is_file():
             continue
         stat = path.stat()
-        is_delete_log = path.name == DELETE_LOG_FILE
+        is_delete_log = path.name in {DELETE_LOG_FILE, LEGACY_DELETE_LOG_FILE}
         files.append(
             {
                 "path": path.relative_to(root).as_posix(),
