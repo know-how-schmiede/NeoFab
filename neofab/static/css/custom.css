@@ -60,6 +60,24 @@
 }
 
 html[data-theme-mode="dark"] {
+	/* Bootstrap variable layer: keep component shapes from Lux, switch color system to dark */
+	--bs-body-bg: #0f172a;
+	--bs-body-color: #e5e7eb;
+	--bs-secondary-color: #94a3b8;
+	--bs-border-color: #334155;
+	--bs-emphasis-color: #f8fafc;
+	--bs-light-rgb: 31, 41, 55;
+	--bs-dark-rgb: 226, 232, 240;
+	--bs-card-bg: #1f2937;
+	--bs-tertiary-bg: #1e293b;
+	--bs-secondary-bg: #111827;
+	--bs-table-bg: #1f2937;
+	--bs-table-color: #e5e7eb;
+	--bs-table-striped-bg: #273449;
+	--bs-table-striped-color: #e5e7eb;
+	--bs-table-hover-bg: #334155;
+	--bs-table-hover-color: #f8fafc;
+
 	--nf-bg: #0f172a;
 	--nf-bg-accent: #111827;
 	--nf-surface: #1f2937;
@@ -93,6 +111,79 @@ html[data-theme-mode="dark"] {
 body {
 	background: radial-gradient(circle at top right, var(--nf-bg-accent) 0%, var(--nf-bg) 45%);
 	color: var(--nf-text);
+}
+
+html[data-theme-mode="dark"] .table {
+	--bs-table-bg: #1f2937;
+	--bs-table-color: #e5e7eb;
+	--bs-table-striped-bg: #273449;
+	--bs-table-striped-color: #e5e7eb;
+	--bs-table-hover-bg: #334155;
+	--bs-table-hover-color: #f8fafc;
+}
+
+html[data-theme-mode="dark"] .btn-secondary {
+	--bs-btn-color: #e5e7eb;
+	--bs-btn-bg: #334155;
+	--bs-btn-border-color: #475569;
+	--bs-btn-hover-color: #f8fafc;
+	--bs-btn-hover-bg: #3f5169;
+	--bs-btn-hover-border-color: #64748b;
+}
+
+html[data-theme-mode="dark"] .btn-outline-secondary {
+	--bs-btn-color: #dbe2ee;
+	--bs-btn-border-color: #64748b;
+	--bs-btn-hover-color: #f8fafc;
+	--bs-btn-hover-bg: #475569;
+	--bs-btn-hover-border-color: #7b8ca3;
+	--bs-btn-active-color: #f8fafc;
+	--bs-btn-active-bg: #3f5169;
+	--bs-btn-active-border-color: #7b8ca3;
+}
+
+html[data-theme-mode="dark"] .card-header {
+	background-color: #4f5d6d;
+	color: #f8fafc;
+}
+
+html[data-theme-mode="dark"] .table > :not(caption) > * > * {
+	border-color: #3d4958;
+}
+
+html[data-theme-mode="dark"] .table thead th {
+	background-color: #566477;
+	color: #f8fafc;
+	font-weight: 600;
+}
+
+html[data-theme-mode="dark"] .table a,
+html[data-theme-mode="dark"] .nf-orders-table a,
+html[data-theme-mode="dark"] .nf-admin-table a {
+	color: #cfe1ff;
+}
+
+html[data-theme-mode="dark"] .table a:hover,
+html[data-theme-mode="dark"] .nf-orders-table a:hover,
+html[data-theme-mode="dark"] .nf-admin-table a:hover {
+	color: #e5efff;
+}
+
+html[data-theme-mode="dark"] .link-dark {
+	color: #e5e7eb !important;
+}
+
+html[data-theme-mode="dark"] .pagination .page-link {
+	background-color: #2b3647;
+	border-color: #425167;
+	color: #e5e7eb;
+}
+
+html[data-theme-mode="dark"] .pagination .page-item.active .page-link,
+html[data-theme-mode="dark"] .pagination .page-link:hover {
+	background-color: #3f5169;
+	border-color: #63748c;
+	color: #f8fafc;
 }
 
 .card,

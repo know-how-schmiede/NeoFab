@@ -363,7 +363,8 @@ def inject_globals():
     status_context = get_status_context(t)
     settings = load_app_settings(app)
     theme_mode = current_theme_mode()
-    theme_bootswatch_slug = "slate" if theme_mode == "dark" else "lux"
+    # Keep one Bootswatch base theme for both modes; dark mode is handled via CSS variables.
+    theme_bootswatch_slug = "lux"
     return {
         "app_version": APP_VERSION,
         "max_upload_size_mb": MAX_UPLOAD_SIZE_MB,

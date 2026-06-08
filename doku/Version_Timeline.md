@@ -16,6 +16,8 @@ Design-Kontrast-Smoke-Test um eine Pass/Fail-Legende mit klarer Pruef-Checkliste
 Design-Kontrast-Smoke-Test um Worst-Case-Szenarien erweitert (lange Texte, deaktivierte Controls, dichte Tabellenzeilen)
 Design-Kontrast-Smoke-Test um eine Druckansicht erweitert (A4-optimierte Ausgabe ohne Navigation und Aktionsbuttons)
 Druckansicht des Design-Kontrast-Smoke-Tests um Metadaten erweitert (Erstellzeitpunkt, aktuelles Theme, Version)
+Light- und Dark-Theme visuell angeglichen: einheitliches Basis-Theme und Dark-Mode ueber CSS-Variablen statt Theme-Familienwechsel
+Dark-Mode Feintuning fuer Dashboard/Admin vorgenommen (Tabellenkopf, Link-Kontrast, Paginierung, Outline-Buttons) fuer naehere Light/Dark-Anmutung
 
 ## Version 0.9.17
 
