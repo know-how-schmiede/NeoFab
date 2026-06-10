@@ -119,6 +119,18 @@ from models import (
 
 ANNOUNCEMENT_FORM_TOKEN_KEY = "announcement_form_token"
 
+REGISTRATION_LANGUAGE_OPTIONS = [
+    ("de", "Deutsch"),
+    ("en", "English"),
+    ("fr", "Francais"),
+]
+
+REGISTRATION_SALUTATION_OPTIONS = {
+    "de": ["Frau", "Herr", "Divers", "Keine Angabe"],
+    "en": ["Ms.", "Mr.", "Mx.", "Prefer not to say"],
+    "fr": ["Madame", "Monsieur", "Mx", "Ne souhaite pas indiquer"],
+}
+
 
 def _new_announcement_form_token() -> str:
     form_token = secrets.token_urlsafe(24)
@@ -2484,7 +2496,13 @@ def register():
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         password2 = request.form.get("password2", "")
+        language = (request.form.get("language") or "").strip().lower() or DEFAULT_LANG
+        if language not in SUPPORTED_LANGS:
+            language = DEFAULT_LANG
         salutation = request.form.get("salutation", "").strip()
+        allowed_salutations = set(REGISTRATION_SALUTATION_OPTIONS.get(language, []))
+        if salutation and salutation not in allowed_salutations:
+            salutation = ""
         first_name = request.form.get("first_name", "").strip()
         last_name = request.form.get("last_name", "").strip()
 
@@ -2503,6 +2521,7 @@ def register():
                 details={
                     "reason": "required_fields_missing",
                     "email": email,
+                    "language": language,
                     "has_password": bool(password),
                     "has_salutation": bool(salutation),
                     "has_first_name": bool(first_name),
@@ -2549,6 +2568,7 @@ def register():
             user = User(
                 email=email,
                 role="user",
+                language=language,
                 salutation=salutation,
                 first_name=first_name,
                 last_name=last_name,
@@ -2569,16 +2589,35 @@ def register():
                     "target_user_id": user.id,
                     "target_email": user.email,
                     "target_role": user.role,
+                    "target_language": user.language,
                     "source": "registration",
                 },
             )
             flash(trans("flash_registration_success"), "success")
             return redirect(url_for("login"))
 
+    register_form = {
+        "email": (request.form.get("email") or "").strip() if request.method == "POST" else "",
+        "language": (request.form.get("language") or "").strip().lower() if request.method == "POST" else DEFAULT_LANG,
+        "salutation": (request.form.get("salutation") or "").strip() if request.method == "POST" else "",
+        "first_name": (request.form.get("first_name") or "").strip() if request.method == "POST" else "",
+        "last_name": (request.form.get("last_name") or "").strip() if request.method == "POST" else "",
+        "address": (request.form.get("address") or "").strip() if request.method == "POST" else "",
+        "position": (request.form.get("position") or "").strip() if request.method == "POST" else "",
+        "cost_center": (request.form.get("cost_center") or "").strip() if request.method == "POST" else "",
+        "study_program": (request.form.get("study_program") or "").strip() if request.method == "POST" else "",
+        "note": (request.form.get("note") or "").strip() if request.method == "POST" else "",
+    }
+    if register_form["language"] not in SUPPORTED_LANGS:
+        register_form["language"] = DEFAULT_LANG
+
     return render_template(
         "register.html",
         registration_domain_check_enabled=registration_domain_check_enabled,
         registration_allowed_domains_display="; ".join(registration_allowed_domains),
+        registration_language_options=REGISTRATION_LANGUAGE_OPTIONS,
+        registration_salutation_options=REGISTRATION_SALUTATION_OPTIONS,
+        register_form=register_form,
     )
 
 

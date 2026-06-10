@@ -1,5 +1,12 @@
 # Timeline NeoFab
 
+## Version 0.9.23
+
+Benutzer-Registrierung erweitert: Sprache kann jetzt direkt im Registrierungsformular aus einer Auswahlliste gewaehlt werden
+Anrede im Registrierungsformular von Freitext auf sprachabhaengiges Auswahlfeld umgestellt
+Anrede-Auswahl wird dynamisch an die gewaehlte Sprache angepasst und mit passenden Optionen befuellt
+Serverseitige Registrierung validiert die Anrede gegen die erlaubten Werte der ausgewaehlten Sprache
+
 ## Version 0.9.22
 
 E-Mail-Versand erweitert: Bei jedem erfolgreichen Versand wird jetzt ein strukturierter Audit-Logeintrag im Log-File geschrieben

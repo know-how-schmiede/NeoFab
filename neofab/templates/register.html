@@ -35,6 +35,7 @@
             class="form-control"
             id="email"
             name="email"
+            value="{{ register_form.email }}"
             required
           >
         </div>
@@ -70,16 +71,22 @@
 
         <!-- Salutation -->
         <div class="col-md-4">
-          <label for="salutation" class="form-label">
-            Salutation*
+          <label for="language" class="form-label">
+            {{ t("label_language") }}*
           </label>
-          <input
-            type="text"
-            class="form-control"
-            id="salutation"
-            name="salutation"
-            required
-          >
+          <select class="form-select" id="language" name="language" required>
+            {% for code, label in registration_language_options %}
+              <option value="{{ code }}" {% if register_form.language == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Salutation -->
+        <div class="col-md-6">
+          <label for="salutation" class="form-label">
+            {{ t("label_salutation") }}*
+          </label>
+          <select class="form-select" id="salutation" name="salutation" required></select>
         </div>
 
         <!-- First / Last Name -->
@@ -92,6 +99,7 @@
             class="form-control"
             id="first_name"
             name="first_name"
+            value="{{ register_form.first_name }}"
             required
           >
         </div>
@@ -104,6 +112,7 @@
             class="form-control"
             id="last_name"
             name="last_name"
+            value="{{ register_form.last_name }}"
             required
           >
         </div>
@@ -118,6 +127,7 @@
             class="form-control"
             id="address"
             name="address"
+            value="{{ register_form.address }}"
           >
         </div>
 
@@ -131,6 +141,7 @@
             class="form-control"
             id="position"
             name="position"
+            value="{{ register_form.position }}"
           >
         </div>
         <div class="col-md-6">
@@ -142,6 +153,7 @@
             class="form-control"
             id="cost_center"
             name="cost_center"
+            value="{{ register_form.cost_center }}"
           >
         </div>
 
@@ -155,6 +167,7 @@
             class="form-control"
             id="study_program"
             name="study_program"
+            value="{{ register_form.study_program }}"
           >
         </div>
 
@@ -168,7 +181,7 @@
             id="note"
             name="note"
             rows="3"
-          ></textarea>
+          >{{ register_form.note }}</textarea>
         </div>
 
       </div>
@@ -185,5 +198,51 @@
     </form>
   </div>
 </div>
+
+<script>
+  (function () {
+    const salutationOptions = {{ registration_salutation_options | tojson }};
+    const languageSelect = document.getElementById("language");
+    const salutationSelect = document.getElementById("salutation");
+    const initialSalutation = {{ register_form.salutation | tojson }};
+    const promptByLanguage = {
+      de: "Bitte waehlen",
+      en: "Please choose",
+      fr: "Veuillez choisir"
+    };
+
+    function buildSalutationOptions(language, preferred) {
+      const options = salutationOptions[language] || salutationOptions.en || [];
+      const prompt = promptByLanguage[language] || promptByLanguage.en;
+
+      salutationSelect.innerHTML = "";
+      const emptyOption = document.createElement("option");
+      emptyOption.value = "";
+      emptyOption.textContent = prompt;
+      salutationSelect.appendChild(emptyOption);
+
+      let hasPreferred = false;
+      options.forEach((value) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        if (preferred && preferred === value) {
+          option.selected = true;
+          hasPreferred = true;
+        }
+        salutationSelect.appendChild(option);
+      });
+
+      if (!hasPreferred) {
+        salutationSelect.value = "";
+      }
+    }
+
+    buildSalutationOptions(languageSelect.value || "en", initialSalutation);
+    languageSelect.addEventListener("change", function () {
+      buildSalutationOptions(languageSelect.value || "en", "");
+    });
+  })();
+</script>
 
 {% endblock %}
