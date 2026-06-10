@@ -13,6 +13,7 @@ from flask_login import current_user
 
 from audit_logs import write_audit_log
 from config import is_email_action_enabled, load_app_settings
+from i18n_utils import DEFAULT_LANG, SUPPORTED_LANGS
 from models import Announcement, Order, User
 
 
@@ -71,34 +72,115 @@ def _add_recipients(recipients: list[str], seen: set[str], candidates: list[str]
         seen.add(key)
 
 
+def _normalize_language(lang: str | None) -> str:
+    value = (lang or DEFAULT_LANG).strip().lower()
+    for code in SUPPORTED_LANGS:
+        if value.startswith(code):
+            return code
+    return DEFAULT_LANG
+
+
 def _collect_order_recipients(
     order: Order,
     include_owner: bool = False,
     include_cost_center: bool = False,
-) -> list[str]:
+) -> tuple[list[str], dict[str, str]]:
     recipients: list[str] = []
     seen: set[str] = set()
+    recipient_languages: dict[str, str] = {}
 
     admin_users = User.query.filter_by(role="admin").all()
     for user in admin_users:
-        _add_recipients(recipients, seen, _split_email_recipients(user.email))
+        user_language = _normalize_language(getattr(user, "language", None))
+        for email in _split_email_recipients(user.email):
+            key = email.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            recipients.append(email)
+            recipient_languages[key] = user_language
 
     if include_owner and order.user:
-        _add_recipients(recipients, seen, _split_email_recipients(order.user.email))
+        owner_language = _normalize_language(getattr(order.user, "language", None))
+        for email in _split_email_recipients(order.user.email):
+            key = email.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            recipients.append(email)
+            recipient_languages[key] = owner_language
 
     if include_cost_center and order.cost_center:
-        _add_recipients(recipients, seen, _split_email_recipients(order.cost_center.email))
+        for email in _split_email_recipients(order.cost_center.email):
+            key = email.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            recipients.append(email)
+            recipient_languages[key] = DEFAULT_LANG
 
-    return recipients
+    return recipients, recipient_languages
 
 
-def _collect_active_user_recipients() -> list[str]:
+def _collect_active_user_recipients() -> tuple[list[str], dict[str, str]]:
     recipients: list[str] = []
     seen: set[str] = set()
+    recipient_languages: dict[str, str] = {}
     users = User.query.filter_by(is_active=True, deleted_at=None).all()
     for user in users:
-        _add_recipients(recipients, seen, _split_email_recipients(user.email))
-    return recipients
+        user_language = _normalize_language(getattr(user, "language", None))
+        for email in _split_email_recipients(user.email):
+            key = email.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            recipients.append(email)
+            recipient_languages[key] = user_language
+    return recipients, recipient_languages
+
+
+def _group_recipients_by_language(
+    recipients: list[str],
+    recipient_languages: Mapping[str, str],
+) -> dict[str, list[str]]:
+    grouped: dict[str, list[str]] = {}
+    for email in recipients:
+        language = _normalize_language(recipient_languages.get(email.lower(), DEFAULT_LANG))
+        grouped.setdefault(language, []).append(email)
+    return grouped
+
+
+def _notification_footer(settings: Mapping[str, object], entry_url: str, language: str) -> list[str]:
+    generated_at = _format_app_datetime(datetime.utcnow(), settings)
+    if language == "de":
+        return [
+            "",
+            "---",
+            "NeoFab Systeminformationen",
+            f"Erstellt am: {generated_at}",
+            f"Einstiegspunkt: {entry_url}",
+            "Diese E-Mail wurde automatisch von NeoFab erzeugt.",
+            "Bei Rueckfragen nutze bitte den zugehoerigen Auftrags-Chat oder kontaktiere das Werkstatt-Team.",
+        ]
+    if language == "fr":
+        return [
+            "",
+            "---",
+            "Informations systeme NeoFab",
+            f"Genere le: {generated_at}",
+            f"Point d'entree: {entry_url}",
+            "Cet e-mail a ete genere automatiquement par NeoFab.",
+            "Pour toute question, utilisez le chat de la commande ou contactez l'equipe de l'atelier.",
+        ]
+    return [
+        "",
+        "---",
+        "NeoFab System Information",
+        f"Generated at: {generated_at}",
+        f"Entry point: {entry_url}",
+        "This email was generated automatically by NeoFab.",
+        "For questions, use the related order chat or contact the workshop team.",
+    ]
 
 
 def _send_message(settings: Mapping[str, object], msg: EmailMessage) -> None:
@@ -144,10 +226,11 @@ def send_admin_order_notification(app, order: Order, status_labels: Mapping[str,
             app.logger.info("SMTP not configured, skipping admin notification.")
             return False
 
-        recipients = _collect_order_recipients(order, include_owner=True)
+        recipients, recipient_languages = _collect_order_recipients(order, include_owner=True)
         if not recipients:
             app.logger.info("No recipients found, skipping admin notification.")
             return False
+        recipients_by_language = _group_recipients_by_language(recipients, recipient_languages)
 
         try:
             order_url = url_for("order_detail", order_id=order.id, _external=True)
@@ -159,40 +242,96 @@ def send_admin_order_notification(app, order: Order, status_labels: Mapping[str,
         created_by = current_user.email if current_user.is_authenticated else ""
         created_at = _format_app_datetime(order.created_at, settings)
 
-        msg = EmailMessage()
-        msg["Subject"] = f"NeoFab: New order #{order.id}"
-        msg["From"] = smtp_from
-        msg["To"] = ", ".join(recipients)
-        if order.user and order.user.email:
-            msg["Reply-To"] = order.user.email
+        category_name = order.category.name if order.category else "3D Print"
+        area_name = order.area.name if order.area else "-"
+        for language, lang_recipients in recipients_by_language.items():
+            msg = EmailMessage()
+            if language == "de":
+                msg["Subject"] = f"NeoFab: Neuer Auftrag #{order.id}"
+            elif language == "fr":
+                msg["Subject"] = f"NeoFab : Nouvelle commande #{order.id}"
+            else:
+                msg["Subject"] = f"NeoFab: New order #{order.id}"
+            msg["From"] = smtp_from
+            msg["To"] = ", ".join(lang_recipients)
+            if order.user and order.user.email:
+                msg["Reply-To"] = order.user.email
 
-        body_lines = [
-            "A new order has been created.",
-            f"ID: {order.id}",
-            f"Title: {order.title}",
-            f"Status: {status_label}",
-            f"Created by: {created_by}",
-            f"Created at: {created_at}",
-            f"Link: {order_url}",
-        ]
-        if order.summary_short:
-            body_lines.extend(["", "Summary:", order.summary_short])
+            if language == "de":
+                body_lines = [
+                    "Hallo,",
+                    "",
+                    "ein neuer NeoFab-Auftrag wurde erstellt und erfordert Aufmerksamkeit.",
+                    "",
+                    "Auftragsdetails:",
+                    f"- ID: {order.id}",
+                    f"- Titel: {order.title}",
+                    f"- Kategorie: {category_name}",
+                    f"- Bereich: {area_name}",
+                    f"- Status: {status_label}",
+                    f"- Erstellt von: {created_by}",
+                    f"- Erstellt am: {created_at}",
+                    "",
+                    f"Auftrag oeffnen: {order_url}",
+                ]
+                if order.summary_short:
+                    body_lines.extend(["", "Kurzbeschreibung:", order.summary_short])
+            elif language == "fr":
+                body_lines = [
+                    "Bonjour,",
+                    "",
+                    "une nouvelle commande NeoFab a ete creee et requiert votre attention.",
+                    "",
+                    "Details de la commande:",
+                    f"- ID: {order.id}",
+                    f"- Titre: {order.title}",
+                    f"- Categorie: {category_name}",
+                    f"- Domaine: {area_name}",
+                    f"- Statut: {status_label}",
+                    f"- Creee par: {created_by}",
+                    f"- Creee le: {created_at}",
+                    "",
+                    f"Ouvrir la commande: {order_url}",
+                ]
+                if order.summary_short:
+                    body_lines.extend(["", "Resume:", order.summary_short])
+            else:
+                body_lines = [
+                    "Hello,",
+                    "",
+                    "a new NeoFab order has been created and requires attention.",
+                    "",
+                    "Order details:",
+                    f"- ID: {order.id}",
+                    f"- Title: {order.title}",
+                    f"- Category: {category_name}",
+                    f"- Area: {area_name}",
+                    f"- Status: {status_label}",
+                    f"- Created by: {created_by}",
+                    f"- Created at: {created_at}",
+                    "",
+                    f"Open order: {order_url}",
+                ]
+                if order.summary_short:
+                    body_lines.extend(["", "Summary:", order.summary_short])
 
-        msg.set_content("\n".join(body_lines))
+            body_lines.extend(_notification_footer(settings, order_url, language))
+            msg.set_content("\n".join(body_lines))
 
-        _send_message(settings, msg)
-        write_audit_log(
-            app,
-            "email_sent",
-            user=current_user,
-            details={
-                "kind": "new_order",
-                "order_id": order.id,
-                "subject": msg["Subject"],
-                "recipient_count": len(recipients),
-                "recipients": recipients,
-            },
-        )
+            _send_message(settings, msg)
+            write_audit_log(
+                app,
+                "email_sent",
+                user=current_user,
+                details={
+                    "kind": "new_order",
+                    "language": language,
+                    "order_id": order.id,
+                    "subject": msg["Subject"],
+                    "recipient_count": len(lang_recipients),
+                    "recipients": lang_recipients,
+                },
+            )
 
         app.logger.info(
             "Sent admin notification for order %s to %s",
@@ -232,7 +371,7 @@ def send_order_status_change_notification(
             app.logger.info("SMTP not configured, skipping status notification.")
             return False
 
-        recipients = _collect_order_recipients(
+        recipients, recipient_languages = _collect_order_recipients(
             order,
             include_owner=True,
             include_cost_center=True,
@@ -240,6 +379,7 @@ def send_order_status_change_notification(
         if not recipients:
             app.logger.info("No recipients found, skipping status notification.")
             return False
+        recipients_by_language = _group_recipients_by_language(recipients, recipient_languages)
 
         try:
             order_url = url_for("order_detail", order_id=order.id, _external=True)
@@ -251,41 +391,95 @@ def send_order_status_change_notification(
         new_label = status_labels.get(new_status, new_status)
         changed_by = current_user.email if current_user.is_authenticated else ""
 
-        msg = EmailMessage()
-        msg["Subject"] = f"NeoFab: Order #{order.id} status changed to {new_label}"
-        msg["From"] = smtp_from
-        msg["To"] = ", ".join(recipients)
-        if order.user and order.user.email:
-            msg["Reply-To"] = order.user.email
+        category_name = order.category.name if order.category else "3D Print"
+        area_name = order.area.name if order.area else "-"
+        for language, lang_recipients in recipients_by_language.items():
+            msg = EmailMessage()
+            if language == "de":
+                msg["Subject"] = f"NeoFab: Auftrag #{order.id} Status geaendert zu {new_label}"
+            elif language == "fr":
+                msg["Subject"] = f"NeoFab : Commande #{order.id} statut modifie vers {new_label}"
+            else:
+                msg["Subject"] = f"NeoFab: Order #{order.id} status changed to {new_label}"
+            msg["From"] = smtp_from
+            msg["To"] = ", ".join(lang_recipients)
+            if order.user and order.user.email:
+                msg["Reply-To"] = order.user.email
 
-        body_lines = [
-            "The order status has changed.",
-            f"ID: {order.id}",
-            f"Title: {order.title}",
-            f"Status: {old_label} -> {new_label}",
-            f"Changed by: {changed_by}",
-            f"Link: {order_url}",
-        ]
-        if order.summary_short:
-            body_lines.extend(["", "Summary:", order.summary_short])
+            if language == "de":
+                body_lines = [
+                    "Hallo,",
+                    "",
+                    "der Status eines NeoFab-Auftrags wurde geaendert.",
+                    "",
+                    "Auftragsdetails:",
+                    f"- ID: {order.id}",
+                    f"- Titel: {order.title}",
+                    f"- Kategorie: {category_name}",
+                    f"- Bereich: {area_name}",
+                    f"- Status: {old_label} -> {new_label}",
+                    f"- Geaendert von: {changed_by}",
+                    "",
+                    f"Auftrag oeffnen: {order_url}",
+                ]
+                if order.summary_short:
+                    body_lines.extend(["", "Kurzbeschreibung:", order.summary_short])
+            elif language == "fr":
+                body_lines = [
+                    "Bonjour,",
+                    "",
+                    "le statut d'une commande NeoFab a ete modifie.",
+                    "",
+                    "Details de la commande:",
+                    f"- ID: {order.id}",
+                    f"- Titre: {order.title}",
+                    f"- Categorie: {category_name}",
+                    f"- Domaine: {area_name}",
+                    f"- Statut: {old_label} -> {new_label}",
+                    f"- Modifie par: {changed_by}",
+                    "",
+                    f"Ouvrir la commande: {order_url}",
+                ]
+                if order.summary_short:
+                    body_lines.extend(["", "Resume:", order.summary_short])
+            else:
+                body_lines = [
+                    "Hello,",
+                    "",
+                    "the status of a NeoFab order has changed.",
+                    "",
+                    "Order details:",
+                    f"- ID: {order.id}",
+                    f"- Title: {order.title}",
+                    f"- Category: {category_name}",
+                    f"- Area: {area_name}",
+                    f"- Status: {old_label} -> {new_label}",
+                    f"- Changed by: {changed_by}",
+                    "",
+                    f"Open order: {order_url}",
+                ]
+                if order.summary_short:
+                    body_lines.extend(["", "Summary:", order.summary_short])
 
-        msg.set_content("\n".join(body_lines))
+            body_lines.extend(_notification_footer(settings, order_url, language))
+            msg.set_content("\n".join(body_lines))
 
-        _send_message(settings, msg)
-        write_audit_log(
-            app,
-            "email_sent",
-            user=current_user,
-            details={
-                "kind": "order_status_changed",
-                "order_id": order.id,
-                "old_status": old_status,
-                "new_status": new_status,
-                "subject": msg["Subject"],
-                "recipient_count": len(recipients),
-                "recipients": recipients,
-            },
-        )
+            _send_message(settings, msg)
+            write_audit_log(
+                app,
+                "email_sent",
+                user=current_user,
+                details={
+                    "kind": "order_status_changed",
+                    "language": language,
+                    "order_id": order.id,
+                    "old_status": old_status,
+                    "new_status": new_status,
+                    "subject": msg["Subject"],
+                    "recipient_count": len(lang_recipients),
+                    "recipients": lang_recipients,
+                },
+            )
 
         app.logger.info(
             "Sent status change notification for order %s to %s",
@@ -319,10 +513,11 @@ def send_announcement_attention_notification(app, announcement: Announcement) ->
             app.logger.info("SMTP not configured, skipping announcement notification.")
             return False
 
-        recipients = _collect_active_user_recipients()
+        recipients, recipient_languages = _collect_active_user_recipients()
         if not recipients:
             app.logger.info("No recipients found, skipping announcement notification.")
             return False
+        recipients_by_language = _group_recipients_by_language(recipients, recipient_languages)
 
         try:
             dashboard_url = url_for("dashboard", _external=True)
@@ -331,38 +526,83 @@ def send_announcement_attention_notification(app, announcement: Announcement) ->
 
         created_by = current_user.email if current_user.is_authenticated else ""
 
-        msg = EmailMessage()
-        msg["Subject"] = f"NeoFab: Achtung eMail - {announcement.title}"
-        msg["From"] = smtp_from
-        msg["To"] = smtp_from
-        msg["Bcc"] = ", ".join(recipients)
-        if created_by:
-            msg["Reply-To"] = created_by
+        for language, lang_recipients in recipients_by_language.items():
+            msg = EmailMessage()
+            if language == "de":
+                msg["Subject"] = f"NeoFab: Achtung eMail - {announcement.title}"
+            elif language == "fr":
+                msg["Subject"] = f"NeoFab : Message important - {announcement.title}"
+            else:
+                msg["Subject"] = f"NeoFab: Attention email - {announcement.title}"
+            msg["From"] = smtp_from
+            msg["To"] = smtp_from
+            msg["Bcc"] = ", ".join(lang_recipients)
+            if created_by:
+                msg["Reply-To"] = created_by
 
-        body_lines = [
-            "Eine neue NeoFab-Mitteilung mit der Prioritaet 'Achtung eMail' wurde erstellt.",
-            f"Titel: {announcement.title}",
-            f"Erstellt von: {created_by}",
-            f"Link: {dashboard_url}",
-            "",
-            "Mitteilung:",
-            announcement.body,
-        ]
-        msg.set_content("\n".join(body_lines))
+            if language == "de":
+                body_lines = [
+                    "Hallo,",
+                    "",
+                    "eine neue NeoFab-Mitteilung mit der Prioritaet 'Achtung eMail' wurde erstellt.",
+                    "",
+                    "Mitteilungsdetails:",
+                    f"- Titel: {announcement.title}",
+                    f"- Erstellt von: {created_by}",
+                    "",
+                    "Mitteilung:",
+                    announcement.body,
+                    "",
+                    f"Zum Dashboard: {dashboard_url}",
+                ]
+            elif language == "fr":
+                body_lines = [
+                    "Bonjour,",
+                    "",
+                    "une nouvelle annonce NeoFab avec la priorite e-mail importante a ete creee.",
+                    "",
+                    "Details de l'annonce:",
+                    f"- Titre: {announcement.title}",
+                    f"- Creee par: {created_by}",
+                    "",
+                    "Annonce:",
+                    announcement.body,
+                    "",
+                    f"Vers le tableau de bord: {dashboard_url}",
+                ]
+            else:
+                body_lines = [
+                    "Hello,",
+                    "",
+                    "a new NeoFab announcement with priority Attention email has been created.",
+                    "",
+                    "Announcement details:",
+                    f"- Title: {announcement.title}",
+                    f"- Created by: {created_by}",
+                    "",
+                    "Announcement:",
+                    announcement.body,
+                    "",
+                    f"Go to dashboard: {dashboard_url}",
+                ]
 
-        _send_message(settings, msg)
-        write_audit_log(
-            app,
-            "email_sent",
-            user=current_user,
-            details={
-                "kind": "announcement_attention_email",
-                "announcement_id": announcement.id,
-                "subject": msg["Subject"],
-                "recipient_count": len(recipients),
-                "recipients": recipients,
-            },
-        )
+            body_lines.extend(_notification_footer(settings, dashboard_url, language))
+            msg.set_content("\n".join(body_lines))
+
+            _send_message(settings, msg)
+            write_audit_log(
+                app,
+                "email_sent",
+                user=current_user,
+                details={
+                    "kind": "announcement_attention_email",
+                    "language": language,
+                    "announcement_id": announcement.id,
+                    "subject": msg["Subject"],
+                    "recipient_count": len(lang_recipients),
+                    "recipients": lang_recipients,
+                },
+            )
 
         app.logger.info(
             "Sent announcement attention notification for announcement %s to %s",
