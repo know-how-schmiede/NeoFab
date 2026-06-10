@@ -240,7 +240,7 @@
                     <tr class="table-light">
                       <td colspan="3" class="fw-semibold">{{ group.label }}</td>
                     </tr>
-                    {% for action in group.items %}
+                    {% for action in group["items"] %}
                       <tr>
                         <td class="fw-semibold" data-label="{{ t('email_actions_action') }}">{{ action.label }}</td>
                         <td data-label="{{ t('email_actions_description') }}">{{ action.description }}</td>
