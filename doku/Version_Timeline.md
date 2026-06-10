@@ -1,5 +1,11 @@
 # Timeline NeoFab
 
+## Version 0.9.24
+
+Auftrags-Titelanzeige in den Listen angepasst: Titel beginnt jetzt mit der Order-ID im Schema #ID-Titel
+Schema verwendet ein fuehrendes # als Nummern-Hinweis und den Bindestrich als Trenner vor dem eigentlichen Titel
+Anzeige in Dashboard- und Admin-Listen entsprechend vereinheitlicht
+
 ## Version 0.9.23
 
 Benutzer-Registrierung erweitert: Sprache kann jetzt direkt im Registrierungsformular aus einer Auswahlliste gewaehlt werden

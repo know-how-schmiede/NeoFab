@@ -37,7 +37,7 @@
               <tr>
                 <td data-label="{{ t('table_id') }}">{{ o.id }}</td>
                 <td data-label="{{ t('title') }}">
-                  <a href="{{ url_for('order_detail', order_id=o.id) }}">{{ o.title }}</a>
+                  <a href="{{ url_for('order_detail', order_id=o.id) }}">#{{ o.id }}-{{ o.title }}</a>
                 </td>
                 <td data-label="{{ t('owner') }}">{{ o.user.email if o.user else "" }}</td>
                 <td data-label="{{ t('table_status') }}">
