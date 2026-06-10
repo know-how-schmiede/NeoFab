@@ -5277,7 +5277,12 @@ def dashboard():
 
     category_filters_map = {}
     area_filters_map = {}
-    status_filter_values = set()
+    configured_status_keys = {
+        key
+        for key, _label in status_context.get("order_statuses", [])
+        if key
+    }
+    status_filter_values = set(configured_status_keys)
     for order in orders:
         category = get_order_category(order)
         if category and category.id is not None:
