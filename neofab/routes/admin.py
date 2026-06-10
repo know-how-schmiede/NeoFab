@@ -1047,6 +1047,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 skipped += 1
                 continue
             seen_lower.add(key)
+    @bp.route("/logs", endpoint="admin_logs")
     @roles_required("admin")
     def admin_logs():
         """Structured audit log viewer."""
