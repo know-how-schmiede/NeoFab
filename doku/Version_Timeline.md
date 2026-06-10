@@ -1,5 +1,9 @@
 # Timeline NeoFab
 
+## Version 0.9.25
+
+Versionsnummer auf 0.9.25 angehoben
+
 ## Version 0.9.24
 
 Auftrags-Titelanzeige in den Listen angepasst: Titel beginnt jetzt mit der Order-ID im Schema #ID-Titel
