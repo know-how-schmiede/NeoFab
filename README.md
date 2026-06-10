@@ -47,6 +47,9 @@ The application is built for multilingual use with English as the default langua
 - **Order list summaries**  
   Order lists show compact print job status badges for total jobs, jobs in progress, completed jobs, and failed jobs.
 
+- **Dashboard filters for admins and workers**  
+  The dashboard order list supports combined filters for category, area, and status directly next to the row-count selector. Filter values are populated from available database order data and include an All option.
+
 - **Integrated messaging**  
   Built-in communication between users and admins, persistent read status, and optional email notifications.
 
@@ -117,9 +120,9 @@ The main scripts are:
 
 ## Current Version
 
-Current application version: **0.9.12**
+Current application version: **0.9.21**
 
-Recent changes include the new procurement category with an article tab, procurement note attachments, article status actions (ordered/delivered), automatic procurement order status synchronization, and category-aware order tabs.
+Recent changes include dashboard filters for category, area, and status (with an All option), filter persistence across sorting and pagination, and the latest UI/consistency updates documented in the project timeline.
 
 The update script installs Python dependencies from `neofab/requirements.txt`, including PyMuPDF for rendering the first page of uploaded poster PDFs as thumbnails.
 

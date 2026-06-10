@@ -5126,6 +5126,9 @@ def dashboard():
     except (TypeError, ValueError):
         page = 1
     page = max(page, 1)
+    selected_category_id_raw = (request.args.get("category") or "").strip()
+    selected_area_id_raw = (request.args.get("area") or "").strip()
+    selected_status = (request.args.get("status") or "").strip()
 
     if request.method == "POST":
         action = (request.form.get("action") or "").strip()
@@ -5271,6 +5274,71 @@ def dashboard():
             orders = [order for order in orders if order.area_id in visible_area_ids]
 
     app.logger.debug(f"[dashboard] Loaded {len(orders)} orders")
+
+    category_filters_map = {}
+    area_filters_map = {}
+    status_filter_values = set()
+    for order in orders:
+        category = get_order_category(order)
+        if category and category.id is not None:
+            category_filters_map[category.id] = category.name
+        if order.area and order.area.id is not None:
+            area_filters_map[order.area.id] = order.area.name
+        if order.status:
+            status_filter_values.add(order.status)
+
+    category_filters = [
+        {"id": category_id, "name": category_name}
+        for category_id, category_name in sorted(
+            category_filters_map.items(),
+            key=lambda item: (item[1] or "").lower(),
+        )
+    ]
+    area_filters = [
+        {"id": area_id, "name": area_name}
+        for area_id, area_name in sorted(
+            area_filters_map.items(),
+            key=lambda item: (item[1] or "").lower(),
+        )
+    ]
+    status_filters = sorted(
+        status_filter_values,
+        key=lambda value: (
+            status_context["order_status_labels"].get(value, value) or ""
+        ).lower(),
+    )
+
+    selected_category_id = None
+    if selected_category_id_raw:
+        try:
+            selected_category_id = int(selected_category_id_raw)
+        except (TypeError, ValueError):
+            selected_category_id = None
+
+    selected_area_id = None
+    if selected_area_id_raw:
+        try:
+            selected_area_id = int(selected_area_id_raw)
+        except (TypeError, ValueError):
+            selected_area_id = None
+
+    category_filter_ids = {item["id"] for item in category_filters}
+    if selected_category_id is not None and selected_category_id not in category_filter_ids:
+        selected_category_id = None
+
+    area_filter_ids = {item["id"] for item in area_filters}
+    if selected_area_id is not None and selected_area_id not in area_filter_ids:
+        selected_area_id = None
+
+    if selected_status and selected_status not in status_filter_values:
+        selected_status = ""
+
+    if selected_category_id is not None:
+        orders = [order for order in orders if order.category_id == selected_category_id]
+    if selected_area_id is not None:
+        orders = [order for order in orders if order.area_id == selected_area_id]
+    if selected_status:
+        orders = [order for order in orders if (order.status or "") == selected_status]
 
     def _dashboard_sort_value(order):
         if sort_by == "category":
@@ -5442,6 +5510,12 @@ def dashboard():
         page=page,
         per_page=per_page,
         per_page_options=per_page_options,
+        category_filters=category_filters,
+        area_filters=area_filters,
+        status_filters=status_filters,
+        selected_category_id=selected_category_id,
+        selected_area_id=selected_area_id,
+        selected_status=selected_status,
         total_orders=total_orders,
         total_pages=total_pages,
         page_start=page_start + 1 if total_orders else 0,

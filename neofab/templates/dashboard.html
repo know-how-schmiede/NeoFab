@@ -4,9 +4,11 @@
 {% block container_class %}container-xxl{% endblock %}
 
 {% block content %}
+{% set selected_category_query = selected_category_id if selected_category_id is not none else '' %}
+{% set selected_area_query = selected_area_id if selected_area_id is not none else '' %}
 {% macro sort_link(key, label) %}
   {% set next_dir = 'desc' if sort_by == key and sort_dir == 'asc' else 'asc' %}
-  <a class="link-dark text-decoration-none nf-sort-link" href="{{ url_for('dashboard', sort=key, dir=next_dir, per_page=per_page, page=1) }}">
+  <a class="link-dark text-decoration-none nf-sort-link" href="{{ url_for('dashboard', sort=key, dir=next_dir, per_page=per_page, page=1, category=selected_category_query, area=selected_area_query, status=selected_status) }}">
     {{ label }}
     {% if sort_by == key %}
       <i class="bi {% if sort_dir == 'asc' %}bi-caret-up-fill{% else %}bi-caret-down-fill{% endif %} ms-1"></i>
@@ -33,13 +35,37 @@
 
   <div class="card-body p-2">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-      <form method="get" class="d-flex align-items-center gap-2">
+      <form method="get" class="d-flex flex-wrap align-items-center gap-2">
         <input type="hidden" name="sort" value="{{ sort_by }}">
         <input type="hidden" name="dir" value="{{ sort_dir }}">
         <label for="dashboard_per_page" class="form-label small mb-0">{{ t("dashboard_rows_per_page") }}</label>
         <select id="dashboard_per_page" name="per_page" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
           {% for option in per_page_options %}
             <option value="{{ option }}" {% if option == per_page %}selected{% endif %}>{{ option }}</option>
+          {% endfor %}
+        </select>
+
+        <label for="dashboard_category_filter" class="form-label small mb-0">{{ t("order_category_label") }}</label>
+        <select id="dashboard_category_filter" name="category" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+          <option value="">{{ t("dashboard_filter_all") }}</option>
+          {% for option in category_filters %}
+            <option value="{{ option.id }}" {% if selected_category_id == option.id %}selected{% endif %}>{{ option.name }}</option>
+          {% endfor %}
+        </select>
+
+        <label for="dashboard_area_filter" class="form-label small mb-0">{{ t("order_area_label") }}</label>
+        <select id="dashboard_area_filter" name="area" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+          <option value="">{{ t("dashboard_filter_all") }}</option>
+          {% for option in area_filters %}
+            <option value="{{ option.id }}" {% if selected_area_id == option.id %}selected{% endif %}>{{ option.name }}</option>
+          {% endfor %}
+        </select>
+
+        <label for="dashboard_status_filter" class="form-label small mb-0">{{ t("status") }}</label>
+        <select id="dashboard_status_filter" name="status" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+          <option value="">{{ t("dashboard_filter_all") }}</option>
+          {% for option in status_filters %}
+            <option value="{{ option }}" {% if selected_status == option %}selected{% endif %}>{{ status_labels.get(option, option) }}</option>
           {% endfor %}
         </select>
       </form>
@@ -168,7 +194,7 @@
       <nav class="d-flex justify-content-end mt-2" aria-label="{{ t('dashboard_pagination_label') }}">
         <ul class="pagination pagination-sm mb-0">
           <li class="page-item {% if page <= 1 %}disabled{% endif %}">
-            <a class="page-link" href="{{ url_for('dashboard', sort=sort_by, dir=sort_dir, per_page=per_page, page=page - 1) }}" aria-label="{{ t('dashboard_previous_page') }}">
+            <a class="page-link" href="{{ url_for('dashboard', sort=sort_by, dir=sort_dir, per_page=per_page, page=page - 1, category=selected_category_query, area=selected_area_query, status=selected_status) }}" aria-label="{{ t('dashboard_previous_page') }}">
               <i class="bi bi-chevron-left"></i>
             </a>
           </li>
@@ -176,7 +202,7 @@
             <span class="page-link">{{ page }} / {{ total_pages }}</span>
           </li>
           <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
-            <a class="page-link" href="{{ url_for('dashboard', sort=sort_by, dir=sort_dir, per_page=per_page, page=page + 1) }}" aria-label="{{ t('dashboard_next_page') }}">
+            <a class="page-link" href="{{ url_for('dashboard', sort=sort_by, dir=sort_dir, per_page=per_page, page=page + 1, category=selected_category_query, area=selected_area_query, status=selected_status) }}" aria-label="{{ t('dashboard_next_page') }}">
               <i class="bi bi-chevron-right"></i>
             </a>
           </li>

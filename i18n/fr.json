@@ -563,6 +563,7 @@
   "dashboard_pagination_label": "Pages du tableau de bord",
   "dashboard_previous_page": "Page précédente",
   "dashboard_rows_per_page": "Lignes",
+  "dashboard_filter_all": "Tous",
   "nav_login": "Connexion",
   "nav_logout": "Déconnexion",
   "nav_new_order": "Nouvelle commande",

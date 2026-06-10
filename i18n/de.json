@@ -561,6 +561,7 @@
   "dashboard_pagination_label": "Dashboard-Seiten",
   "dashboard_previous_page": "Vorherige Seite",
   "dashboard_rows_per_page": "Zeilen",
+  "dashboard_filter_all": "Alle",
   "nav_login": "Login",
   "nav_logout": "Logout",
   "nav_new_order": "Neuer Auftrag",

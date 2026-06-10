@@ -1,5 +1,13 @@
 # Timeline NeoFab
 
+## Version 0.9.21
+
+Dashboard erweitert: In der Zeile mit der Zeilen-Auswahl sind jetzt zusaetzliche Filter fuer Kategorie, Bereich und Status verfuegbar
+Die Filter stehen fuer Administratoren und Mitarbeiter im Dashboard bereit
+Jedes Filter-Auswahlfeld beginnt mit dem Eintrag Alle
+Filterwerte fuer Kategorie, Bereich und Status werden aus den in der Datenbank vorhandenen Auftragsdaten gebildet
+Sortierung, Seitenwechsel und Zeilenanzahl behalten die ausgewaehlten Filterwerte bei
+
 ## Version 0.9.20
 
 Systemweite Pruefung und Vereinheitlichung der Zeitdarstellung umgesetzt

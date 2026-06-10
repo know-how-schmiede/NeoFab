@@ -593,6 +593,7 @@
   "dashboard_pagination_label": "Dashboard pages",
   "dashboard_previous_page": "Previous page",
   "dashboard_rows_per_page": "Rows",
+  "dashboard_filter_all": "All",
   "nav_login": "Login",
   "nav_logout": "Logout",
   "nav_new_order": "New Order",
