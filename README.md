@@ -120,7 +120,7 @@ The main scripts are:
 
 ## Current Version
 
-Current application version: **0.9.21**
+Current application version: **0.9.22**
 
 Recent changes include dashboard filters for category, area, and status (with an All option), filter persistence across sorting and pagination, and the latest UI/consistency updates documented in the project timeline.
 

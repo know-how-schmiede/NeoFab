@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 from flask import url_for
 from flask_login import current_user
 
+from audit_logs import write_audit_log
 from config import is_email_action_enabled, load_app_settings
 from models import Announcement, Order, User
 
@@ -180,6 +181,18 @@ def send_admin_order_notification(app, order: Order, status_labels: Mapping[str,
         msg.set_content("\n".join(body_lines))
 
         _send_message(settings, msg)
+        write_audit_log(
+            app,
+            "email_sent",
+            user=current_user,
+            details={
+                "kind": "new_order",
+                "order_id": order.id,
+                "subject": msg["Subject"],
+                "recipient_count": len(recipients),
+                "recipients": recipients,
+            },
+        )
 
         app.logger.info(
             "Sent admin notification for order %s to %s",
@@ -259,6 +272,20 @@ def send_order_status_change_notification(
         msg.set_content("\n".join(body_lines))
 
         _send_message(settings, msg)
+        write_audit_log(
+            app,
+            "email_sent",
+            user=current_user,
+            details={
+                "kind": "order_status_changed",
+                "order_id": order.id,
+                "old_status": old_status,
+                "new_status": new_status,
+                "subject": msg["Subject"],
+                "recipient_count": len(recipients),
+                "recipients": recipients,
+            },
+        )
 
         app.logger.info(
             "Sent status change notification for order %s to %s",
@@ -324,6 +351,18 @@ def send_announcement_attention_notification(app, announcement: Announcement) ->
         msg.set_content("\n".join(body_lines))
 
         _send_message(settings, msg)
+        write_audit_log(
+            app,
+            "email_sent",
+            user=current_user,
+            details={
+                "kind": "announcement_attention_email",
+                "announcement_id": announcement.id,
+                "subject": msg["Subject"],
+                "recipient_count": len(recipients),
+                "recipients": recipients,
+            },
+        )
 
         app.logger.info(
             "Sent announcement attention notification for announcement %s to %s",

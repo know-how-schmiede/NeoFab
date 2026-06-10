@@ -786,6 +786,18 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                                     server.login(smtp_user, smtp_password or "")
                                 server.send_message(msg)
 
+                            write_audit_log(
+                                current_app,
+                                "email_sent",
+                                user=current_user,
+                                details={
+                                    "kind": "smtp_test",
+                                    "subject": msg["Subject"],
+                                    "recipient_count": 1,
+                                    "recipients": [test_recipient],
+                                },
+                            )
+
                             flash(trans("flash_email_test_sent").format(recipient=test_recipient), "success")
                     except Exception as exc:
                         current_app.logger.exception("Failed to send test email")

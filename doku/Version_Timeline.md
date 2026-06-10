@@ -1,5 +1,11 @@
 # Timeline NeoFab
 
+## Version 0.9.22
+
+E-Mail-Versand erweitert: Bei jedem erfolgreichen Versand wird jetzt ein strukturierter Audit-Logeintrag im Log-File geschrieben
+Protokolliert werden Versandart (z. B. neuer Auftrag, Statusaenderung, Mitteilung, SMTP-Test), Betreff sowie Empfaengerdaten
+Dashboard-Statusfilter nutzt jetzt alle verfuegbaren Auftragsstatus aus der Statuskonfiguration und nicht nur aktuell in der Liste vorkommende Werte
+
 ## Version 0.9.21
 
 Dashboard erweitert: In der Zeile mit der Zeilen-Auswahl sind jetzt zusaetzliche Filter fuer Kategorie, Bereich und Status verfuegbar
