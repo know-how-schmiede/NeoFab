@@ -126,9 +126,9 @@ REGISTRATION_LANGUAGE_OPTIONS = [
 ]
 
 REGISTRATION_SALUTATION_OPTIONS = {
-    "de": ["Frau", "Herr", "Divers", "Keine Angabe"],
-    "en": ["Ms.", "Mr.", "Mx.", "Prefer not to say"],
-    "fr": ["Madame", "Monsieur", "Mx", "Ne souhaite pas indiquer"],
+    "de": ["Frau", "Herr"],
+    "en": ["Ms.", "Mr.", "Mx."],
+    "fr": ["Madame", "Monsieur", "Mx"],
 }
 
 
