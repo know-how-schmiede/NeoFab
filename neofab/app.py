@@ -75,6 +75,7 @@ from notifications import (
     send_announcement_attention_notification,
     send_admin_order_notification,
     send_order_status_change_notification,
+    send_poster_printed_notification,
 )
 from schema_utils import ensure_training_playlist_schema
 from status_messages import (
@@ -505,6 +506,21 @@ def sync_3d_order_status_from_print_jobs(order: Order) -> bool:
         order.status = target_status
         return True
     return False
+
+
+def _send_relevant_order_status_email(app, order: Order, previous_status: str, status_labels: dict[str, str]) -> None:
+    if previous_status == order.status:
+        return
+    if order.status not in {"in_progress", "completed"}:
+        return
+    send_order_status_change_notification(
+        app,
+        order,
+        previous_status,
+        order.status,
+        status_labels,
+        action_key=f"order_{order.status}",
+    )
 
 
 def sync_procurement_order_status_from_articles(order: Order) -> bool:
@@ -3376,13 +3392,7 @@ def order_detail(order_id):
 
                 if previous_status != order.status:
                     status_labels = get_status_context(trans).get("order_status_labels", {})
-                    send_order_status_change_notification(
-                        app,
-                        order,
-                        previous_status,
-                        order.status,
-                        status_labels,
-                    )
+                    _send_relevant_order_status_email(app, order, previous_status, status_labels)
                 flash(trans("flash_order_updated"), "success")
                 return redirect(url_for("order_detail", order_id=order.id))
 
@@ -3756,9 +3766,11 @@ def order_detail(order_id):
                 poster_file.thumb_path = thumb_name
             poster_file.uploaded_at = datetime.utcnow()
 
+            previous_status = order.status
             sync_plotter_order_status_from_posters(order)
 
             db.session.commit()
+            _send_relevant_order_status_email(app, order, previous_status, get_status_context(trans).get("order_status_labels", {}))
             write_audit_log(
                 app,
                 "file_uploaded",
@@ -3819,7 +3831,11 @@ def order_detail(order_id):
             poster_file.note = note[:255] if note else None
             poster_file.quantity = quantity
             poster_file.due_date = due_date
+            previous_status = order.status
+            sync_plotter_order_status_from_posters(order)
             db.session.commit()
+
+            _send_relevant_order_status_email(app, order, previous_status, get_status_context(trans).get("order_status_labels", {}))
 
             flash(trans("flash_poster_updated"), "success")
             return order_detail_redirect("posters")
@@ -3850,12 +3866,16 @@ def order_detail(order_id):
             was_marked = poster_file.status == "printed"
             if not was_marked:
                 poster_file.status = "printed"
+            previous_status = order.status
             sync_plotter_order_status_from_posters(order)
             db.session.commit()
             if not was_marked:
                 flash(trans("flash_poster_marked_printed"), "success")
+                send_poster_printed_notification(app, order, poster_file)
             else:
                 flash(trans("flash_poster_already_printed"), "info")
+
+            _send_relevant_order_status_email(app, order, previous_status, get_status_context(trans).get("order_status_labels", {}))
 
             return order_detail_redirect("posters")
 
@@ -4282,6 +4302,7 @@ def order_detail(order_id):
             if filament_g is None:
                 job.filament_g = round(float(gcode_metadata["filament_g"]), 2) if "filament_g" in gcode_metadata else None
 
+            previous_status = order.status
             # Beim ersten Druckauftrag soll ein neuer Auftrag automatisch in Bearbeitung gehen.
             if order.status in ("new", "neu"):
                 order.status = "in_progress"
@@ -4289,6 +4310,7 @@ def order_detail(order_id):
             sync_3d_order_status_from_print_jobs(order)
 
             db.session.commit()
+            _send_relevant_order_status_email(app, order, previous_status, get_status_context(trans).get("order_status_labels", {}))
             write_audit_log(
                 app,
                 "file_uploaded",
@@ -4421,9 +4443,11 @@ def order_detail(order_id):
             job.filament_m = filament_m
             job.filament_g = filament_g
 
+            previous_status = order.status
             sync_3d_order_status_from_print_jobs(order)
 
             db.session.commit()
+            _send_relevant_order_status_email(app, order, previous_status, get_status_context(trans).get("order_status_labels", {}))
             flash(trans("flash_print_job_updated"), "success")
             return redirect(url_for("order_detail", order_id=order.id))
 
@@ -4449,6 +4473,7 @@ def order_detail(order_id):
                 flash(trans("flash_print_job_not_found"), "warning")
                 return redirect(url_for("order_detail", order_id=order.id))
 
+            previous_status = order.status
             order_folder = Path(app.config["GCODE_UPLOAD_FOLDER"]) / f"order_{order.id}"
             full_path = order_folder / job.stored_name
             if full_path.exists():
@@ -4463,6 +4488,7 @@ def order_detail(order_id):
             db.session.flush()
             sync_3d_order_status_from_print_jobs(order)
             db.session.commit()
+            _send_relevant_order_status_email(app, order, previous_status, get_status_context(trans).get("order_status_labels", {}))
             flash(trans("flash_print_job_deleted"), "info")
             return redirect(url_for("order_detail", order_id=order.id))
 

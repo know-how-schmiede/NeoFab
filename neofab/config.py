@@ -14,7 +14,29 @@ BASE_DIR = Path(__file__).resolve().parent
 INSTANCE_DIR = BASE_DIR / "instance"
 SETTINGS_FILE = INSTANCE_DIR / "config.json"
 
-EMAIL_ACTION_KEYS = ("new_order", "order_status_changed", "announcement_attention_email")
+EMAIL_ACTION_DEFS = (
+    {
+        "key": "new_order",
+        "group": "orders",
+    },
+    {
+        "key": "order_in_progress",
+        "group": "orders",
+    },
+    {
+        "key": "order_completed",
+        "group": "orders",
+    },
+    {
+        "key": "poster_printed",
+        "group": "orders",
+    },
+    {
+        "key": "announcement_attention_email",
+        "group": "announcements",
+    },
+)
+EMAIL_ACTION_KEYS = tuple(item["key"] for item in EMAIL_ACTION_DEFS)
 EMAIL_ACTION_STATE_ENABLED = "enabled"
 EMAIL_ACTION_STATE_DISABLED = "disabled"
 DEFAULT_EMAIL_ACTION_SETTINGS = {
@@ -139,6 +161,10 @@ def is_registration_domain_allowed(email_domain: str, allowed_domains: list[str]
 def normalize_email_actions(value: Any) -> Dict[str, str]:
     actions = DEFAULT_EMAIL_ACTION_SETTINGS.copy()
     if isinstance(value, dict):
+        legacy_status_state = str(value.get("order_status_changed", "") or "").strip()
+        if legacy_status_state in (EMAIL_ACTION_STATE_ENABLED, EMAIL_ACTION_STATE_DISABLED):
+            actions["order_in_progress"] = legacy_status_state
+            actions["order_completed"] = legacy_status_state
         for key in EMAIL_ACTION_KEYS:
             state = str(value.get(key, actions[key]) or "").strip()
             if state in (EMAIL_ACTION_STATE_ENABLED, EMAIL_ACTION_STATE_DISABLED):

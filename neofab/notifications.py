@@ -352,6 +352,7 @@ def send_order_status_change_notification(
     old_status: str,
     new_status: str,
     status_labels: Mapping[str, str] | None = None,
+    action_key: str = "order_status_changed",
 ) -> bool:
     """
     Notify admins and the order owner about a status change.
@@ -359,7 +360,7 @@ def send_order_status_change_notification(
     """
     try:
         settings = load_app_settings(app, force_reload=True)
-        if not is_email_action_enabled(settings, "order_status_changed"):
+        if not is_email_action_enabled(settings, action_key):
             app.logger.info("Order status notification disabled, skipping email.")
             return False
 
@@ -395,22 +396,43 @@ def send_order_status_change_notification(
         area_name = order.area.name if order.area else "-"
         for language, lang_recipients in recipients_by_language.items():
             msg = EmailMessage()
-            if language == "de":
-                msg["Subject"] = f"NeoFab: Auftrag #{order.id} Status geaendert zu {new_label}"
-            elif language == "fr":
-                msg["Subject"] = f"NeoFab : Commande #{order.id} statut modifie vers {new_label}"
+            if new_status == "in_progress":
+                if language == "de":
+                    msg["Subject"] = f"NeoFab: Auftrag #{order.id} ist jetzt in Bearbeitung"
+                elif language == "fr":
+                    msg["Subject"] = f"NeoFab : Commande #{order.id} en cours"
+                else:
+                    msg["Subject"] = f"NeoFab: Order #{order.id} is now in progress"
+            elif new_status == "completed":
+                if language == "de":
+                    msg["Subject"] = f"NeoFab: Auftrag #{order.id} ist jetzt Abgeschlossen"
+                elif language == "fr":
+                    msg["Subject"] = f"NeoFab : Commande #{order.id} terminee"
+                else:
+                    msg["Subject"] = f"NeoFab: Order #{order.id} is now completed"
             else:
-                msg["Subject"] = f"NeoFab: Order #{order.id} status changed to {new_label}"
+                if language == "de":
+                    msg["Subject"] = f"NeoFab: Auftrag #{order.id} Status geaendert zu {new_label}"
+                elif language == "fr":
+                    msg["Subject"] = f"NeoFab : Commande #{order.id} statut modifie vers {new_label}"
+                else:
+                    msg["Subject"] = f"NeoFab: Order #{order.id} status changed to {new_label}"
             msg["From"] = smtp_from
             msg["To"] = ", ".join(lang_recipients)
             if order.user and order.user.email:
                 msg["Reply-To"] = order.user.email
 
             if language == "de":
+                if new_status == "in_progress":
+                    intro = "Der Auftrag wurde auf In Bearbeitung gesetzt."
+                elif new_status == "completed":
+                    intro = "Der Auftrag wurde auf Abgeschlossen gesetzt."
+                else:
+                    intro = "Der Status eines NeoFab-Auftrags wurde geaendert."
                 body_lines = [
                     "Hallo,",
                     "",
-                    "der Status eines NeoFab-Auftrags wurde geaendert.",
+                    intro,
                     "",
                     "Auftragsdetails:",
                     f"- ID: {order.id}",
@@ -425,10 +447,16 @@ def send_order_status_change_notification(
                 if order.summary_short:
                     body_lines.extend(["", "Kurzbeschreibung:", order.summary_short])
             elif language == "fr":
+                if new_status == "in_progress":
+                    intro = "La commande a ete passee en cours."
+                elif new_status == "completed":
+                    intro = "La commande a ete passee en terminee."
+                else:
+                    intro = "Le statut d'une commande NeoFab a ete modifie."
                 body_lines = [
                     "Bonjour,",
                     "",
-                    "le statut d'une commande NeoFab a ete modifie.",
+                    intro,
                     "",
                     "Details de la commande:",
                     f"- ID: {order.id}",
@@ -443,10 +471,16 @@ def send_order_status_change_notification(
                 if order.summary_short:
                     body_lines.extend(["", "Resume:", order.summary_short])
             else:
+                if new_status == "in_progress":
+                    intro = "The order is now in progress."
+                elif new_status == "completed":
+                    intro = "The order is now completed."
+                else:
+                    intro = "The status of a NeoFab order has changed."
                 body_lines = [
                     "Hello,",
                     "",
-                    "the status of a NeoFab order has changed.",
+                    intro,
                     "",
                     "Order details:",
                     f"- ID: {order.id}",
@@ -470,7 +504,7 @@ def send_order_status_change_notification(
                 "email_sent",
                 user=current_user,
                 details={
-                    "kind": "order_status_changed",
+                    "kind": action_key,
                     "language": language,
                     "order_id": order.id,
                     "old_status": old_status,
@@ -490,6 +524,141 @@ def send_order_status_change_notification(
     except Exception:
         app.logger.exception(
             "Failed to send status change notification for order %s", getattr(order, "id", "?")
+        )
+        return False
+
+
+def send_poster_printed_notification(
+    app,
+    order: Order,
+    poster,
+) -> bool:
+    """Notify admins and the order owner that a poster has been marked printed."""
+    try:
+        settings = load_app_settings(app, force_reload=True)
+        if not is_email_action_enabled(settings, "poster_printed"):
+            app.logger.info("Poster printed notification disabled, skipping email.")
+            return False
+
+        smtp_host = settings.get("smtp_host")
+        smtp_port = settings.get("smtp_port")
+        smtp_from = settings.get("smtp_from_address")
+
+        if not smtp_host or not smtp_port or not smtp_from:
+            app.logger.info("SMTP not configured, skipping poster notification.")
+            return False
+
+        recipients, recipient_languages = _collect_order_recipients(
+            order,
+            include_owner=True,
+            include_cost_center=True,
+        )
+        if not recipients:
+            app.logger.info("No recipients found, skipping poster notification.")
+            return False
+        recipients_by_language = _group_recipients_by_language(recipients, recipient_languages)
+
+        try:
+            order_url = url_for("order_detail", order_id=order.id, _external=True)
+        except Exception:
+            order_url = url_for("order_detail", order_id=order.id)
+
+        poster_name = poster.original_name or poster.stored_name or f"#{poster.id}"
+        category_name = order.category.name if order.category else "Plotter"
+        area_name = order.area.name if order.area else "-"
+        created_by = current_user.email if current_user.is_authenticated else ""
+
+        for language, lang_recipients in recipients_by_language.items():
+            msg = EmailMessage()
+            if language == "de":
+                msg["Subject"] = f"NeoFab: Plakat gedruckt bei Auftrag #{order.id}"
+                intro = "Ein Plakat wurde als gedruckt markiert."
+                body_lines = [
+                    "Hallo,",
+                    "",
+                    intro,
+                    "",
+                    "Auftragsdetails:",
+                    f"- ID: {order.id}",
+                    f"- Titel: {order.title}",
+                    f"- Kategorie: {category_name}",
+                    f"- Bereich: {area_name}",
+                    f"- Plakat: {poster_name}",
+                    f"- Markiert von: {created_by}",
+                    "",
+                    f"Auftrag oeffnen: {order_url}",
+                ]
+            elif language == "fr":
+                msg["Subject"] = f"NeoFab : Affiche imprimee pour la commande #{order.id}"
+                intro = "Une affiche a ete marquee comme imprimee."
+                body_lines = [
+                    "Bonjour,",
+                    "",
+                    intro,
+                    "",
+                    "Details de la commande:",
+                    f"- ID: {order.id}",
+                    f"- Titre: {order.title}",
+                    f"- Categorie: {category_name}",
+                    f"- Domaine: {area_name}",
+                    f"- Affiche: {poster_name}",
+                    f"- Marquee par: {created_by}",
+                    "",
+                    f"Ouvrir la commande: {order_url}",
+                ]
+            else:
+                msg["Subject"] = f"NeoFab: Poster printed for order #{order.id}"
+                intro = "A poster has been marked as printed."
+                body_lines = [
+                    "Hello,",
+                    "",
+                    intro,
+                    "",
+                    "Order details:",
+                    f"- ID: {order.id}",
+                    f"- Title: {order.title}",
+                    f"- Category: {category_name}",
+                    f"- Area: {area_name}",
+                    f"- Poster: {poster_name}",
+                    f"- Marked by: {created_by}",
+                    "",
+                    f"Open order: {order_url}",
+                ]
+
+            msg["From"] = smtp_from
+            msg["To"] = ", ".join(lang_recipients)
+            if order.user and order.user.email:
+                msg["Reply-To"] = order.user.email
+
+            body_lines.extend(_notification_footer(settings, order_url, language))
+            msg.set_content("\n".join(body_lines))
+
+            _send_message(settings, msg)
+            write_audit_log(
+                app,
+                "email_sent",
+                user=current_user,
+                details={
+                    "kind": "poster_printed",
+                    "language": language,
+                    "order_id": order.id,
+                    "poster_id": getattr(poster, "id", None),
+                    "subject": msg["Subject"],
+                    "recipient_count": len(lang_recipients),
+                    "recipients": lang_recipients,
+                },
+            )
+
+        app.logger.info(
+            "Sent poster printed notification for order %s to %s",
+            order.id,
+            ", ".join(recipients),
+        )
+        return True
+    except Exception:
+        app.logger.exception(
+            "Failed to send poster printed notification for order %s",
+            getattr(order, "id", "?"),
         )
         return False
 

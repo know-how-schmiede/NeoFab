@@ -31,6 +31,7 @@ from auth_utils import roles_required
 from audit_logs import DELETE_LOG_FILE, delete_log_file, list_log_files, read_log_entries, write_audit_log
 from config import (
     DASHBOARD_ROWS_PER_PAGE_OPTIONS,
+    EMAIL_ACTION_DEFS,
     EMAIL_ACTION_KEYS,
     EMAIL_ACTION_STATE_DISABLED,
     EMAIL_ACTION_STATE_ENABLED,
@@ -955,26 +956,31 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             for value, label_key in STATUS_STYLE_OPTIONS
         ]
         email_action_values = normalize_email_actions(settings.get("email_actions"))
-        email_actions = [
-            {
-                "key": "new_order",
-                "label": trans("email_action_new_order"),
-                "description": trans("email_action_new_order_desc"),
-                "value": email_action_values.get("new_order", EMAIL_ACTION_STATE_ENABLED),
-            },
-            {
-                "key": "order_status_changed",
-                "label": trans("email_action_order_status_changed"),
-                "description": trans("email_action_order_status_changed_desc"),
-                "value": email_action_values.get("order_status_changed", EMAIL_ACTION_STATE_ENABLED),
-            },
-            {
-                "key": "announcement_attention_email",
-                "label": trans("email_action_announcement_attention_email"),
-                "description": trans("email_action_announcement_attention_email_desc"),
-                "value": email_action_values.get("announcement_attention_email", EMAIL_ACTION_STATE_ENABLED),
-            },
-        ]
+        email_action_groups = []
+        group_labels = {
+            "orders": trans("email_action_group_orders"),
+            "announcements": trans("email_action_group_announcements"),
+        }
+        for group_key in ("orders", "announcements"):
+            items = []
+            for item in EMAIL_ACTION_DEFS:
+                if item["group"] != group_key:
+                    continue
+                items.append(
+                    {
+                        "key": item["key"],
+                        "label": trans(f"email_action_{item['key']}"),
+                        "description": trans(f"email_action_{item['key']}_desc"),
+                        "value": email_action_values.get(item["key"], EMAIL_ACTION_STATE_ENABLED),
+                    }
+                )
+            email_action_groups.append(
+                {
+                    "key": group_key,
+                    "label": group_labels.get(group_key, group_key),
+                    "items": items,
+                }
+            )
         email_action_state_options = [
             {"value": EMAIL_ACTION_STATE_ENABLED, "label": trans("email_action_enabled")},
             {"value": EMAIL_ACTION_STATE_DISABLED, "label": trans("email_action_disabled")},
@@ -987,7 +993,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             active_tab=active_tab,
             status_message_groups=status_groups,
             status_style_options=status_style_options,
-            email_actions=email_actions,
+            email_action_groups=email_action_groups,
             email_action_state_options=email_action_state_options,
             order_areas=OrderArea.query.order_by(OrderArea.name.asc()).all(),
         )
@@ -1041,26 +1047,31 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 skipped += 1
                 continue
             seen_lower.add(key)
-            normalized_names.append(name)
-
-        if not normalized_names:
-            flash(trans("flash_invalid_json"), "danger")
-            return redirect(url_for(".admin_settings", tab="areas"))
-
-        UserOrderAreaPreference.query.delete()
-        Order.query.update({Order.area_id: None})
-        OrderArea.query.delete()
-
-        created = 0
-        for name in normalized_names:
-            db.session.add(OrderArea(name=name))
-            created += 1
-
-        db.session.commit()
-        flash(trans("flash_import_result_simple").format(created=created, skipped=skipped), "success")
-        return redirect(url_for(".admin_settings", tab="areas"))
-
-    @bp.route("/logs", endpoint="admin_logs")
+                email_action_groups = []
+                group_labels = {
+                    "orders": trans("email_action_group_orders"),
+                    "announcements": trans("email_action_group_announcements"),
+                }
+                for group_key in ("orders", "announcements"):
+                    items = []
+                    for item in EMAIL_ACTION_DEFS:
+                        if item["group"] != group_key:
+                            continue
+                        items.append(
+                            {
+                                "key": item["key"],
+                                "label": trans(f"email_action_{item['key']}"),
+                                "description": trans(f"email_action_{item['key']}_desc"),
+                                "value": email_action_values.get(item["key"], EMAIL_ACTION_STATE_ENABLED),
+                            }
+                        )
+                    email_action_groups.append(
+                        {
+                            "key": group_key,
+                            "label": group_labels.get(group_key, group_key),
+                            "items": items,
+                        }
+                    )
     @roles_required("admin")
     def admin_logs():
         """Structured audit log viewer."""

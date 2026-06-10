@@ -236,20 +236,25 @@
                   </tr>
                 </thead>
                 <tbody>
-                  {% for action in email_actions %}
-                    <tr>
-                      <td class="fw-semibold" data-label="{{ t('email_actions_action') }}">{{ action.label }}</td>
-                      <td data-label="{{ t('email_actions_description') }}">{{ action.description }}</td>
-                      <td data-label="{{ t('email_actions_setting') }}">
-                        <select class="form-select" name="email_action_{{ action.key }}">
-                          {% for option in email_action_state_options %}
-                            <option value="{{ option.value }}" {% if option.value == action.value %}selected{% endif %}>
-                              {{ option.label }}
-                            </option>
-                          {% endfor %}
-                        </select>
-                      </td>
+                  {% for group in email_action_groups %}
+                    <tr class="table-light">
+                      <td colspan="3" class="fw-semibold">{{ group.label }}</td>
                     </tr>
+                    {% for action in group.items %}
+                      <tr>
+                        <td class="fw-semibold" data-label="{{ t('email_actions_action') }}">{{ action.label }}</td>
+                        <td data-label="{{ t('email_actions_description') }}">{{ action.description }}</td>
+                        <td data-label="{{ t('email_actions_setting') }}">
+                          <select class="form-select" name="email_action_{{ action.key }}">
+                            {% for option in email_action_state_options %}
+                              <option value="{{ option.value }}" {% if option.value == action.value %}selected{% endif %}>
+                                {{ option.label }}
+                              </option>
+                            {% endfor %}
+                          </select>
+                        </td>
+                      </tr>
+                    {% endfor %}
                   {% endfor %}
                 </tbody>
               </table>
