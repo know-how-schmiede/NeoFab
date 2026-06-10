@@ -1047,31 +1047,6 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 skipped += 1
                 continue
             seen_lower.add(key)
-                email_action_groups = []
-                group_labels = {
-                    "orders": trans("email_action_group_orders"),
-                    "announcements": trans("email_action_group_announcements"),
-                }
-                for group_key in ("orders", "announcements"):
-                    items = []
-                    for item in EMAIL_ACTION_DEFS:
-                        if item["group"] != group_key:
-                            continue
-                        items.append(
-                            {
-                                "key": item["key"],
-                                "label": trans(f"email_action_{item['key']}"),
-                                "description": trans(f"email_action_{item['key']}_desc"),
-                                "value": email_action_values.get(item["key"], EMAIL_ACTION_STATE_ENABLED),
-                            }
-                        )
-                    email_action_groups.append(
-                        {
-                            "key": group_key,
-                            "label": group_labels.get(group_key, group_key),
-                            "items": items,
-                        }
-                    )
     @roles_required("admin")
     def admin_logs():
         """Structured audit log viewer."""
