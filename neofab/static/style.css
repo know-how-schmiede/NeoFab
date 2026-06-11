@@ -21,6 +21,7 @@
 .neo-chat-bubble-user {
     background-color: rgba(13, 110, 253, 0.08);  /* helles Blau */
     border: 1px solid rgba(13, 110, 253, 0.3);
+    color: #17365d;
 }
 
 /* Admin-Nachrichten (rechts) */
@@ -35,11 +36,37 @@
 }
 
 .neo-chat-bubble-user .neo-chat-meta {
-    color: #6c757d;
+    color: #4b6384;
+}
+
+.neo-chat-bubble-user .neo-chat-text {
+    color: #17365d;
+}
+
+.neo-chat-bubble-admin .neo-chat-text {
+    color: #fff;
 }
 
 .neo-chat-text p {
     margin-bottom: 0;
+}
+
+html[data-theme-mode="dark"] .neo-chat-thread {
+    background-color: #f8fafc;
+}
+
+html[data-theme-mode="dark"] .neo-chat-bubble-user {
+    background-color: #eaf2ff;
+    border-color: #93c5fd;
+    color: #17365d;
+}
+
+html[data-theme-mode="dark"] .neo-chat-bubble-user .neo-chat-meta {
+    color: #4b6384;
+}
+
+html[data-theme-mode="dark"] .neo-chat-bubble-user .neo-chat-text {
+    color: #17365d;
 }
 
 /* === Chat-Eingabefeld unter der Message-Liste === */

@@ -88,6 +88,123 @@
   </div>
 </div>
 
+<div class="card mb-3">
+  <div class="card-header"><strong>{{ t("admin_design_smoke_test_section_main_menu") }}</strong></div>
+  <div class="card-body">
+    <nav class="navbar navbar-expand-lg navbar-light bg-primary rounded">
+      <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center" href="#">
+          <img src="{{ url_for('static', filename='Logo_NeoFab_Name_200px.png') }}"
+               alt="NeoFab Logo"
+               height="32"
+               class="me-2">
+        </a>
+        <div class="navbar-collapse">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0 nf-nav-main">
+            <li class="nav-item">
+              <a href="#" class="nav-link active" aria-current="page">
+                <i class="bi bi-speedometer2 me-1"></i>{{ t("nav_dashboard") }}
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link">
+                <i class="bi bi-plus-circle me-1"></i>{{ t("nav_new_order") }}
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link">
+                <i class="bi bi-collection-play me-1"></i>{{ t("nav_tutorials") }}
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link">
+                <i class="bi bi-gear me-1"></i>{{ t("nav_admin") }}
+              </a>
+            </li>
+          </ul>
+          <div class="d-flex align-items-center gap-3 nf-nav-secondary">
+            <span class="nf-version-tag">v{{ app_version }}</span>
+            <a class="nav-link d-flex align-items-center gap-2" href="#">
+              <span class="nf-avatar" aria-hidden="true">RT</span>
+              <span class="small">user@example.com</span>
+            </a>
+            <a class="nav-link" href="#">
+              <i class="bi bi-box-arrow-right me-1"></i>{{ t("nav_logout") }}
+            </a>
+          </div>
+        </div>
+      </div>
+    </nav>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header"><strong>{{ t("admin_design_smoke_test_section_tabs") }}</strong></div>
+  <div class="card-body">
+    <ul class="nav nav-tabs mb-3" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" type="button" role="tab" aria-selected="true">{{ t("tab_general") }}</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" type="button" role="tab" aria-selected="false">{{ t("tab_project") }}</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" type="button" role="tab" aria-selected="false">{{ t("tab_files") }}</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" type="button" role="tab" aria-selected="false">{{ t("tab_print_jobs") }}</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" type="button" role="tab" aria-selected="false">{{ t("messages_header") }}</button>
+      </li>
+    </ul>
+    <div class="text-muted small">{{ t("admin_design_smoke_test_tabs_hint") }}</div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header"><strong>{{ t("admin_design_smoke_test_section_chat") }}</strong></div>
+  <div class="card-body neo-chat-thread">
+    <div class="neo-chat-message d-flex mb-3 justify-content-start">
+      <div class="neo-chat-bubble neo-chat-bubble-user">
+        <div class="neo-chat-meta small mb-1">
+          <strong>Petra Musterfrau</strong> - 2026-06-07 18:58
+        </div>
+        <div class="neo-chat-text">
+          Sicherheitsbedingt bitte nochmal eine kurze Rueckmeldung senden.
+        </div>
+      </div>
+    </div>
+    <div class="neo-chat-message d-flex mb-0 justify-content-end">
+      <div class="neo-chat-bubble neo-chat-bubble-admin">
+        <div class="neo-chat-meta small mb-1">
+          <strong>Admin - Rene Triebenstein</strong> - 2026-06-07 18:59
+        </div>
+        <div class="neo-chat-text">
+          Ja, die Rueckmeldung ist angekommen und gut lesbar.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header"><strong>{{ t("admin_design_smoke_test_section_footer") }}</strong></div>
+  <div class="card-body">
+    <footer class="border-top py-3 bg-light site-footer">
+      <div class="container d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3 px-0">
+        <div class="text-muted small">NeoFab v{{ app_version }}</div>
+        <div class="d-flex flex-wrap gap-3 small">
+          <a class="nf-footer-link text-decoration-none" href="#">{{ t("footer_info") }}</a>
+          <a class="nf-footer-link text-decoration-none" href="#">{{ t("footer_imprint") }}</a>
+          <a class="nf-footer-link text-decoration-none" href="#">{{ t("footer_privacy") }}</a>
+          <span class="text-muted">&copy; <a class="nf-footer-link text-decoration-none" href="#">Know-How-Schmiede</a></span>
+        </div>
+      </div>
+    </footer>
+  </div>
+</div>
+
 <div class="card">
   <div class="card-header"><strong>{{ t("admin_design_smoke_test_section_form_table") }}</strong></div>
   <div class="card-body">

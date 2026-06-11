@@ -4,6 +4,8 @@
 
 Footer-Links mit eigener Theme-Klasse versehen und Kontraste fuer Hell- und Dunkelmodus verbessert
 Reiter-Beschriftungen fuer Bootstrap-Tabs im Hell- und Dunkelmodus besser lesbar gemacht
+Chatblasen-Farben angepasst, damit User-Nachrichten im Hell- und Dunkelmodus klar lesbar sind
+Design-Kontrast-Test im Admin-Bereich um Hauptmenue, Reiter-Navigation, Chat und Footer-Elemente erweitert
 Produktions-Logging von standardmaessigem DEBUG auf INFO umgestellt, optional per NEOFAB_LOG_LEVEL konfigurierbar
 Gunicorn-Service-Setup fuer stabileren Betrieb auf gthread-Worker, mehrere Worker/Threads und laengeren Request-Timeout erweitert
 Setup-Dokumentation fuer die empfohlenen Gunicorn-Produktionsparameter aktualisiert
