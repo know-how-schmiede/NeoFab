@@ -157,7 +157,18 @@ Group=www-data
 WorkingDirectory=/home/neofab/neofab
 Environment="FLASK_APP=run.py"
 Environment="FLASK_ENV=production"
-ExecStart=/home/neofab/neofab/.venv/bin/gunicorn -b 0.0.0.0:5000 run:app
+Environment="NEOFAB_LOG_LEVEL=INFO"
+ExecStart=/home/neofab/neofab/.venv/bin/gunicorn \
+  --worker-class gthread \
+  --workers 2 \
+  --threads 4 \
+  --timeout 90 \
+  --graceful-timeout 30 \
+  --keep-alive 2 \
+  --access-logfile - \
+  --error-logfile - \
+  --log-level info \
+  -b 0.0.0.0:5000 run:app
 
 [Install]
 WantedBy=multi-user.target

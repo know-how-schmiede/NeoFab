@@ -237,9 +237,12 @@ PDF_TEMPLATE_PATH = os.environ.get(
 MAX_UPLOAD_SIZE_MB = 50
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_SIZE_MB * 1024 * 1024
 
-# Einfache Logging-Konfiguration
-logging.basicConfig(level=logging.DEBUG)
-app.logger.setLevel(logging.DEBUG)
+# Einfache Logging-Konfiguration. Debug kann bei Bedarf ueber NEOFAB_LOG_LEVEL=DEBUG
+# aktiviert werden, ist fuer den systemd/Gunicorn-Betrieb aber zu laut.
+LOG_LEVEL_NAME = os.environ.get("NEOFAB_LOG_LEVEL", "INFO").strip().upper()
+LOG_LEVEL = getattr(logging, LOG_LEVEL_NAME, logging.INFO)
+logging.basicConfig(level=LOG_LEVEL)
+app.logger.setLevel(LOG_LEVEL)
 
 # Auftrags-Status-Codes (interne Werte + Labels)
 ORDER_STATUSES = [(item["key"], item["label"]) for item in ORDER_STATUS_DEFS]
