@@ -162,9 +162,9 @@ ExecStart=/home/neofab/neofab/.venv/bin/gunicorn \
   --worker-class gthread \
   --workers 2 \
   --threads 4 \
-  --timeout 90 \
+  --timeout 120 \
   --graceful-timeout 30 \
-  --keep-alive 2 \
+  --keep-alive 5 \
   --access-logfile - \
   --error-logfile - \
   --log-level info \
@@ -182,6 +182,44 @@ sudo systemctl enable --now neofab
 ```
 
 ## 🚀 Starten
+
+### Gunicorn-Performance-Einstellungen in bestehendem System nachpflegen
+
+Wenn NeoFab bereits als systemd-Dienst laeuft, kann die bestehende Unit direkt angepasst werden:
+
+```bash
+sudo systemctl edit --full neofab
+```
+
+In der `ExecStart=`-Zeile sollten die bewaehrten Gunicorn-Parameter gesetzt sein:
+
+```txt
+ExecStart=/home/neofab/projects/neofab/.venv/bin/gunicorn \
+  --worker-class gthread \
+  --workers 2 \
+  --threads 4 \
+  --timeout 120 \
+  --graceful-timeout 30 \
+  --keep-alive 5 \
+  --access-logfile - \
+  --error-logfile - \
+  --log-level info \
+  -b 0.0.0.0:8080 app:app
+```
+
+Danach systemd neu laden und NeoFab neu starten:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart neofab
+sudo systemctl status neofab
+```
+
+Die aktiven Startparameter koennen mit folgendem Befehl kontrolliert werden:
+
+```bash
+systemctl cat neofab
+```
 
 ### Windows PowerShell
 

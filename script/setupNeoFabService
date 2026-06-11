@@ -22,7 +22,8 @@ prompt FLASK_ENV "Flask environment" "production"
 prompt FLASK_PORT "Gunicorn port" "8080"
 prompt GUNICORN_WORKERS "Gunicorn workers" "2"
 prompt GUNICORN_THREADS "Gunicorn threads per worker" "4"
-prompt GUNICORN_TIMEOUT "Gunicorn request timeout seconds" "90"
+prompt GUNICORN_TIMEOUT "Gunicorn request timeout seconds" "120"
+prompt GUNICORN_KEEP_ALIVE "Gunicorn keep-alive seconds" "5"
 prompt SERVICE_NAME "systemd service name" "neofab"
 
 VENV_DIR="$APP_HOME/.venv"
@@ -65,7 +66,7 @@ ExecStart=${VENV_DIR}/bin/gunicorn \
   --threads ${GUNICORN_THREADS} \
   --timeout ${GUNICORN_TIMEOUT} \
   --graceful-timeout 30 \
-  --keep-alive 2 \
+  --keep-alive ${GUNICORN_KEEP_ALIVE} \
   --access-logfile - \
   --error-logfile - \
   --log-level info \
@@ -97,6 +98,8 @@ NeoFab service setup completed
 - Gunicorn port:      $FLASK_PORT
 - Gunicorn workers:   $GUNICORN_WORKERS
 - Gunicorn threads:   $GUNICORN_THREADS
+- Gunicorn timeout:   $GUNICORN_TIMEOUT
+- Gunicorn keepalive: $GUNICORN_KEEP_ALIVE
 - Environment:        FLASK_APP=app, FLASK_ENV=$FLASK_ENV
 - Systemd unit:       $SERVICE_PATH
 ----------------------------------------------------
