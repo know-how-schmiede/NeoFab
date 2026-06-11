@@ -24,6 +24,8 @@
 	--nf-avatar-bg: #e2e8f0;
 	--nf-avatar-border: #cbd5e1;
 	--nf-avatar-text: #0f172a;
+	--nf-footer-link: #475569;
+	--nf-footer-link-hover: #1d4ed8;
 
 	/* Badge palette */
 	--nf-badge-primary-bg: rgba(37, 99, 235, 0.16);
@@ -91,6 +93,8 @@ html[data-theme-mode="dark"] {
 	--nf-avatar-bg: #334155;
 	--nf-avatar-border: #475569;
 	--nf-avatar-text: #e5e7eb;
+	--nf-footer-link: #dbeafe;
+	--nf-footer-link-hover: #ffffff;
 	--nf-badge-primary-bg: #1e3a8a;
 	--nf-badge-primary-text: #dbeafe;
 	--nf-badge-success-bg: #14532d;
@@ -353,6 +357,23 @@ html[data-theme-mode="dark"] .pagination .page-link:hover {
 	background: var(--nf-avatar-bg);
 	color: var(--nf-avatar-text);
 	border: 1px solid var(--nf-avatar-border);
+}
+
+.site-footer {
+	background-color: rgb(var(--bs-light-rgb)) !important;
+	color: var(--nf-muted);
+}
+
+.site-footer .nf-footer-link {
+	color: var(--nf-footer-link) !important;
+	font-weight: 600;
+	text-underline-offset: 0.18em;
+}
+
+.site-footer .nf-footer-link:hover,
+.site-footer .nf-footer-link:focus {
+	color: var(--nf-footer-link-hover) !important;
+	text-decoration: underline !important;
 }
 
 /* Unified badges */

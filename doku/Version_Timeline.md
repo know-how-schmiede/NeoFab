@@ -2,6 +2,7 @@
 
 ## Version 0.9.25
 
+Bugfixing bzgl. Update, Fehler im Admin-Bereich entfernt
 Versionsnummer auf 0.9.25 angehoben
 
 ## Version 0.9.24
