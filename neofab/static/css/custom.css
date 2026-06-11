@@ -26,6 +26,10 @@
 	--nf-avatar-text: #0f172a;
 	--nf-footer-link: #475569;
 	--nf-footer-link-hover: #1d4ed8;
+	--nf-tab-link: #475569;
+	--nf-tab-link-hover: #1d4ed8;
+	--nf-tab-active-bg: #ffffff;
+	--nf-tab-active-text: #0f172a;
 
 	/* Badge palette */
 	--nf-badge-primary-bg: rgba(37, 99, 235, 0.16);
@@ -95,6 +99,10 @@ html[data-theme-mode="dark"] {
 	--nf-avatar-text: #e5e7eb;
 	--nf-footer-link: #dbeafe;
 	--nf-footer-link-hover: #ffffff;
+	--nf-tab-link: #cbd5e1;
+	--nf-tab-link-hover: #ffffff;
+	--nf-tab-active-bg: #0f172a;
+	--nf-tab-active-text: #ffffff;
 	--nf-badge-primary-bg: #1e3a8a;
 	--nf-badge-primary-text: #dbeafe;
 	--nf-badge-success-bg: #14532d;
@@ -357,6 +365,31 @@ html[data-theme-mode="dark"] .pagination .page-link:hover {
 	background: var(--nf-avatar-bg);
 	color: var(--nf-avatar-text);
 	border: 1px solid var(--nf-avatar-border);
+}
+
+.nav-tabs {
+	border-bottom-color: var(--nf-border);
+}
+
+.nav-tabs .nav-link {
+	color: var(--nf-tab-link) !important;
+	border-color: transparent;
+	font-weight: 600;
+	transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.nav-tabs .nav-link:hover,
+.nav-tabs .nav-link:focus {
+	color: var(--nf-tab-link-hover) !important;
+	background-color: var(--nf-nav-hover-bg);
+	border-color: var(--nf-border);
+}
+
+.nav-tabs .nav-link.active,
+.nav-tabs .nav-item.show .nav-link {
+	color: var(--nf-tab-active-text) !important;
+	background-color: var(--nf-tab-active-bg);
+	border-color: var(--nf-border) var(--nf-border) var(--nf-tab-active-bg);
 }
 
 .site-footer {
