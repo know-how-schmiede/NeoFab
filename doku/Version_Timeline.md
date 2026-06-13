@@ -1,5 +1,12 @@
 # Timeline NeoFab
 
+## Version 0.9.27
+
+Dashboard-Filter fuer Kategorie, Bereich und Status werden jetzt pro Browser-Session gespeichert
+Beim erneuten Oeffnen des Dashboards werden die zuletzt gewaehlten Filter automatisch wieder angewendet
+Die Auswahl Alle entfernt den gespeicherten Filterwert dauerhaft fuer die aktuelle Session
+Versionsnummer auf 0.9.27 angehoben
+
 ## Version 0.9.26
 
 Footer-Links mit eigener Theme-Klasse versehen und Kontraste fuer Hell- und Dunkelmodus verbessert

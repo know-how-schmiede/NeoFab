@@ -5194,9 +5194,26 @@ def dashboard():
     except (TypeError, ValueError):
         page = 1
     page = max(page, 1)
-    selected_category_id_raw = (request.args.get("category") or "").strip()
-    selected_area_id_raw = (request.args.get("area") or "").strip()
-    selected_status = (request.args.get("status") or "").strip()
+    dashboard_filter_session_keys = {
+        "category": "dashboard_filter_category",
+        "area": "dashboard_filter_area",
+        "status": "dashboard_filter_status",
+    }
+
+    def _get_persistent_dashboard_filter(name):
+        session_key = dashboard_filter_session_keys[name]
+        if name in request.args:
+            value = (request.args.get(name) or "").strip()
+            if value:
+                session[session_key] = value
+            else:
+                session.pop(session_key, None)
+            return value
+        return (session.get(session_key) or "").strip()
+
+    selected_category_id_raw = _get_persistent_dashboard_filter("category")
+    selected_area_id_raw = _get_persistent_dashboard_filter("area")
+    selected_status = _get_persistent_dashboard_filter("status")
 
     if request.method == "POST":
         action = (request.form.get("action") or "").strip()
@@ -5387,6 +5404,7 @@ def dashboard():
             selected_category_id = int(selected_category_id_raw)
         except (TypeError, ValueError):
             selected_category_id = None
+            session.pop(dashboard_filter_session_keys["category"], None)
 
     selected_area_id = None
     if selected_area_id_raw:
@@ -5394,17 +5412,21 @@ def dashboard():
             selected_area_id = int(selected_area_id_raw)
         except (TypeError, ValueError):
             selected_area_id = None
+            session.pop(dashboard_filter_session_keys["area"], None)
 
     category_filter_ids = {item["id"] for item in category_filters}
     if selected_category_id is not None and selected_category_id not in category_filter_ids:
         selected_category_id = None
+        session.pop(dashboard_filter_session_keys["category"], None)
 
     area_filter_ids = {item["id"] for item in area_filters}
     if selected_area_id is not None and selected_area_id not in area_filter_ids:
         selected_area_id = None
+        session.pop(dashboard_filter_session_keys["area"], None)
 
     if selected_status and selected_status not in status_filter_values:
         selected_status = ""
+        session.pop(dashboard_filter_session_keys["status"], None)
 
     if selected_category_id is not None:
         orders = [order for order in orders if order.category_id == selected_category_id]
