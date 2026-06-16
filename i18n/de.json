@@ -581,6 +581,8 @@
   "profile_theme_mode_label": "Darstellung",
   "profile_theme_light": "Helles Theme",
   "profile_theme_dark": "Dunkles Theme",
+  "profile_status_email_enabled_label": "Status-E-Mails empfangen",
+  "profile_status_email_enabled_help": "Wenn aktiv, erhaeltst du E-Mails zu Statusaenderungen deiner Auftraege.",
   "new_message": "neue Nachricht",
   "new_order": "Neuer Auftrag",
   "new_order_color_label": "Farbe",

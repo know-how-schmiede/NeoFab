@@ -1377,6 +1377,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     "created_at": u.created_at.isoformat() if u.created_at else "",
                     "last_login_at": u.last_login_at.isoformat() if u.last_login_at else "",
                     "is_active": bool(u.is_active),
+                    "status_email_enabled": bool(getattr(u, "status_email_enabled", True)),
                     "deleted_at": u.deleted_at.isoformat() if u.deleted_at else "",
                     "password_hash": u.password_hash,
                 }
@@ -1446,6 +1447,10 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             if user.language not in USER_LANGUAGE_VALUES:
                 user.language = "en"
             user.is_active = bool(entry.get("is_active", user.is_active if user.id else True))
+            user.status_email_enabled = coerce_bool(
+                entry.get("status_email_enabled", getattr(user, "status_email_enabled", True)),
+                True,
+            )
 
             user.salutation = (entry.get("salutation") or "").strip() or None
             user.first_name = (entry.get("first_name") or "").strip() or None

@@ -583,6 +583,8 @@
   "profile_theme_mode_label": "Apparence",
   "profile_theme_light": "Theme clair",
   "profile_theme_dark": "Theme sombre",
+  "profile_status_email_enabled_label": "Recevoir les e-mails de statut",
+  "profile_status_email_enabled_help": "Si active, vous recevez des e-mails lors des changements de statut de vos commandes.",
   "new_message": "nouveau message",
   "new_order": "Nouvelle commande",
   "new_order_color_label": "Couleur",

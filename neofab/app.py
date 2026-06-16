@@ -1658,6 +1658,8 @@ def ensure_user_preference_columns():
         statements = []
         if "theme_mode" not in cols:
             statements.append("ALTER TABLE user ADD COLUMN theme_mode VARCHAR(10) NOT NULL DEFAULT 'light'")
+        if "status_email_enabled" not in cols:
+            statements.append("ALTER TABLE user ADD COLUMN status_email_enabled BOOLEAN NOT NULL DEFAULT 1")
 
         for stmt in statements:
             db.session.execute(text(stmt))
@@ -2678,6 +2680,7 @@ def profile():
         theme_mode = request.form.get("theme_mode", "").strip().lower() or "light"
         if theme_mode not in {"light", "dark"}:
             theme_mode = "light"
+        status_email_enabled = bool(request.form.get("status_email_enabled"))
 
         # Basisvalidierungen
         if not email:
@@ -2700,6 +2703,7 @@ def profile():
                 user.note = note
                 user.language = language
                 user.theme_mode = theme_mode
+                user.status_email_enabled = status_email_enabled
 
                 if new_password:
                     user.set_password(new_password)

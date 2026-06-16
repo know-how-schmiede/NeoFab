@@ -624,6 +624,8 @@
   "profile_theme_mode_label": "Appearance",
   "profile_theme_light": "Light theme",
   "profile_theme_dark": "Dark theme",
+  "profile_status_email_enabled_label": "Receive status emails",
+  "profile_status_email_enabled_help": "When enabled, you receive emails about status changes for your orders.",
   "new_message": "new message",
   "new_order": "New Order",
   "new_order_color_label": "Color",

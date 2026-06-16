@@ -1,5 +1,13 @@
 # Timeline NeoFab
 
+## Version 0.9.29
+
+Benutzerprofil um eine Option zum Aktivieren oder Deaktivieren von Status-E-Mails erweitert
+Statusbezogene E-Mail-Benachrichtigungen beruecksichtigen die persoenliche Benutzereinstellung fuer Admins und Auftragsersteller
+Bestehende Benutzer erhalten die Einstellung automatisch mit aktivem Default, damit sich das bisherige Versandverhalten nicht ungewollt aendert
+User-JSON-Export und -Import um die Status-E-Mail-Einstellung erweitert
+Versionsnummer auf 0.9.29 angehoben
+
 ## Version 0.9.28
 
 Neue E-Mail-Aktion fuer Begruessungs-E-Mails bei neu erstellten Benutzerkonten ergaenzt

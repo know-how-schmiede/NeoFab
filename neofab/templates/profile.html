@@ -84,6 +84,24 @@
           </select>
         </div>
 
+        <div class="col-12">
+          <div class="form-check">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              id="status_email_enabled"
+              name="status_email_enabled"
+              {% if user.status_email_enabled %}checked{% endif %}
+            >
+            <label class="form-check-label" for="status_email_enabled">
+              {{ t("profile_status_email_enabled_label") }}
+            </label>
+          </div>
+          <div class="form-text">
+            {{ t("profile_status_email_enabled_help") }}
+          </div>
+        </div>
+
         <!-- Salutation -->
         <div class="col-md-4">
           <label for="salutation" class="form-label">

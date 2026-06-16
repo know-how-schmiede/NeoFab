@@ -89,6 +89,7 @@ def _collect_order_recipients(
     order: Order,
     include_owner: bool = False,
     include_cost_center: bool = False,
+    respect_status_email_enabled: bool = False,
 ) -> tuple[list[str], dict[str, str]]:
     recipients: list[str] = []
     seen: set[str] = set()
@@ -96,6 +97,8 @@ def _collect_order_recipients(
 
     admin_users = User.query.filter_by(role="admin").all()
     for user in admin_users:
+        if respect_status_email_enabled and not getattr(user, "status_email_enabled", True):
+            continue
         user_language = _normalize_language(getattr(user, "language", None))
         for email in _split_email_recipients(user.email):
             key = email.lower()
@@ -106,6 +109,14 @@ def _collect_order_recipients(
             recipient_languages[key] = user_language
 
     if include_owner and order.user:
+        if respect_status_email_enabled and not getattr(order.user, "status_email_enabled", True):
+            owner_can_receive_status_email = False
+        else:
+            owner_can_receive_status_email = True
+    else:
+        owner_can_receive_status_email = False
+
+    if include_owner and order.user and owner_can_receive_status_email:
         owner_language = _normalize_language(getattr(order.user, "language", None))
         for email in _split_email_recipients(order.user.email):
             key = email.lower()
@@ -620,6 +631,7 @@ def send_order_status_change_notification(
             order,
             include_owner=True,
             include_cost_center=True,
+            respect_status_email_enabled=True,
         )
         if not recipients:
             app.logger.info("No recipients found, skipping status notification.")
@@ -796,6 +808,7 @@ def send_poster_printed_notification(
             order,
             include_owner=True,
             include_cost_center=True,
+            respect_status_email_enabled=True,
         )
         if not recipients:
             app.logger.info("No recipients found, skipping poster notification.")
