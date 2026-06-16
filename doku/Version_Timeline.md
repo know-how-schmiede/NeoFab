@@ -1,5 +1,13 @@
 # Timeline NeoFab
 
+## Version 0.9.31
+
+Button-Design systemweit vereinheitlicht und Bootstrap-Button-Varianten ueber zentrale NeoFab-CSS-Regeln harmonisiert
+Primaere, sekundaere, Erfolgs-, Warn-, Info- und Gefahren-Buttons behalten unterschiedliche Farben, verwenden aber einheitliche Form, Rahmen, Schatten, Fokus- und Hover-Zustaende
+Outline-Buttons deutlicher als Buttons erkennbar gemacht
+Spezielle Vorschau- und 3D-Viewer-Buttons an die gemeinsame Button-Sprache angeglichen
+Version in Anwendung und README auf 0.9.31 angehoben
+
 ## Version 0.9.30
 
 G-Code-Druckauftraege um eine Anzahl fuer benoetigte Drucke erweitert
