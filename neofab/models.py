@@ -375,6 +375,7 @@ class OrderPrintJob(db.Model):
     duration_min = db.Column(db.Integer)
     filament_m = db.Column(db.Float)
     filament_g = db.Column(db.Float)
+    quantity = db.Column(db.Integer, nullable=False, default=1)
     filesize = db.Column(db.Integer)
     uploaded_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 

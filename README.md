@@ -120,9 +120,9 @@ The main scripts are:
 
 ## Current Version
 
-Current application version: **0.9.29**
+Current application version: **0.9.30**
 
-Recent changes include user-controlled status email preferences, welcome emails for newly created users, and the latest UI/consistency updates documented in the project timeline.
+Recent changes include G-Code print quantities with quantity-aware cost calculations, consistent welcome email language handling, and the latest UI/consistency updates documented in the project timeline.
 
 The update script installs Python dependencies from `neofab/requirements.txt`, including PyMuPDF for rendering the first page of uploaded poster PDFs as thumbnails.
 

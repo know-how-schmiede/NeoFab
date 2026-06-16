@@ -1110,6 +1110,7 @@
                 <tr>
                   <th style="width: 20%;">{{ t("print_jobs_table_file") }}</th>
                   <th style="width: 10%;">{{ t("print_jobs_table_status") }}</th>
+                  <th style="width: 8%;">{{ t("print_jobs_table_quantity") }}</th>
                   <th style="width: 13%;">{{ t("print_jobs_table_started_at") }}</th>
                   <th style="width: 9%;">{{ t("print_jobs_table_duration") }}</th>
                   <th style="width: 12%;">{{ t("order_printer_profile_label") }}</th>
@@ -1124,20 +1125,23 @@
                   {% set status_value = job.status or '' %}
                   {% set status_label = print_job_status_labels.get(status_value, status_value) %}
                   {% set status_style = print_job_status_styles.get(status_value, "bg-secondary") %}
+                  {% set quantity = job.quantity or 1 %}
                   {% set print_hours = ((job.duration_min or 0) / 60) %}
                   {% set job_printer_profile = job.printer_profile %}
                   {% set job_filament_material = job.filament_material %}
                   {% set machine_hourly = job_printer_profile.machine_hourly_rate if job_printer_profile else 0 %}
                   {% set maintenance_hourly = job_printer_profile.maintenance_hourly_rate if job_printer_profile else 0 %}
                   {% set setup_fee = job_printer_profile.setup_fee if job_printer_profile else 0 %}
-                  {% set machine_cost = (print_hours * ((machine_hourly or 0) + (maintenance_hourly or 0))) + (setup_fee or 0) %}
+                  {% set machine_time_cost = print_hours * ((machine_hourly or 0) + (maintenance_hourly or 0)) %}
+                  {% set machine_cost_per_print = machine_time_cost + (setup_fee or 0) %}
                   {% set price_per_g = job_filament_material.price_per_g if job_filament_material else 0 %}
                   {% set markup_percent = job_filament_material.markup_percent if job_filament_material else 0 %}
                   {% set drying_fee = job_filament_material.drying_fee if job_filament_material else 0 %}
                   {% set handling_fee = job_filament_material.handling_fee if job_filament_material else 0 %}
                   {% set filament_base_cost = (job.filament_g or 0) * (price_per_g or 0) %}
                   {% set material_cost = (filament_base_cost * (1 + ((markup_percent or 0) / 100))) + (drying_fee or 0) + (handling_fee or 0) %}
-                  {% set total_cost = machine_cost + material_cost %}
+                  {% set cost_per_print = machine_cost_per_print + material_cost %}
+                  {% set total_cost = ((machine_time_cost + material_cost) * quantity) + (setup_fee or 0) %}
                   <tr>
                     <td>
                       <div class="fw-semibold">{{ job.original_name }}</div>
@@ -1151,6 +1155,7 @@
                     <td>
                       <span class="badge {{ status_style }}">{{ status_label }}</span>
                     </td>
+                    <td>{{ quantity }}</td>
                     <td>
                       {{ fmt_datetime(job.started_at) if job.started_at else "-" }}
                     </td>
@@ -1175,7 +1180,12 @@
                         -
                       {% endif %}
                     </td>
-                    <td>{{ "%.2f"|format(total_cost) }} EUR</td>
+                    <td>
+                      {{ "%.2f"|format(total_cost) }} EUR
+                      {% if quantity > 1 %}
+                        <div class="text-muted small">{{ "%.2f"|format(cost_per_print) }} EUR / {{ t("print_jobs_unit_print") }}</div>
+                      {% endif %}
+                    </td>
                     <td>{{ job.note or "" }}</td>
                     <td class="text-end">
                       {% if current_user.role in ['admin', 'worker'] %}
@@ -1189,6 +1199,7 @@
                                 data-job-duration="{{ job.duration_min if job.duration_min is not none else '' }}"
                                 data-job-filament-m="{{ job.filament_m if job.filament_m is not none else '' }}"
                                 data-job-filament-g="{{ job.filament_g if job.filament_g is not none else '' }}"
+                                data-job-quantity="{{ quantity }}"
                                 data-job-printer-profile-id="{{ job.printer_profile_id or '' }}"
                                 data-job-filament-material-id="{{ job.filament_material_id or '' }}"
                                 data-job-note="{{ job.note or '' }}"
@@ -1261,6 +1272,16 @@
                     </option>
                   {% endfor %}
                 </select>
+              </div>
+              <div class="col-md-6">
+                <label for="print_quantity" class="form-label">{{ t("print_jobs_label_quantity") }}</label>
+                <input class="form-control"
+                       type="number"
+                       min="1"
+                       step="1"
+                       id="print_quantity"
+                       name="print_quantity"
+                       value="1">
               </div>
               <div class="col-md-6">
                 <label for="printer_profile_id" class="form-label">{{ t("order_printer_profile_label") }}</label>
@@ -1615,6 +1636,15 @@
                 </select>
               </div>
               <div class="col-md-6">
+                <label for="edit_print_quantity" class="form-label">{{ t("print_jobs_label_quantity") }}</label>
+                <input class="form-control"
+                       type="number"
+                       min="1"
+                       step="1"
+                       id="edit_print_quantity"
+                       name="edit_print_quantity">
+              </div>
+              <div class="col-md-6">
                 <label for="edit_printer_profile_id" class="form-label">{{ t("order_printer_profile_label") }}</label>
                 <select id="edit_printer_profile_id" name="edit_printer_profile_id" class="form-select">
                   <option value="">{{ t("select_placeholder") }}</option>
@@ -1694,17 +1724,21 @@
                 <div class="border rounded p-3 bg-light">
                   <div class="fw-semibold mb-2">{{ t("print_jobs_cost_title") }}</div>
                   <div class="row g-2 small">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                       <div class="text-muted">{{ t("print_jobs_cost_machine") }}</div>
                       <div class="fw-semibold" data-print-cost-machine>0.00</div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                       <div class="text-muted">{{ t("print_jobs_cost_material") }}</div>
                       <div class="fw-semibold" data-print-cost-material>0.00</div>
                     </div>
-                    <div class="col-md-4">
-                      <div class="text-muted">{{ t("print_jobs_cost_total") }}</div>
+                    <div class="col-md-3">
+                      <div class="text-muted">{{ t("print_jobs_cost_per_print") }}</div>
                       <div class="fw-semibold" data-print-cost-total>0.00</div>
+                    </div>
+                    <div class="col-md-3">
+                      <div class="text-muted">{{ t("print_jobs_cost_total") }}</div>
+                      <div class="fw-semibold" data-print-cost-grand-total>0.00</div>
                     </div>
                   </div>
                   <div class="form-text mt-2">{{ t("print_jobs_cost_hint") }}</div>
@@ -1938,6 +1972,7 @@
     const duration = button.getAttribute("data-job-duration") || "";
     const filamentM = button.getAttribute("data-job-filament-m") || "";
     const filamentG = button.getAttribute("data-job-filament-g") || "";
+    const quantity = button.getAttribute("data-job-quantity") || "1";
     const printerProfileId = button.getAttribute("data-job-printer-profile-id") || "";
     const filamentMaterialId = button.getAttribute("data-job-filament-material-id") || "";
     const note = button.getAttribute("data-job-note") || "";
@@ -1949,6 +1984,7 @@
     const durationInput = editModal.querySelector("#edit_print_duration_min");
     const filamentMInput = editModal.querySelector("#edit_print_filament_m");
     const filamentGInput = editModal.querySelector("#edit_print_filament_g");
+    const quantityInput = editModal.querySelector("#edit_print_quantity");
     const printerProfileSelect = editModal.querySelector("#edit_printer_profile_id");
     const filamentMaterialSelect = editModal.querySelector("#edit_filament_material_id");
     const noteInput = editModal.querySelector("#edit_print_note");
@@ -1960,6 +1996,7 @@
     if (durationInput) durationInput.value = duration;
     if (filamentMInput) filamentMInput.value = filamentM;
     if (filamentGInput) filamentGInput.value = filamentG;
+    if (quantityInput) quantityInput.value = quantity;
     if (printerProfileSelect) printerProfileSelect.value = printerProfileId;
     if (filamentMaterialSelect) filamentMaterialSelect.value = filamentMaterialId;
     if (noteInput) noteInput.value = note;
@@ -1972,9 +2009,11 @@
   const editFilamentMaterial = editModal.querySelector("#edit_filament_material_id");
   const editDuration = editModal.querySelector("#edit_print_duration_min");
   const editFilamentG = editModal.querySelector("#edit_print_filament_g");
+  const editQuantity = editModal.querySelector("#edit_print_quantity");
   const costMachine = editModal.querySelector("[data-print-cost-machine]");
   const costMaterial = editModal.querySelector("[data-print-cost-material]");
   const costTotal = editModal.querySelector("[data-print-cost-total]");
+  const costGrandTotal = editModal.querySelector("[data-print-cost-grand-total]");
 
   function parseNumber(value) {
     if (value === null || value === undefined || value === "") return 0;
@@ -1998,13 +2037,13 @@
     const materialOption = selectedOption(editFilamentMaterial);
     const durationHours = parseNumber(editDuration ? editDuration.value : 0) / 60;
     const filamentG = parseNumber(editFilamentG ? editFilamentG.value : 0);
+    const quantity = Math.max(1, Math.floor(parseNumber(editQuantity ? editQuantity.value : 1) || 1));
 
     const machineHourly = parseNumber(profileOption ? profileOption.dataset.machineHourlyRate : 0);
     const maintenanceHourly = parseNumber(profileOption ? profileOption.dataset.maintenanceHourlyRate : 0);
     const setupFee = parseNumber(profileOption ? profileOption.dataset.setupFee : 0);
-    const machineCost = durationHours > 0
-      ? (durationHours * (machineHourly + maintenanceHourly)) + setupFee
-      : setupFee;
+    const machineTimeCost = durationHours * (machineHourly + maintenanceHourly);
+    const machineCost = machineTimeCost + setupFee;
 
     const pricePerG = parseNumber(materialOption ? materialOption.dataset.pricePerG : 0);
     const markupPercent = parseNumber(materialOption ? materialOption.dataset.markupPercent : 0);
@@ -2013,10 +2052,12 @@
     const filamentBaseCost = filamentG * pricePerG;
     const materialCost = filamentBaseCost * (1 + (markupPercent / 100)) + dryingFee + handlingFee;
     const totalCost = machineCost + materialCost;
+    const grandTotal = ((machineTimeCost + materialCost) * quantity) + setupFee;
 
     if (costMachine) costMachine.textContent = formatCurrency(machineCost);
     if (costMaterial) costMaterial.textContent = formatCurrency(materialCost);
     if (costTotal) costTotal.textContent = formatCurrency(totalCost);
+    if (costGrandTotal) costGrandTotal.textContent = formatCurrency(grandTotal);
   }
 
   if (editStatus && editStartedAt) {
@@ -2024,7 +2065,7 @@
       fillStartTimeWhenStarted(editStatus, editStartedAt, true);
     });
   }
-  [editPrinterProfile, editFilamentMaterial, editDuration, editFilamentG].forEach((input) => {
+  [editPrinterProfile, editFilamentMaterial, editDuration, editFilamentG, editQuantity].forEach((input) => {
     if (input) {
       input.addEventListener("input", updatePrintCosts);
       input.addEventListener("change", updatePrintCosts);

@@ -170,14 +170,13 @@ def _collect_user_welcome_recipients(new_user: User) -> tuple[list[str], dict[st
 
     admin_users = User.query.filter_by(role="admin").all()
     for user in admin_users:
-        admin_language = _normalize_language(getattr(user, "language", None))
         for email in _split_email_recipients(user.email):
             key = email.lower()
             if key in seen:
                 continue
             seen.add(key)
             recipients.append(email)
-            recipient_languages[key] = admin_language
+            recipient_languages[key] = user_language
 
     return recipients, recipient_languages
 

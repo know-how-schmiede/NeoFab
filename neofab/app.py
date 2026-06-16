@@ -1386,6 +1386,7 @@ def ensure_order_print_jobs_table():
                         duration_min INTEGER,
                         filament_m FLOAT,
                         filament_g FLOAT,
+                        quantity INTEGER NOT NULL DEFAULT 1,
                         filesize INTEGER,
                         uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
@@ -1418,6 +1419,8 @@ def ensure_order_print_jobs_table():
             statements.append("ALTER TABLE order_print_jobs ADD COLUMN filament_m FLOAT")
         if "filament_g" not in cols:
             statements.append("ALTER TABLE order_print_jobs ADD COLUMN filament_g FLOAT")
+        if "quantity" not in cols:
+            statements.append("ALTER TABLE order_print_jobs ADD COLUMN quantity INTEGER NOT NULL DEFAULT 1")
         if "filesize" not in cols:
             statements.append("ALTER TABLE order_print_jobs ADD COLUMN filesize INTEGER")
         if "uploaded_at" not in cols:
@@ -4185,6 +4188,7 @@ def order_detail(order_id):
             duration_raw = (request.form.get("print_duration_min") or "").strip()
             filament_m_raw = (request.form.get("print_filament_m") or "").strip()
             filament_g_raw = (request.form.get("print_filament_g") or "").strip()
+            quantity_raw = (request.form.get("print_quantity") or "").strip()
             status_raw = (request.form.get("print_status") or "").strip() or "upload"
 
             if not file or not file.filename:
@@ -4242,6 +4246,11 @@ def order_detail(order_id):
                     flash(trans("flash_print_job_invalid_filament"), "danger")
                     return order_detail_redirect("print-jobs")
 
+            try:
+                quantity = max(1, int(quantity_raw or "1"))
+            except ValueError:
+                quantity = 1
+
             valid_statuses = set(PRINT_JOB_STATUS_VALUES)
             status = status_raw if status_raw in valid_statuses else "upload"
             if status == "started":
@@ -4287,6 +4296,7 @@ def order_detail(order_id):
                 duration_min=duration_min,
                 filament_m=filament_m,
                 filament_g=filament_g,
+                quantity=quantity,
             )
             db.session.add(job)
             db.session.flush()
@@ -4369,6 +4379,7 @@ def order_detail(order_id):
             duration_raw = (request.form.get("edit_print_duration_min") or "").strip()
             filament_m_raw = (request.form.get("edit_print_filament_m") or "").strip()
             filament_g_raw = (request.form.get("edit_print_filament_g") or "").strip()
+            quantity_raw = (request.form.get("edit_print_quantity") or "").strip()
             status_raw = (request.form.get("edit_print_status") or "").strip()
             printer_profile_id = request.form.get("edit_printer_profile_id") or None
             filament_material_id = request.form.get("edit_filament_material_id") or None
@@ -4414,6 +4425,11 @@ def order_detail(order_id):
                     flash(trans("flash_print_job_invalid_filament"), "danger")
                     return redirect(url_for("order_detail", order_id=order.id))
 
+            try:
+                quantity = max(1, int(quantity_raw or "1"))
+            except ValueError:
+                quantity = 1
+
             valid_statuses = set(PRINT_JOB_STATUS_VALUES)
             status = status_raw if status_raw in valid_statuses else (job.status or "upload")
             previous_status = job.status
@@ -4451,6 +4467,7 @@ def order_detail(order_id):
             job.duration_min = duration_min
             job.filament_m = filament_m
             job.filament_g = filament_g
+            job.quantity = quantity
 
             previous_status = order.status
             sync_3d_order_status_from_print_jobs(order)
@@ -5897,6 +5914,7 @@ def build_order_context(order, translator) -> dict:
                 "duration_min": job.duration_min,
                 "filament_m": job.filament_m,
                 "filament_g": job.filament_g,
+                "quantity": job.quantity or 1,
                 "note": job.note or "",
             }
             for job in print_jobs
@@ -6120,6 +6138,7 @@ def _build_order_pdf(order, translator) -> bytes:
         status_label = print_job_status_labels.get(job.status, job.status or "")
         if status_label:
             parts.append(status_label)
+        parts.append(f"{translator('print_jobs_table_quantity')} {job.quantity or 1}")
         if job.started_at:
             parts.append(
                 f"{translator('print_jobs_table_started_at')} {fmt_dt(job.started_at)}"

@@ -3018,15 +3018,14 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 markup_percent = filament_material.markup_percent if filament_material else 0
                 drying_fee = filament_material.drying_fee if filament_material else 0
                 handling_fee = filament_material.handling_fee if filament_material else 0
+                quantity = max(1, int(job.quantity or 1))
                 print_hours = (job.duration_min or 0) / 60
-                machine_cost = (
-                    print_hours * ((machine_hourly_rate or 0) + (maintenance_hourly_rate or 0))
-                ) + (setup_fee or 0)
+                machine_time_cost = print_hours * ((machine_hourly_rate or 0) + (maintenance_hourly_rate or 0))
                 filament_base_cost = (job.filament_g or 0) * (price_per_g or 0)
                 material_cost = (
                     filament_base_cost * (1 + ((markup_percent or 0) / 100))
                 ) + (drying_fee or 0) + (handling_fee or 0)
-                order_total_cost += machine_cost + material_cost
+                order_total_cost += ((machine_time_cost + material_cost) * quantity) + (setup_fee or 0)
             cost_center_order_costs[order.id] = order_total_cost
         return cost_center_orders, cost_center_order_costs, sum(cost_center_order_costs.values())
 
