@@ -6,6 +6,7 @@ G-Code-Druckauftraege um eine Anzahl fuer benoetigte Drucke erweitert
 Kostenberechnung fuer G-Code-Druckauftraege beruecksichtigt mehrere Drucke in der Gesamtsumme
 Ruestkostenpauschale wird bei mehreren Drucken nur einmal pro G-Code-Druckauftrag berechnet
 Kostenstellen-Gesamtkosten verwenden dieselbe Mengen- und Ruestkostenlogik wie die Auftragsansicht
+Dokumentation zur 3D-Druck-Kostenermittlung um Anzahl Drucke, Kosten pro Druck, Gesamtkosten und einmalige Ruestkosten erweitert
 Willkommens-E-Mails fuer neu angelegte Benutzer verwenden konsistent die Sprache des neuen Benutzerkontos
 Versionsnummer auf 0.9.30 angehoben
 

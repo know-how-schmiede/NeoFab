@@ -30,6 +30,7 @@ Die Werte sind Kalkulationswerte fuer den internen Betrieb. Sie ersetzen keine b
 | --- | --- |
 | Drucker-Typ | Liefert Maschinenstundensatz, Wartung pro Stunde und Ruestkostenpauschale. |
 | Filament-Material | Liefert Preis pro kg, Materialaufschlag, Trocknungspauschale und Lager-/Handlingpauschale. |
+| Anzahl Drucke | Gibt an, wie oft derselbe G-Code-Druck benoetigt wird. |
 | Druckdauer | Zeitbasis fuer Maschinen- und Wartungskosten. |
 | Filamentgewicht | Materialmenge fuer die Filamentkosten. |
 
@@ -47,21 +48,28 @@ Beispiel:
 26,00 EUR/kg / 1000 = 0,026 EUR/g
 ```
 
-### Maschinenkosten
+### Maschinenzeitkosten pro Druck
 
 ```text
-Maschinenkosten =
+Maschinenzeitkosten pro Druck =
   (Druckdauer in Minuten / 60)
   * (Maschinenstundensatz + Wartung pro Stunde)
-  + Ruestkostenpauschale
 ```
 
-Die Druckdauer wird in Stunden umgerechnet. Anschliessend werden Maschinenstundensatz und Wartung pro Stunde addiert. Die Ruestkostenpauschale wird einmal pro Druckauftrag ergaenzt.
+Die Druckdauer wird in Stunden umgerechnet. Anschliessend werden Maschinenstundensatz und Wartung pro Stunde addiert. Diese Maschinenzeitkosten gelten fuer einen einzelnen Druck.
 
-### Materialkosten
+### Ruestkosten
 
 ```text
-Materialkosten =
+Ruestkosten = Ruestkostenpauschale
+```
+
+Die Ruestkostenpauschale wird einmal pro G-Code-Druckauftrag ergaenzt. Wenn derselbe G-Code mehrfach gedruckt wird, wird sie nicht mit der Anzahl der Drucke multipliziert.
+
+### Materialkosten pro Druck
+
+```text
+Materialkosten pro Druck =
   Filamentgewicht in g
   * Preis pro Gramm
   * (1 + Materialaufschlag in % / 100)
@@ -69,15 +77,29 @@ Materialkosten =
   + Lager-/Handlingpauschale
 ```
 
-Der Materialaufschlag deckt typische Verluste ab, die nicht direkt im Filamentgewicht des fertigen Drucks enthalten sind.
+Der Materialaufschlag deckt typische Verluste ab, die nicht direkt im Filamentgewicht des fertigen Drucks enthalten sind. Materialkosten gelten fuer einen einzelnen Druck und werden bei mehreren Drucken mit der Anzahl multipliziert.
+
+### Kosten pro Druck
+
+```text
+Kosten pro Druck =
+  Maschinenzeitkosten pro Druck
+  + Materialkosten pro Druck
+  + Ruestkostenpauschale
+```
+
+Diese Einzelansicht dient zur Bewertung eines einzelnen Drucks. Bei mehreren Drucken darf sie nicht einfach mit der Anzahl multipliziert werden, weil die Ruestkostenpauschale sonst mehrfach berechnet wuerde.
 
 ### Druck-Gesamtkosten
 
 ```text
-Druck-Gesamtkosten = Maschinenkosten + Materialkosten
+Druck-Gesamtkosten =
+  (Maschinenzeitkosten pro Druck + Materialkosten pro Druck)
+  * Anzahl Drucke
+  + Ruestkostenpauschale
 ```
 
-NeoFab zeigt diese Druck-Gesamtkosten im Formular **Druckauftrag bearbeiten** und in der Tabelle **Order / Druckauftraege** an.
+NeoFab zeigt die Gesamtkosten in der Tabelle **Order / Druckauftraege** an. Im Formular **Druckauftrag bearbeiten** werden die Kosten pro Druck und die Gesamtkosten fuer die angegebene Anzahl angezeigt. Die Kostenstellen-Gesamtkosten verwenden dieselbe Formel.
 
 ## Beispielrechnung
 
@@ -85,6 +107,7 @@ Annahme fuer einen PETG-Druck auf einem Bambu Lab P1S:
 
 | Eingabe | Wert |
 | --- | ---: |
+| Anzahl Drucke | 3 |
 | Druckdauer | 240 Minuten |
 | Filamentgewicht | 120 g |
 | Maschinenstundensatz | 0,40 EUR/h |
@@ -100,18 +123,22 @@ Berechnung:
 ```text
 Preis pro Gramm = 26,00 / 1000 = 0,026 EUR/g
 
-Maschinenkosten =
-  (240 / 60) * (0,40 + 0,30) + 1,50
-  = 4 * 0,70 + 1,50
-  = 4,30 EUR
+Maschinenzeitkosten pro Druck =
+  (240 / 60) * (0,40 + 0,30)
+  = 4 * 0,70
+  = 2,80 EUR
 
-Materialkosten =
+Materialkosten pro Druck =
   120 * 0,026 * 1,12 + 0,80 + 0,50
   = 4,79 EUR
 
-Druck-Gesamtkosten =
-  4,30 + 4,79
+Kosten pro Druck =
+  2,80 + 4,79 + 1,50
   = 9,09 EUR
+
+Druck-Gesamtkosten fuer 3 Drucke =
+  (2,80 + 4,79) * 3 + 1,50
+  = 24,27 EUR
 ```
 
 ## Sinnvolle Beispielwerte fuer Drucker-Typen
