@@ -181,6 +181,8 @@
   "admin_settings_dashboard_rows_label": "Lignes du tableau de bord par page",
   "admin_settings_time_display_offset_label": "Décalage d'affichage de l'heure (heures)",
   "admin_settings_time_display_offset_help": "Décalage optionnel appliqué aux dates/heures affichées (ex. 2 ou -1).",
+  "admin_settings_account_activation_required_label": "Activation du compte par e-mail requise",
+  "admin_settings_account_activation_required_help": "Si active, les nouveaux comptes restent inactifs jusqu'a l'ouverture du lien d'activation. Si desactive, les nouveaux comptes sont actifs immediatement.",
   "admin_settings_activation_token_valid_minutes_label": "Lien d'activation valable (minutes)",
   "admin_settings_activation_token_valid_minutes_help": "Les nouveaux comptes utilisateur doivent etre actives par lien e-mail pendant cette duree.",
   "admin_settings_registration_domain_check_label": "Activer la verification de domaine pour l'inscription",

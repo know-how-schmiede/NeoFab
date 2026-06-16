@@ -106,6 +106,24 @@
           </div>
 
           <div class="col-md-6">
+            <div class="form-check mt-4">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="account_activation_required"
+                name="account_activation_required"
+                {% if settings.get('account_activation_required', True) %}checked{% endif %}
+              >
+              <label class="form-check-label" for="account_activation_required">
+                {{ t("admin_settings_account_activation_required_label") }}
+              </label>
+            </div>
+            <div class="form-text">
+              {{ t("admin_settings_account_activation_required_help") }}
+            </div>
+          </div>
+
+          <div class="col-md-6">
             <label for="activation_token_valid_minutes" class="form-label">
               {{ t("admin_settings_activation_token_valid_minutes_label") }}
             </label>

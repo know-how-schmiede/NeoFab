@@ -743,6 +743,10 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     request.form.get("time_display_offset_hours"),
                     None,
                 )
+                account_activation_required = coerce_bool(
+                    request.form.get("account_activation_required"),
+                    False,
+                )
                 registration_domain_check_enabled = coerce_bool(
                     request.form.get("registration_domain_check_enabled"),
                     False,
@@ -766,6 +770,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                         updated_settings = settings.copy()
                         updated_settings["session_timeout_minutes"] = timeout_value
                         updated_settings["activation_token_valid_minutes"] = activation_valid_minutes
+                        updated_settings["account_activation_required"] = account_activation_required
                         updated_settings["dashboard_rows_per_page"] = rows_value
                         updated_settings["time_display_offset_hours"] = offset_value
                         updated_settings["registration_domain_check_enabled"] = registration_domain_check_enabled
@@ -1158,6 +1163,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 "session_timeout_minutes": settings.get("session_timeout_minutes"),
                 "dashboard_rows_per_page": settings.get("dashboard_rows_per_page"),
                 "time_display_offset_hours": settings.get("time_display_offset_hours", 0),
+                "account_activation_required": bool(settings.get("account_activation_required", True)),
                 "activation_token_valid_minutes": settings.get("activation_token_valid_minutes", 120),
                 "registration_domain_check_enabled": bool(settings.get("registration_domain_check_enabled")),
                 "registration_allowed_domains": settings.get("registration_allowed_domains", ""),
@@ -1221,6 +1227,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 "session_timeout_minutes",
                 "dashboard_rows_per_page",
                 "time_display_offset_hours",
+                "account_activation_required",
                 "activation_token_valid_minutes",
                 "registration_domain_check_enabled",
                 "registration_allowed_domains",
@@ -1595,11 +1602,12 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             elif User.query.filter_by(email=email).first():
                 flash(trans("flash_user_email_exists"), "danger")
             else:
+                account_activation_required = bool(settings.get("account_activation_required", True))
                 user = User(
                     email=email,
                     role="admin",
                     language=language,
-                    is_active=False,
+                    is_active=not account_activation_required,
                     salutation=request.form.get("salutation") or None,
                     first_name=request.form.get("first_name") or None,
                     last_name=request.form.get("last_name") or None,
@@ -1612,7 +1620,9 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 user.set_password(password)
                 db.session.add(user)
                 db.session.flush()
-                activation_sent = _send_activation_link_for_user(user, source="admin_new_admin")
+                activation_sent = False
+                if account_activation_required:
+                    activation_sent = _send_activation_link_for_user(user, source="admin_new_admin")
                 db.session.commit()
                 write_audit_log(
                     current_app,
@@ -1623,14 +1633,17 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                         "target_email": user.email,
                         "target_role": user.role,
                         "source": "admin_new_admin",
-                        "activation_required": True,
+                        "activation_required": account_activation_required,
                         "activation_email_sent": activation_sent,
                     },
                 )
-                if activation_sent:
+                if account_activation_required and activation_sent:
                     flash(trans("flash_user_created_activation_email_sent"), "success")
-                else:
+                elif account_activation_required:
                     flash(trans("flash_user_created_activation_email_failed"), "warning")
+                else:
+                    send_user_welcome_notification(current_app, user, source="admin_new_admin")
+                    flash(trans("flash_user_created"), "success")
                 return redirect(url_for(".admin_user_list"))
 
         return render_template(

@@ -183,6 +183,8 @@
   "admin_settings_dashboard_rows_label": "Dashboard rows per page",
   "admin_settings_time_display_offset_label": "Display time offset (hours)",
   "admin_settings_time_display_offset_help": "Optional offset applied to displayed date/time values (e.g. 2 or -1).",
+  "admin_settings_account_activation_required_label": "Require account activation by email",
+  "admin_settings_account_activation_required_help": "When enabled, new user accounts remain inactive until the activation link is opened. When disabled, new accounts are active immediately.",
   "admin_settings_activation_token_valid_minutes_label": "Activation link valid (minutes)",
   "admin_settings_activation_token_valid_minutes_help": "New user accounts must be activated by email link within this period.",
   "admin_settings_registration_domain_check_label": "Enable domain check for registration",

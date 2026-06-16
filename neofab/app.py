@@ -2748,11 +2748,12 @@ def register():
             )
             flash(trans("flash_email_registered"), "warning")
         else:
+            account_activation_required = bool(settings.get("account_activation_required", True))
             user = User(
                 email=email,
                 role="user",
                 language=language,
-                is_active=False,
+                is_active=not account_activation_required,
                 salutation=salutation,
                 first_name=first_name,
                 last_name=last_name,
@@ -2765,7 +2766,9 @@ def register():
             user.set_password(password)
             db.session.add(user)
             db.session.flush()
-            activation_sent = send_activation_link_for_user(user, source="registration")
+            activation_sent = False
+            if account_activation_required:
+                activation_sent = send_activation_link_for_user(user, source="registration")
             db.session.commit()
             write_audit_log(
                 app,
@@ -2777,14 +2780,17 @@ def register():
                     "target_role": user.role,
                     "target_language": user.language,
                     "source": "registration",
-                    "activation_required": True,
+                    "activation_required": account_activation_required,
                     "activation_email_sent": activation_sent,
                 },
             )
-            if activation_sent:
+            if account_activation_required and activation_sent:
                 flash(trans("flash_registration_activation_email_sent"), "success")
-            else:
+            elif account_activation_required:
                 flash(trans("flash_registration_activation_email_failed"), "warning")
+            else:
+                send_user_welcome_notification(app, user, source="registration")
+                flash(trans("flash_registration_success"), "success")
             return redirect(url_for("login"))
 
     register_form = {
