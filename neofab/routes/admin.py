@@ -1661,6 +1661,19 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
 
         if request.method == "POST":
             trans = t
+            action = (request.form.get("action") or "save_user").strip()
+            if action == "send_activation_link":
+                if user.deleted_at is not None:
+                    flash(trans("flash_user_deleted_cannot_activate"), "danger")
+                else:
+                    activation_sent = _send_activation_link_for_user(user, source="admin_user_edit")
+                    db.session.commit()
+                    if activation_sent:
+                        flash(trans("flash_user_activation_link_sent"), "success")
+                    else:
+                        flash(trans("flash_user_activation_link_failed"), "warning")
+                return redirect(url_for(".admin_user_edit", user_id=user.id))
+
             email = request.form.get("email", "").strip().lower()
             role = request.form.get("role", "user").strip()
             if role not in USER_ROLE_VALUES:

@@ -4,6 +4,7 @@
 
 Neue Benutzerkonten werden zunaechst inaktiv angelegt und muessen per E-Mail-Link aktiviert werden
 Account-Aktivierung per E-Mail in den Systemeinstellungen als Option aktivierbar oder deaktivierbar gemacht
+Admin-Benutzerbearbeitung um eine Aktion zum erneuten Versenden eines Aktivierungslinks erweitert
 Aktivierungslinks werden als kryptografisch sichere Tokens erzeugt und nur gehasht in der Datenbank gespeichert
 Gueltigkeitsdauer fuer Aktivierungslinks in den Systemeinstellungen konfigurierbar gemacht
 Abgelaufene, ungueltige oder bereits verwendete Aktivierungslinks werden beim Login-/Aktivierungsprozess abgefangen
