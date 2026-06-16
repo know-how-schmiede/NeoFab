@@ -1,5 +1,16 @@
 # Timeline NeoFab
 
+## Version 0.9.28
+
+Neue E-Mail-Aktion fuer Begruessungs-E-Mails bei neu erstellten Benutzerkonten ergaenzt
+Begruessungs-E-Mail wird an den neuen Benutzer und die Admins versendet, sofern die Aktion aktiv und SMTP konfiguriert ist
+E-Mail-Text enthaelt eine freundliche NeoFab-Begruessung in der Sprache des Empfaengers sowie Hinweise zu Profil-Sprache und Hell-/Dunkel-Design
+Kurzanleitung zur Auftragserstellung, Auftrags-Art, Mehrfach-Uploads, STL-3D-Viewer, Chat, Projektstatus und zentraler Datenhaltung in den Standardtext aufgenommen
+Begruessungs-E-Mail-Texte fuer Deutsch, Englisch und Franzoesisch im Reiter Impressum / Datenschutz editierbar gemacht
+Admin-Benutzerformular um eine Sprachauswahl erweitert, damit neu angelegte Admins direkt die passende Begruessung erhalten
+E-Mail-Actions um Benutzer-Gruppe und fehlende Beschriftungen fuer bestehende Order-Actions ergaenzt
+Versionsnummer auf 0.9.28 angehoben
+
 ## Version 0.9.27
 
 Dashboard-Filter fuer Kategorie, Bereich und Status werden jetzt pro Browser-Session gespeichert

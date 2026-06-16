@@ -16,6 +16,10 @@ SETTINGS_FILE = INSTANCE_DIR / "config.json"
 
 EMAIL_ACTION_DEFS = (
     {
+        "key": "user_welcome",
+        "group": "users",
+    },
+    {
         "key": "new_order",
         "group": "orders",
     },
@@ -62,6 +66,11 @@ DEFAULT_SETTINGS = {
     "status_messages": {},
     "imprint_markdown": "",
     "privacy_markdown": "",
+    "welcome_email_texts": {
+        "de": "",
+        "en": "",
+        "fr": "",
+    },
 }
 DASHBOARD_ROWS_PER_PAGE_OPTIONS = (10, 25, 50)
 
@@ -293,6 +302,14 @@ def load_app_settings(app, force_reload: bool = False) -> Dict[str, Any]:
                 )
                 settings["imprint_markdown"] = str(loaded.get("imprint_markdown", "") or "")
                 settings["privacy_markdown"] = str(loaded.get("privacy_markdown", "") or "")
+                loaded_welcome_texts = loaded.get("welcome_email_texts", {})
+                if not isinstance(loaded_welcome_texts, dict):
+                    loaded_welcome_texts = {}
+                settings["welcome_email_texts"] = {
+                    "de": str(loaded_welcome_texts.get("de", "") or ""),
+                    "en": str(loaded_welcome_texts.get("en", "") or ""),
+                    "fr": str(loaded_welcome_texts.get("fr", "") or ""),
+                }
             _settings_mtime = SETTINGS_FILE.stat().st_mtime
         else:
             _settings_mtime = None
@@ -349,6 +366,14 @@ def save_app_settings(app, new_settings: Dict[str, Any]) -> Dict[str, Any]:
         )
         settings["imprint_markdown"] = str(new_settings.get("imprint_markdown", "") or "")
         settings["privacy_markdown"] = str(new_settings.get("privacy_markdown", "") or "")
+        new_welcome_texts = new_settings.get("welcome_email_texts", {})
+        if not isinstance(new_welcome_texts, dict):
+            new_welcome_texts = {}
+        settings["welcome_email_texts"] = {
+            "de": str(new_welcome_texts.get("de", "") or ""),
+            "en": str(new_welcome_texts.get("en", "") or ""),
+            "fr": str(new_welcome_texts.get("fr", "") or ""),
+        }
 
     settings["session_timeout_minutes"] = _apply_session_timeout_setting(
         app,

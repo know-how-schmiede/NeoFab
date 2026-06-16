@@ -120,9 +120,9 @@ The main scripts are:
 
 ## Current Version
 
-Current application version: **0.9.27**
+Current application version: **0.9.28**
 
-Recent changes include persistent dashboard filter selections for category, area, and status, plus the latest UI/consistency updates documented in the project timeline.
+Recent changes include welcome emails for newly created users, configurable welcome email text, and the latest UI/consistency updates documented in the project timeline.
 
 The update script installs Python dependencies from `neofab/requirements.txt`, including PyMuPDF for rendering the first page of uploaded poster PDFs as thumbnails.
 

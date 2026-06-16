@@ -76,6 +76,7 @@ from notifications import (
     send_admin_order_notification,
     send_order_status_change_notification,
     send_poster_printed_notification,
+    send_user_welcome_notification,
 )
 from schema_utils import ensure_training_playlist_schema
 from status_messages import (
@@ -2612,6 +2613,7 @@ def register():
                     "source": "registration",
                 },
             )
+            send_user_welcome_notification(app, user, source="registration")
             flash(trans("flash_registration_success"), "success")
             return redirect(url_for("login"))
 

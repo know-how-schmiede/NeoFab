@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import os
 import smtplib
+from collections.abc import Mapping
 from datetime import datetime, timedelta
 from email.utils import getaddresses
 from email.message import EmailMessage
-from typing import Mapping
 from zoneinfo import ZoneInfo
 
 from flask import url_for
@@ -15,6 +15,11 @@ from audit_logs import write_audit_log
 from config import is_email_action_enabled, load_app_settings
 from i18n_utils import DEFAULT_LANG, SUPPORTED_LANGS
 from models import Announcement, Order, User
+
+
+class _SafeFormatDict(dict):
+    def __missing__(self, key: str) -> str:
+        return "{" + key + "}"
 
 
 def _format_app_datetime(value: datetime | None, settings: Mapping[str, object]) -> str:
@@ -139,6 +144,33 @@ def _collect_active_user_recipients() -> tuple[list[str], dict[str, str]]:
     return recipients, recipient_languages
 
 
+def _collect_user_welcome_recipients(new_user: User) -> tuple[list[str], dict[str, str]]:
+    recipients: list[str] = []
+    seen: set[str] = set()
+    recipient_languages: dict[str, str] = {}
+
+    user_language = _normalize_language(getattr(new_user, "language", None))
+    for email in _split_email_recipients(new_user.email):
+        key = email.lower()
+        if key not in seen:
+            seen.add(key)
+            recipients.append(email)
+            recipient_languages[key] = user_language
+
+    admin_users = User.query.filter_by(role="admin").all()
+    for user in admin_users:
+        admin_language = _normalize_language(getattr(user, "language", None))
+        for email in _split_email_recipients(user.email):
+            key = email.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            recipients.append(email)
+            recipient_languages[key] = admin_language
+
+    return recipients, recipient_languages
+
+
 def _group_recipients_by_language(
     recipients: list[str],
     recipient_languages: Mapping[str, str],
@@ -183,6 +215,105 @@ def _notification_footer(settings: Mapping[str, object], entry_url: str, languag
     ]
 
 
+def _user_display_name(user: User) -> str:
+    name = " ".join(
+        part.strip()
+        for part in (getattr(user, "first_name", "") or "", getattr(user, "last_name", "") or "")
+        if part and part.strip()
+    )
+    return name or getattr(user, "email", "") or "NeoFab User"
+
+
+def _default_welcome_email_body(language: str) -> str:
+    if language == "de":
+        return "\n".join(
+            [
+                "Hallo {display_name},",
+                "",
+                "herzlich willkommen bei NeoFab. Dein Benutzerkonto wurde erstellt und du kannst NeoFab ab sofort fuer deine Auftraege nutzen.",
+                "",
+                "In deinem Benutzerprofil kannst du jederzeit die Sprache anpassen und das Design von Hell auf Dunkel umstellen.",
+                "",
+                "Kurzanleitung:",
+                "1. Auftrag erstellen.",
+                "2. Auftrags-Art auswaehlen, zum Beispiel Bauteile 3D drucken oder Plakat ausplotten.",
+                "3. Zum Auftrag koennen mehrere Bauteile oder mehrere Plakate hochgeladen werden.",
+                "",
+                "Was NeoFab fuer dich bereitstellt:",
+                "- Interner STL-3D-Viewer fuer hochgeladene Modelle.",
+                "- Chat-Moeglichkeit fuer Rueckfragen direkt am Auftrag.",
+                "- Aktuelle Informationen zum Projekt-Status.",
+                "- Zentrale Datenhaltung fuer die Projektbearbeitung, damit keine zusaetzlichen E-Mails mehr noetig sind.",
+                "",
+                "Profil oeffnen: {profile_url}",
+                "Dashboard oeffnen: {dashboard_url}",
+            ]
+        )
+    if language == "fr":
+        return "\n".join(
+            [
+                "Bonjour {display_name},",
+                "",
+                "bienvenue dans NeoFab. Votre compte utilisateur a ete cree et vous pouvez desormais utiliser NeoFab pour vos commandes.",
+                "",
+                "Dans votre profil utilisateur, vous pouvez modifier la langue et passer le design du mode clair au mode sombre.",
+                "",
+                "Guide rapide:",
+                "1. Creer une commande.",
+                "2. Selectionner le type de commande, par exemple impression 3D de pieces ou trace de poster.",
+                "3. Une commande peut contenir plusieurs pieces ou plusieurs posters.",
+                "",
+                "NeoFab vous propose:",
+                "- Visionneuse STL 3D integree pour les modeles televerses.",
+                "- Chat pour les questions directement dans la commande.",
+                "- Informations actuelles sur le statut du projet.",
+                "- Stockage central des donnees de projet, sans e-mails supplementaires.",
+                "",
+                "Ouvrir le profil: {profile_url}",
+                "Ouvrir le tableau de bord: {dashboard_url}",
+            ]
+        )
+    return "\n".join(
+        [
+            "Hello {display_name},",
+            "",
+            "welcome to NeoFab. Your user account has been created and you can now use NeoFab for your orders.",
+            "",
+            "In your user profile, you can change the language and switch the design from light to dark mode at any time.",
+            "",
+            "Quick guide:",
+            "1. Create an order.",
+            "2. Select the order type, for example 3D print parts or plot a poster.",
+            "3. An order can contain multiple parts or multiple posters.",
+            "",
+            "NeoFab provides:",
+            "- Built-in STL 3D viewer for uploaded models.",
+            "- Chat for questions directly on the order.",
+            "- Current information about project status.",
+            "- Central project data storage, so additional emails are no longer needed.",
+            "",
+            "Open profile: {profile_url}",
+            "Open dashboard: {dashboard_url}",
+        ]
+    )
+
+
+def _welcome_email_body(settings: Mapping[str, object], new_user: User, language: str, profile_url: str, dashboard_url: str) -> str:
+    custom_texts = settings.get("welcome_email_texts", {})
+    if not isinstance(custom_texts, Mapping):
+        custom_texts = {}
+    template = str(custom_texts.get(language, "") or "").strip() or _default_welcome_email_body(language)
+    values = _SafeFormatDict(
+        display_name=_user_display_name(new_user),
+        first_name=getattr(new_user, "first_name", "") or "",
+        last_name=getattr(new_user, "last_name", "") or "",
+        email=getattr(new_user, "email", "") or "",
+        profile_url=profile_url,
+        dashboard_url=dashboard_url,
+    )
+    return template.format_map(values)
+
+
 def _send_message(settings: Mapping[str, object], msg: EmailMessage) -> None:
     smtp_host = settings.get("smtp_host")
     smtp_port = settings.get("smtp_port")
@@ -205,6 +336,119 @@ def _send_message(settings: Mapping[str, object], msg: EmailMessage) -> None:
         if smtp_user:
             server.login(smtp_user, smtp_password or "")
         server.send_message(msg, from_addr=smtp_user or smtp_from)
+
+
+def send_user_welcome_notification(app, new_user: User, source: str = "user_created") -> bool:
+    """Notify the new user and admins that a user account has been created."""
+    try:
+        settings = load_app_settings(app, force_reload=True)
+        if not is_email_action_enabled(settings, "user_welcome"):
+            app.logger.info("User welcome notification disabled, skipping email.")
+            return False
+
+        smtp_host = settings.get("smtp_host")
+        smtp_port = settings.get("smtp_port")
+        smtp_from = settings.get("smtp_from_address")
+
+        if not smtp_host or not smtp_port or not smtp_from:
+            app.logger.info("SMTP not configured, skipping user welcome notification.")
+            return False
+
+        recipients, recipient_languages = _collect_user_welcome_recipients(new_user)
+        if not recipients:
+            app.logger.info("No recipients found, skipping user welcome notification.")
+            return False
+        recipients_by_language = _group_recipients_by_language(recipients, recipient_languages)
+
+        try:
+            profile_url = url_for("profile", _external=True)
+        except Exception:
+            profile_url = url_for("profile")
+        try:
+            dashboard_url = url_for("dashboard", _external=True)
+        except Exception:
+            dashboard_url = url_for("dashboard")
+
+        created_by = current_user.email if current_user.is_authenticated else ""
+        for language, lang_recipients in recipients_by_language.items():
+            msg = EmailMessage()
+            if language == "de":
+                msg["Subject"] = f"NeoFab: Willkommen, {_user_display_name(new_user)}"
+            elif language == "fr":
+                msg["Subject"] = f"NeoFab : Bienvenue, {_user_display_name(new_user)}"
+            else:
+                msg["Subject"] = f"NeoFab: Welcome, {_user_display_name(new_user)}"
+            msg["From"] = smtp_from
+            msg["To"] = ", ".join(lang_recipients)
+            if created_by:
+                msg["Reply-To"] = created_by
+
+            body_lines = [
+                _welcome_email_body(settings, new_user, language, profile_url, dashboard_url),
+                "",
+            ]
+            if language == "de":
+                body_lines.extend(
+                    [
+                        "Kontodetails:",
+                        f"- E-Mail: {new_user.email}",
+                        f"- Rolle: {new_user.role}",
+                        f"- Sprache: {_normalize_language(getattr(new_user, 'language', None))}",
+                    ]
+                )
+                if created_by:
+                    body_lines.append(f"- Erstellt von: {created_by}")
+            elif language == "fr":
+                body_lines.extend(
+                    [
+                        "Details du compte:",
+                        f"- E-mail: {new_user.email}",
+                        f"- Role: {new_user.role}",
+                        f"- Langue: {_normalize_language(getattr(new_user, 'language', None))}",
+                    ]
+                )
+                if created_by:
+                    body_lines.append(f"- Cree par: {created_by}")
+            else:
+                body_lines.extend(
+                    [
+                        "Account details:",
+                        f"- Email: {new_user.email}",
+                        f"- Role: {new_user.role}",
+                        f"- Language: {_normalize_language(getattr(new_user, 'language', None))}",
+                    ]
+                )
+                if created_by:
+                    body_lines.append(f"- Created by: {created_by}")
+
+            body_lines.extend(_notification_footer(settings, dashboard_url, language))
+            msg.set_content("\n".join(body_lines))
+
+            _send_message(settings, msg)
+            write_audit_log(
+                app,
+                "email_sent",
+                user=current_user if current_user.is_authenticated else new_user,
+                details={
+                    "kind": "user_welcome",
+                    "language": language,
+                    "target_user_id": new_user.id,
+                    "target_email": new_user.email,
+                    "source": source,
+                    "subject": msg["Subject"],
+                    "recipient_count": len(lang_recipients),
+                    "recipients": lang_recipients,
+                },
+            )
+
+        app.logger.info("Sent user welcome notification for user %s", new_user.id)
+        return True
+    except Exception:
+        app.logger.exception(
+            "Failed to send user welcome notification for user %s",
+            getattr(new_user, "id", "?"),
+        )
+        return False
 
 
 def send_admin_order_notification(app, order: Order, status_labels: Mapping[str, str] | None = None) -> bool:

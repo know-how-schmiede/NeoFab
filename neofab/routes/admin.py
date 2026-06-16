@@ -81,6 +81,7 @@ from models import (
     UserOrderAreaPreference,
     db,
 )
+from notifications import send_user_welcome_notification
 from version import APP_VERSION
 
 USER_ROLE_OPTIONS = [
@@ -89,6 +90,12 @@ USER_ROLE_OPTIONS = [
     ("worker", "role_worker"),
 ]
 USER_ROLE_VALUES = {value for value, _label_key in USER_ROLE_OPTIONS}
+USER_LANGUAGE_OPTIONS = [
+    ("de", "Deutsch"),
+    ("en", "English"),
+    ("fr", "Francais"),
+]
+USER_LANGUAGE_VALUES = {value for value, _label in USER_LANGUAGE_OPTIONS}
 
 
 def _translator(get_translator: Callable[[], Optional[Callable[[str], str]]]) -> Callable[[str], str]:
@@ -859,11 +866,17 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             elif form_type == "legal":
                 imprint_markdown = request.form.get("imprint_markdown") or ""
                 privacy_markdown = request.form.get("privacy_markdown") or ""
+                welcome_email_texts = {
+                    "de": request.form.get("welcome_email_text_de") or "",
+                    "en": request.form.get("welcome_email_text_en") or "",
+                    "fr": request.form.get("welcome_email_text_fr") or "",
+                }
 
                 try:
                     updated_settings = settings.copy()
                     updated_settings["imprint_markdown"] = imprint_markdown
                     updated_settings["privacy_markdown"] = privacy_markdown
+                    updated_settings["welcome_email_texts"] = welcome_email_texts
                     save_app_settings(current_app, updated_settings)
                     flash(trans("flash_legal_settings_saved"), "success")
                     return redirect(url_for(".admin_settings"))
@@ -958,10 +971,11 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         email_action_values = normalize_email_actions(settings.get("email_actions"))
         email_action_groups = []
         group_labels = {
+            "users": trans("email_action_group_users"),
             "orders": trans("email_action_group_orders"),
             "announcements": trans("email_action_group_announcements"),
         }
-        for group_key in ("orders", "announcements"):
+        for group_key in ("users", "orders", "announcements"):
             items = []
             for item in EMAIL_ACTION_DEFS:
                 if item["group"] != group_key:
@@ -1429,6 +1443,8 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
 
             user.role = (entry.get("role") or user.role or "user").strip() or "user"
             user.language = (entry.get("language") or user.language or "en").strip() or "en"
+            if user.language not in USER_LANGUAGE_VALUES:
+                user.language = "en"
             user.is_active = bool(entry.get("is_active", user.is_active if user.id else True))
 
             user.salutation = (entry.get("salutation") or "").strip() or None
@@ -1478,6 +1494,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     "source": "user_import",
                 },
             )
+            send_user_welcome_notification(current_app, user, source="user_import")
         for user in imported_updated:
             write_audit_log(
                 current_app,
@@ -1506,6 +1523,9 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         if request.method == "POST":
             email = request.form.get("email", "").strip().lower()
             password = request.form.get("password", "")
+            language = (request.form.get("language") or "en").strip().lower()
+            if language not in USER_LANGUAGE_VALUES:
+                language = "en"
 
             if not email:
                 flash(trans("flash_email_required"), "danger")
@@ -1517,6 +1537,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 user = User(
                     email=email,
                     role="admin",
+                    language=language,
                     is_active=True,
                     salutation=request.form.get("salutation") or None,
                     first_name=request.form.get("first_name") or None,
@@ -1541,10 +1562,16 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                         "source": "admin_new_admin",
                     },
                 )
+                send_user_welcome_notification(current_app, user, source="admin_new_admin")
                 flash(trans("flash_user_created"), "success")
                 return redirect(url_for(".admin_user_list"))
 
-        return render_template("admin_user_edit.html", user=None, is_new_admin=True)
+        return render_template(
+            "admin_user_edit.html",
+            user=None,
+            is_new_admin=True,
+            language_options=USER_LANGUAGE_OPTIONS,
+        )
 
     @bp.route("/users/<int:user_id>/edit", methods=["GET", "POST"], endpoint="admin_user_edit")
     @roles_required("admin")
@@ -1558,6 +1585,9 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             role = request.form.get("role", "user").strip()
             if role not in USER_ROLE_VALUES:
                 role = "user"
+            language = (request.form.get("language") or user.language or "en").strip().lower()
+            if language not in USER_LANGUAGE_VALUES:
+                language = "en"
             new_password = request.form.get("password", "")
 
             salutation = request.form.get("salutation") or None
@@ -1580,6 +1610,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     before = {
                         "email": user.email,
                         "role": user.role,
+                        "language": user.language,
                         "is_active": bool(user.is_active),
                     }
                     if user.id == current_user.id:
@@ -1591,6 +1622,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     user.email = email
                     if user.id != current_user.id:
                         user.role = role
+                    user.language = language
                     user.is_active = is_active
 
                     user.salutation = salutation
@@ -1653,7 +1685,9 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                             "target_role": user.role,
                             "previous_email": before["email"],
                             "previous_role": before["role"],
+                            "previous_language": before["language"],
                             "previous_is_active": before["is_active"],
+                            "new_language": user.language,
                             "new_is_active": bool(user.is_active),
                             "password_changed": bool(new_password),
                             "source": "admin_user_edit",
@@ -1674,6 +1708,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             "admin_user_edit.html",
             user=user,
             role_options=USER_ROLE_OPTIONS,
+            language_options=USER_LANGUAGE_OPTIONS,
             worker_categories=worker_categories,
             selected_worker_category_ids=selected_worker_category_ids,
         )
