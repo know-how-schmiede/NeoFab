@@ -76,6 +76,7 @@ from notifications import (
     send_announcement_attention_notification,
     send_admin_order_notification,
     send_order_status_change_notification,
+    send_password_reset_notification,
     send_poster_printed_notification,
     send_user_activation_notification,
     send_user_welcome_notification,
@@ -97,6 +98,7 @@ from models import (
     db,
     User,
     UserActivationToken,
+    UserPasswordResetToken,
     Order,
     OrderCategory,
     OrderArea,
@@ -1728,10 +1730,61 @@ def ensure_user_activation_tokens_table():
         app.logger.exception("Failed to ensure user activation token table exists")
 
 
+def ensure_user_password_reset_tokens_table():
+    """
+    Ensures the password reset token table exists.
+    """
+    try:
+        exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='user_password_reset_tokens'")
+        ).scalar()
+        if not exists:
+            db.session.execute(
+                text(
+                    """
+                    CREATE TABLE user_password_reset_tokens (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        token_hash VARCHAR(64) NOT NULL UNIQUE,
+                        expires_at DATETIME NOT NULL,
+                        used_at DATETIME,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+            )
+            db.session.commit()
+            return
+
+        cols = {
+            row[1]
+            for row in db.session.execute(text("PRAGMA table_info(user_password_reset_tokens)"))
+        }
+        statements = []
+        if "user_id" not in cols:
+            statements.append("ALTER TABLE user_password_reset_tokens ADD COLUMN user_id INTEGER NOT NULL DEFAULT 0")
+        if "token_hash" not in cols:
+            statements.append("ALTER TABLE user_password_reset_tokens ADD COLUMN token_hash VARCHAR(64) NOT NULL DEFAULT ''")
+        if "expires_at" not in cols:
+            statements.append("ALTER TABLE user_password_reset_tokens ADD COLUMN expires_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP")
+        if "used_at" not in cols:
+            statements.append("ALTER TABLE user_password_reset_tokens ADD COLUMN used_at DATETIME")
+        if "created_at" not in cols:
+            statements.append("ALTER TABLE user_password_reset_tokens ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP")
+
+        for stmt in statements:
+            db.session.execute(text(stmt))
+        if statements:
+            db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure password reset token table exists")
+
+
 with app.app_context():
     ensure_user_preference_columns()
     ensure_user_status_columns()
     ensure_user_activation_tokens_table()
+    ensure_user_password_reset_tokens_table()
     ensure_order_file_columns()
     ensure_order_image_columns()
     ensure_training_videos_table()
@@ -2471,6 +2524,50 @@ def send_activation_link_for_user(user: User, source: str = "user_activation") -
     return sent
 
 
+def create_password_reset_token(user: User) -> tuple[str, datetime]:
+    settings = load_app_settings(app)
+    valid_minutes = _activation_valid_minutes(settings)
+    now = datetime.utcnow()
+    token = secrets.token_urlsafe(32)
+
+    UserPasswordResetToken.query.filter_by(user_id=user.id, used_at=None).update(
+        {"used_at": now},
+        synchronize_session=False,
+    )
+    reset_token = UserPasswordResetToken(
+        user_id=user.id,
+        token_hash=_activation_token_hash(token),
+        expires_at=now + timedelta(minutes=valid_minutes),
+        created_at=now,
+    )
+    db.session.add(reset_token)
+    return token, reset_token.expires_at
+
+
+def send_password_reset_link_for_user(user: User) -> bool:
+    token, expires_at = create_password_reset_token(user)
+    db.session.flush()
+    reset_url = url_for("password_reset_confirm", token=token, _external=True)
+    sent = send_password_reset_notification(
+        app,
+        user,
+        reset_url=reset_url,
+        expires_at=expires_at,
+    )
+    write_audit_log(
+        app,
+        "password_reset_token_created",
+        user=user,
+        details={
+            "target_user_id": user.id,
+            "target_email": user.email,
+            "expires_at": expires_at.isoformat(),
+            "email_sent": sent,
+        },
+    )
+    return sent
+
+
 @app.route("/activate/<token>")
 def activate_user(token):
     trans = inject_globals().get("t")
@@ -2512,6 +2609,94 @@ def activate_user(token):
     send_user_welcome_notification(app, user, source="activation")
     flash(trans("flash_activation_success"), "success")
     return redirect(url_for("login"))
+
+
+@app.route("/password-reset", methods=["GET", "POST"])
+def password_reset_request():
+    if current_user.is_authenticated:
+        return redirect(url_for("dashboard"))
+
+    trans = inject_globals().get("t")
+    if request.method == "POST":
+        email = (request.form.get("email") or "").strip().lower()
+        if not email:
+            flash(trans("flash_email_required"), "warning")
+            return render_template("password_reset_request.html")
+
+        user = User.query.filter_by(email=email).first()
+        sent = False
+        if user and user.deleted_at is None and user.is_active:
+            sent = send_password_reset_link_for_user(user)
+            db.session.commit()
+
+        write_audit_log(
+            app,
+            "password_reset_requested",
+            user=user if user else None,
+            details={
+                "email": email,
+                "matched_user": bool(user),
+                "eligible": bool(user and user.deleted_at is None and user.is_active),
+                "email_sent": sent,
+            },
+        )
+        flash(trans("flash_password_reset_request_received"), "info")
+        return redirect(url_for("login"))
+
+    return render_template("password_reset_request.html")
+
+
+@app.route("/password-reset/<token>", methods=["GET", "POST"])
+def password_reset_confirm(token):
+    if current_user.is_authenticated:
+        return redirect(url_for("dashboard"))
+
+    trans = inject_globals().get("t")
+    reset_token = UserPasswordResetToken.query.filter_by(
+        token_hash=_activation_token_hash(token)
+    ).first()
+    now = datetime.utcnow()
+
+    if not reset_token:
+        flash(trans("flash_password_reset_invalid"), "danger")
+        return redirect(url_for("login"))
+    if reset_token.used_at is not None:
+        flash(trans("flash_password_reset_used"), "warning")
+        return redirect(url_for("login"))
+    if reset_token.expires_at < now:
+        flash(trans("flash_password_reset_expired"), "warning")
+        return redirect(url_for("password_reset_request"))
+
+    user = User.query.get(reset_token.user_id)
+    if not user or user.deleted_at is not None or not user.is_active:
+        reset_token.used_at = now
+        db.session.commit()
+        flash(trans("flash_password_reset_invalid"), "danger")
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        password2 = request.form.get("password2", "")
+        if not password:
+            flash(trans("flash_password_required"), "warning")
+            return render_template("password_reset_confirm.html", token=token)
+        if password != password2:
+            flash(trans("flash_passwords_mismatch"), "warning")
+            return render_template("password_reset_confirm.html", token=token)
+
+        user.set_password(password)
+        reset_token.used_at = now
+        db.session.commit()
+        write_audit_log(
+            app,
+            "password_reset_completed",
+            user=user,
+            details={"target_user_id": user.id, "target_email": user.email},
+        )
+        flash(trans("flash_password_reset_success"), "success")
+        return redirect(url_for("login"))
+
+    return render_template("password_reset_confirm.html", token=token)
 
 
 @app.route("/login", methods=["GET", "POST"])

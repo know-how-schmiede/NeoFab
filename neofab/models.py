@@ -61,6 +61,19 @@ class UserActivationToken(db.Model):
     user = db.relationship("User")
 
 
+class UserPasswordResetToken(db.Model):
+    __tablename__ = "user_password_reset_tokens"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    token_hash = db.Column(db.String(64), unique=True, nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    used_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    user = db.relationship("User")
+
+
 # --- Order-Modell ------------------------------------------------------------
 
 class Order(db.Model):
@@ -561,6 +574,7 @@ __all__ = [
     "db",
     "User",
     "UserActivationToken",
+    "UserPasswordResetToken",
     "Order",
     "OrderCategory",
     "OrderArea",

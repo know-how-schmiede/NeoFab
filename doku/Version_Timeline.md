@@ -1,5 +1,14 @@
 # Timeline NeoFab
 
+## Version 0.9.33
+
+Login um Passwort-vergessen-Funktion mit E-Mail-Link erweitert
+Passwort-Reset-Links werden kryptografisch sicher erzeugt, nur gehasht gespeichert und zeitlich begrenzt
+Neue Reset-Anforderung entwertet bisherige ungenutzte Reset-Links desselben Benutzers
+Passwort-Reset setzt ein neues Passwort ohne Admin-Eingriff und schuetzt die Anfrage gegen Account-Ermittlung
+Gueltigkeitsdauer der bestehenden Link-Einstellung gilt nun fuer Aktivierungs- und Passwort-Reset-Links
+Version in Anwendung und README auf 0.9.33 angehoben
+
 ## Version 0.9.32
 
 Neue Benutzerkonten werden zunaechst inaktiv angelegt und muessen per E-Mail-Link aktiviert werden

@@ -417,6 +417,94 @@ def send_user_activation_notification(
         return False
 
 
+def send_password_reset_notification(
+    app,
+    user: User,
+    reset_url: str,
+    expires_at: datetime,
+) -> bool:
+    """Send a one-time password reset link to an active user."""
+    try:
+        settings = load_app_settings(app, force_reload=True)
+        smtp_host = settings.get("smtp_host")
+        smtp_port = settings.get("smtp_port")
+        smtp_from = settings.get("smtp_from_address")
+
+        if not smtp_host or not smtp_port or not smtp_from:
+            app.logger.info("SMTP not configured, skipping password reset notification.")
+            return False
+
+        language = _normalize_language(getattr(user, "language", None))
+        display_name = _user_display_name(user)
+        expires_text = _format_app_datetime(expires_at, settings)
+        msg = EmailMessage()
+        if language == "de":
+            msg["Subject"] = f"NeoFab: Passwort zuruecksetzen, {display_name}"
+            body_lines = [
+                f"Hallo {display_name},",
+                "",
+                "fuer dein NeoFab-Benutzerkonto wurde ein Passwort-Reset angefordert.",
+                "Bitte setze dein Passwort ueber den folgenden Link neu:",
+                reset_url,
+                "",
+                f"Der Link ist gueltig bis: {expires_text}",
+                "",
+                "Wenn du diesen Reset nicht angefordert hast, ignoriere diese E-Mail.",
+            ]
+        elif language == "fr":
+            msg["Subject"] = f"NeoFab : reinitialiser le mot de passe, {display_name}"
+            body_lines = [
+                f"Bonjour {display_name},",
+                "",
+                "une reinitialisation du mot de passe a ete demandee pour votre compte NeoFab.",
+                "Veuillez definir un nouveau mot de passe avec le lien suivant :",
+                reset_url,
+                "",
+                f"Le lien est valable jusqu'a : {expires_text}",
+                "",
+                "Si vous n'avez pas demande cette reinitialisation, ignorez cet e-mail.",
+            ]
+        else:
+            msg["Subject"] = f"NeoFab: Reset password, {display_name}"
+            body_lines = [
+                f"Hello {display_name},",
+                "",
+                "a password reset was requested for your NeoFab user account.",
+                "Please set a new password using the following link:",
+                reset_url,
+                "",
+                f"The link is valid until: {expires_text}",
+                "",
+                "If you did not request this reset, ignore this email.",
+            ]
+
+        msg["From"] = smtp_from
+        msg["To"] = user.email
+        body_lines.extend(_notification_footer(settings, reset_url, language))
+        msg.set_content("\n".join(body_lines))
+        _send_message(settings, msg)
+        write_audit_log(
+            app,
+            "email_sent",
+            user=user,
+            details={
+                "kind": "password_reset",
+                "language": language,
+                "target_user_id": user.id,
+                "target_email": user.email,
+                "subject": msg["Subject"],
+                "expires_at": expires_at.isoformat() if expires_at else "",
+            },
+        )
+        return True
+    except Exception:
+        app.logger.exception(
+            "Failed to send password reset notification for user %s",
+            getattr(user, "id", "?"),
+        )
+        return False
+
+
 def _send_message(settings: Mapping[str, object], msg: EmailMessage) -> None:
     smtp_host = settings.get("smtp_host")
     smtp_port = settings.get("smtp_port")
