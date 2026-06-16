@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from pathlib import Path
+import hashlib
 import os
 import secrets
 import json
@@ -62,6 +63,7 @@ from models import (
     TrainingPlaylist,
     TrainingVideo,
     User,
+    UserActivationToken,
     Announcement,
     AnnouncementRead,
     PrinterProfile,
@@ -81,7 +83,7 @@ from models import (
     UserOrderAreaPreference,
     db,
 )
-from notifications import send_user_welcome_notification
+from notifications import send_user_activation_notification, send_user_welcome_notification
 from version import APP_VERSION
 
 USER_ROLE_OPTIONS = [
@@ -234,6 +236,51 @@ def _build_simple_text_pdf(lines: list[str]) -> bytes:
         + b"\n%%EOF"
     )
     return b"".join(pdf_parts)
+
+
+def _activation_token_hash(token: str) -> str:
+    return hashlib.sha256((token or "").encode("utf-8")).hexdigest()
+
+
+def _send_activation_link_for_user(user: User, source: str) -> bool:
+    settings = load_app_settings(current_app)
+    valid_minutes = coerce_positive_int(settings.get("activation_token_valid_minutes"), 120)
+    now = datetime.utcnow()
+    token = secrets.token_urlsafe(32)
+    UserActivationToken.query.filter_by(user_id=user.id, used_at=None).update(
+        {"used_at": now},
+        synchronize_session=False,
+    )
+    activation = UserActivationToken(
+        user_id=user.id,
+        token_hash=_activation_token_hash(token),
+        source=source,
+        expires_at=now + timedelta(minutes=valid_minutes),
+        created_at=now,
+    )
+    db.session.add(activation)
+    db.session.flush()
+    activation_url = url_for("activate_user", token=token, _external=True)
+    sent = send_user_activation_notification(
+        current_app,
+        user,
+        activation_url=activation_url,
+        expires_at=activation.expires_at,
+        source=source,
+    )
+    write_audit_log(
+        current_app,
+        "user_activation_token_created",
+        user=current_user,
+        details={
+            "target_user_id": user.id,
+            "target_email": user.email,
+            "source": source,
+            "expires_at": activation.expires_at.isoformat(),
+            "email_sent": sent,
+        },
+    )
+    return sent
 
 
 def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str], str]]]) -> Blueprint:
@@ -687,6 +734,10 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             if form_type == "general":
                 raw_timeout = (request.form.get("session_timeout_minutes") or "").strip()
                 timeout_value = coerce_positive_int(raw_timeout, None)
+                activation_valid_minutes = coerce_positive_int(
+                    request.form.get("activation_token_valid_minutes"),
+                    None,
+                )
                 rows_value = coerce_dashboard_rows_per_page(request.form.get("dashboard_rows_per_page"), None)
                 offset_value = coerce_time_display_offset_hours(
                     request.form.get("time_display_offset_hours"),
@@ -702,6 +753,8 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
 
                 if timeout_value is None:
                     flash(trans("flash_settings_invalid_timeout"), "danger")
+                elif activation_valid_minutes is None:
+                    flash(trans("flash_settings_invalid_activation_timeout"), "danger")
                 elif rows_value not in DASHBOARD_ROWS_PER_PAGE_OPTIONS:
                     flash(trans("flash_settings_invalid_dashboard_rows"), "danger")
                 elif offset_value is None:
@@ -712,6 +765,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     try:
                         updated_settings = settings.copy()
                         updated_settings["session_timeout_minutes"] = timeout_value
+                        updated_settings["activation_token_valid_minutes"] = activation_valid_minutes
                         updated_settings["dashboard_rows_per_page"] = rows_value
                         updated_settings["time_display_offset_hours"] = offset_value
                         updated_settings["registration_domain_check_enabled"] = registration_domain_check_enabled
@@ -1104,6 +1158,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 "session_timeout_minutes": settings.get("session_timeout_minutes"),
                 "dashboard_rows_per_page": settings.get("dashboard_rows_per_page"),
                 "time_display_offset_hours": settings.get("time_display_offset_hours", 0),
+                "activation_token_valid_minutes": settings.get("activation_token_valid_minutes", 120),
                 "registration_domain_check_enabled": bool(settings.get("registration_domain_check_enabled")),
                 "registration_allowed_domains": settings.get("registration_allowed_domains", ""),
                 "smtp_host": settings.get("smtp_host", ""),
@@ -1166,6 +1221,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 "session_timeout_minutes",
                 "dashboard_rows_per_page",
                 "time_display_offset_hours",
+                "activation_token_valid_minutes",
                 "registration_domain_check_enabled",
                 "registration_allowed_domains",
                 "smtp_host",
@@ -1543,7 +1599,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     email=email,
                     role="admin",
                     language=language,
-                    is_active=True,
+                    is_active=False,
                     salutation=request.form.get("salutation") or None,
                     first_name=request.form.get("first_name") or None,
                     last_name=request.form.get("last_name") or None,
@@ -1555,6 +1611,8 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 )
                 user.set_password(password)
                 db.session.add(user)
+                db.session.flush()
+                activation_sent = _send_activation_link_for_user(user, source="admin_new_admin")
                 db.session.commit()
                 write_audit_log(
                     current_app,
@@ -1565,10 +1623,14 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                         "target_email": user.email,
                         "target_role": user.role,
                         "source": "admin_new_admin",
+                        "activation_required": True,
+                        "activation_email_sent": activation_sent,
                     },
                 )
-                send_user_welcome_notification(current_app, user, source="admin_new_admin")
-                flash(trans("flash_user_created"), "success")
+                if activation_sent:
+                    flash(trans("flash_user_created_activation_email_sent"), "success")
+                else:
+                    flash(trans("flash_user_created_activation_email_failed"), "warning")
                 return redirect(url_for(".admin_user_list"))
 
         return render_template(

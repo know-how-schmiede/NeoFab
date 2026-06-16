@@ -1,5 +1,14 @@
 # Timeline NeoFab
 
+## Version 0.9.32
+
+Neue Benutzerkonten werden zunaechst inaktiv angelegt und muessen per E-Mail-Link aktiviert werden
+Aktivierungslinks werden als kryptografisch sichere Tokens erzeugt und nur gehasht in der Datenbank gespeichert
+Gueltigkeitsdauer fuer Aktivierungslinks in den Systemeinstellungen konfigurierbar gemacht
+Abgelaufene, ungueltige oder bereits verwendete Aktivierungslinks werden beim Login-/Aktivierungsprozess abgefangen
+Begruessungs-E-Mail wird nach erfolgreicher Kontoaktivierung versendet
+Version in Anwendung und README auf 0.9.32 angehoben
+
 ## Version 0.9.31
 
 Button-Design systemweit vereinheitlicht und Bootstrap-Button-Varianten ueber zentrale NeoFab-CSS-Regeln harmonisiert

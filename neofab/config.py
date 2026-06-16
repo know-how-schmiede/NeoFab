@@ -52,6 +52,7 @@ DEFAULT_SETTINGS = {
     "session_timeout_minutes": 30,
     "dashboard_rows_per_page": 25,
     "time_display_offset_hours": 0,
+    "activation_token_valid_minutes": 120,
     "registration_domain_check_enabled": False,
     "registration_allowed_domains": "",
     "smtp_host": "",
@@ -274,6 +275,10 @@ def load_app_settings(app, force_reload: bool = False) -> Dict[str, Any]:
                     loaded.get("time_display_offset_hours"),
                     DEFAULT_SETTINGS["time_display_offset_hours"],
                 )
+                settings["activation_token_valid_minutes"] = coerce_positive_int(
+                    loaded.get("activation_token_valid_minutes"),
+                    DEFAULT_SETTINGS["activation_token_valid_minutes"],
+                )
                 settings["registration_domain_check_enabled"] = coerce_bool(
                     loaded.get("registration_domain_check_enabled"),
                     DEFAULT_SETTINGS["registration_domain_check_enabled"],
@@ -343,6 +348,10 @@ def save_app_settings(app, new_settings: Dict[str, Any]) -> Dict[str, Any]:
         settings["time_display_offset_hours"] = coerce_time_display_offset_hours(
             new_settings.get("time_display_offset_hours"),
             DEFAULT_SETTINGS["time_display_offset_hours"],
+        )
+        settings["activation_token_valid_minutes"] = coerce_positive_int(
+            new_settings.get("activation_token_valid_minutes"),
+            DEFAULT_SETTINGS["activation_token_valid_minutes"],
         )
         settings["registration_domain_check_enabled"] = coerce_bool(
             new_settings.get("registration_domain_check_enabled"),

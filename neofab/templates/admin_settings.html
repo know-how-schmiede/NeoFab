@@ -105,6 +105,22 @@
             </div>
           </div>
 
+          <div class="col-md-6">
+            <label for="activation_token_valid_minutes" class="form-label">
+              {{ t("admin_settings_activation_token_valid_minutes_label") }}
+            </label>
+            <input type="number"
+                   class="form-control"
+                   id="activation_token_valid_minutes"
+                   name="activation_token_valid_minutes"
+                   min="1"
+                   required
+                   value="{{ settings.get('activation_token_valid_minutes', 120) }}">
+            <div class="form-text">
+              {{ t("admin_settings_activation_token_valid_minutes_help") }}
+            </div>
+          </div>
+
           <div class="col-12">
             <div class="form-check">
               <input

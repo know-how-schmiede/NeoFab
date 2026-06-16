@@ -324,6 +324,99 @@ def _welcome_email_body(settings: Mapping[str, object], new_user: User, language
     return template.format_map(values)
 
 
+def send_user_activation_notification(
+    app,
+    user: User,
+    activation_url: str,
+    expires_at: datetime,
+    source: str = "user_activation",
+) -> bool:
+    """Send a one-time account activation link to a newly created user."""
+    try:
+        settings = load_app_settings(app, force_reload=True)
+        smtp_host = settings.get("smtp_host")
+        smtp_port = settings.get("smtp_port")
+        smtp_from = settings.get("smtp_from_address")
+
+        if not smtp_host or not smtp_port or not smtp_from:
+            app.logger.info("SMTP not configured, skipping user activation notification.")
+            return False
+
+        language = _normalize_language(getattr(user, "language", None))
+        display_name = _user_display_name(user)
+        expires_text = _format_app_datetime(expires_at, settings)
+        msg = EmailMessage()
+        if language == "de":
+            msg["Subject"] = f"NeoFab: Benutzerkonto aktivieren, {display_name}"
+            body_lines = [
+                f"Hallo {display_name},",
+                "",
+                "dein NeoFab-Benutzerkonto wurde erstellt.",
+                "Bitte aktiviere dein Konto ueber den folgenden Link:",
+                activation_url,
+                "",
+                f"Der Link ist gueltig bis: {expires_text}",
+                "",
+                "Wenn du dieses Konto nicht angefordert hast, ignoriere diese E-Mail.",
+            ]
+        elif language == "fr":
+            msg["Subject"] = f"NeoFab : activer le compte, {display_name}"
+            body_lines = [
+                f"Bonjour {display_name},",
+                "",
+                "votre compte utilisateur NeoFab a ete cree.",
+                "Veuillez activer votre compte avec le lien suivant :",
+                activation_url,
+                "",
+                f"Le lien est valable jusqu'a : {expires_text}",
+                "",
+                "Si vous n'avez pas demande ce compte, ignorez cet e-mail.",
+            ]
+        else:
+            msg["Subject"] = f"NeoFab: Activate account, {display_name}"
+            body_lines = [
+                f"Hello {display_name},",
+                "",
+                "your NeoFab user account has been created.",
+                "Please activate your account using the following link:",
+                activation_url,
+                "",
+                f"The link is valid until: {expires_text}",
+                "",
+                "If you did not request this account, ignore this email.",
+            ]
+
+        msg["From"] = smtp_from
+        msg["To"] = user.email
+        created_by = current_user.email if current_user.is_authenticated else ""
+        if created_by:
+            msg["Reply-To"] = created_by
+        body_lines.extend(_notification_footer(settings, activation_url, language))
+        msg.set_content("\n".join(body_lines))
+        _send_message(settings, msg)
+        write_audit_log(
+            app,
+            "email_sent",
+            user=current_user if current_user.is_authenticated else user,
+            details={
+                "kind": "user_activation",
+                "language": language,
+                "target_user_id": user.id,
+                "target_email": user.email,
+                "source": source,
+                "subject": msg["Subject"],
+                "expires_at": expires_at.isoformat() if expires_at else "",
+            },
+        )
+        return True
+    except Exception:
+        app.logger.exception(
+            "Failed to send user activation notification for user %s",
+            getattr(user, "id", "?"),
+        )
+        return False
+
+
 def _send_message(settings: Mapping[str, object], msg: EmailMessage) -> None:
     smtp_host = settings.get("smtp_host")
     smtp_port = settings.get("smtp_port")

@@ -47,6 +47,20 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
 
+class UserActivationToken(db.Model):
+    __tablename__ = "user_activation_tokens"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    token_hash = db.Column(db.String(64), unique=True, nullable=False)
+    source = db.Column(db.String(50))
+    expires_at = db.Column(db.DateTime, nullable=False)
+    used_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    user = db.relationship("User")
+
+
 # --- Order-Modell ------------------------------------------------------------
 
 class Order(db.Model):
@@ -546,6 +560,7 @@ class TrainingPlaylist(db.Model):
 __all__ = [
     "db",
     "User",
+    "UserActivationToken",
     "Order",
     "OrderCategory",
     "OrderArea",

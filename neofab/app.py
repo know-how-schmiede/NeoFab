@@ -15,6 +15,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 import base64
 import binascii
+import hashlib
 import mimetypes
 import os
 import logging
@@ -76,6 +77,7 @@ from notifications import (
     send_admin_order_notification,
     send_order_status_change_notification,
     send_poster_printed_notification,
+    send_user_activation_notification,
     send_user_welcome_notification,
 )
 from schema_utils import ensure_training_playlist_schema
@@ -94,6 +96,7 @@ from routes import create_admin_blueprint
 from models import (
     db,
     User,
+    UserActivationToken,
     Order,
     OrderCategory,
     OrderArea,
@@ -1672,9 +1675,63 @@ def ensure_user_preference_columns():
         app.logger.exception("Failed to ensure user preference columns exist")
 
 
+def ensure_user_activation_tokens_table():
+    """
+    Ensures the account activation token table exists.
+    """
+    try:
+        exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='user_activation_tokens'")
+        ).scalar()
+        if not exists:
+            db.session.execute(
+                text(
+                    """
+                    CREATE TABLE user_activation_tokens (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        token_hash VARCHAR(64) NOT NULL UNIQUE,
+                        source VARCHAR(50),
+                        expires_at DATETIME NOT NULL,
+                        used_at DATETIME,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+            )
+            db.session.commit()
+            return
+
+        cols = {
+            row[1]
+            for row in db.session.execute(text("PRAGMA table_info(user_activation_tokens)"))
+        }
+        statements = []
+        if "user_id" not in cols:
+            statements.append("ALTER TABLE user_activation_tokens ADD COLUMN user_id INTEGER NOT NULL DEFAULT 0")
+        if "token_hash" not in cols:
+            statements.append("ALTER TABLE user_activation_tokens ADD COLUMN token_hash VARCHAR(64) NOT NULL DEFAULT ''")
+        if "source" not in cols:
+            statements.append("ALTER TABLE user_activation_tokens ADD COLUMN source VARCHAR(50)")
+        if "expires_at" not in cols:
+            statements.append("ALTER TABLE user_activation_tokens ADD COLUMN expires_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP")
+        if "used_at" not in cols:
+            statements.append("ALTER TABLE user_activation_tokens ADD COLUMN used_at DATETIME")
+        if "created_at" not in cols:
+            statements.append("ALTER TABLE user_activation_tokens ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP")
+
+        for stmt in statements:
+            db.session.execute(text(stmt))
+        if statements:
+            db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure user activation token table exists")
+
+
 with app.app_context():
     ensure_user_preference_columns()
     ensure_user_status_columns()
+    ensure_user_activation_tokens_table()
     ensure_order_file_columns()
     ensure_order_image_columns()
     ensure_training_videos_table()
@@ -2356,6 +2413,107 @@ def info():
     return render_template("info.html")
 
 
+def _activation_token_hash(token: str) -> str:
+    return hashlib.sha256((token or "").encode("utf-8")).hexdigest()
+
+
+def _activation_valid_minutes(settings: dict) -> int:
+    return coerce_positive_int(
+        settings.get("activation_token_valid_minutes"),
+        DEFAULT_SETTINGS["activation_token_valid_minutes"],
+    )
+
+
+def create_user_activation_token(user: User, source: str = "user_activation") -> tuple[str, datetime]:
+    settings = load_app_settings(app)
+    valid_minutes = _activation_valid_minutes(settings)
+    now = datetime.utcnow()
+    token = secrets.token_urlsafe(32)
+
+    UserActivationToken.query.filter_by(user_id=user.id, used_at=None).update(
+        {"used_at": now},
+        synchronize_session=False,
+    )
+    activation = UserActivationToken(
+        user_id=user.id,
+        token_hash=_activation_token_hash(token),
+        source=source,
+        expires_at=now + timedelta(minutes=valid_minutes),
+        created_at=now,
+    )
+    db.session.add(activation)
+    return token, activation.expires_at
+
+
+def send_activation_link_for_user(user: User, source: str = "user_activation") -> bool:
+    token, expires_at = create_user_activation_token(user, source=source)
+    db.session.flush()
+    activation_url = url_for("activate_user", token=token, _external=True)
+    sent = send_user_activation_notification(
+        app,
+        user,
+        activation_url=activation_url,
+        expires_at=expires_at,
+        source=source,
+    )
+    write_audit_log(
+        app,
+        "user_activation_token_created",
+        user=current_user if current_user.is_authenticated else user,
+        details={
+            "target_user_id": user.id,
+            "target_email": user.email,
+            "source": source,
+            "expires_at": expires_at.isoformat(),
+            "email_sent": sent,
+        },
+    )
+    return sent
+
+
+@app.route("/activate/<token>")
+def activate_user(token):
+    trans = inject_globals().get("t")
+    activation = UserActivationToken.query.filter_by(
+        token_hash=_activation_token_hash(token)
+    ).first()
+    now = datetime.utcnow()
+
+    if not activation:
+        flash(trans("flash_activation_invalid"), "danger")
+        return redirect(url_for("login"))
+    if activation.used_at is not None:
+        flash(trans("flash_activation_used"), "warning")
+        return redirect(url_for("login"))
+    if activation.expires_at < now:
+        flash(trans("flash_activation_expired"), "warning")
+        return redirect(url_for("login"))
+
+    user = User.query.get(activation.user_id)
+    if not user or user.deleted_at is not None:
+        activation.used_at = now
+        db.session.commit()
+        flash(trans("flash_activation_invalid"), "danger")
+        return redirect(url_for("login"))
+
+    user.is_active = True
+    activation.used_at = now
+    db.session.commit()
+    write_audit_log(
+        app,
+        "user_activated",
+        user=user,
+        details={
+            "target_user_id": user.id,
+            "target_email": user.email,
+            "source": activation.source or "activation_link",
+        },
+    )
+    send_user_welcome_notification(app, user, source="activation")
+    flash(trans("flash_activation_success"), "success")
+    return redirect(url_for("login"))
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     """Login-Formular & Login-Logik."""
@@ -2594,6 +2752,7 @@ def register():
                 email=email,
                 role="user",
                 language=language,
+                is_active=False,
                 salutation=salutation,
                 first_name=first_name,
                 last_name=last_name,
@@ -2605,6 +2764,8 @@ def register():
             )
             user.set_password(password)
             db.session.add(user)
+            db.session.flush()
+            activation_sent = send_activation_link_for_user(user, source="registration")
             db.session.commit()
             write_audit_log(
                 app,
@@ -2616,10 +2777,14 @@ def register():
                     "target_role": user.role,
                     "target_language": user.language,
                     "source": "registration",
+                    "activation_required": True,
+                    "activation_email_sent": activation_sent,
                 },
             )
-            send_user_welcome_notification(app, user, source="registration")
-            flash(trans("flash_registration_success"), "success")
+            if activation_sent:
+                flash(trans("flash_registration_activation_email_sent"), "success")
+            else:
+                flash(trans("flash_registration_activation_email_failed"), "warning")
             return redirect(url_for("login"))
 
     register_form = {
