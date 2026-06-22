@@ -5,6 +5,8 @@
 Maximale Groesse fuer hochgeladene Dateien von 50 MB auf 200 MB angehoben
 Upload-Pruefung im Server und Browser sowie die Groessenhinweise auf das neue Limit abgestimmt
 Fehlermeldungen fuer zu grosse Dateien in Deutsch, Englisch und Franzoesisch auf 200 MB aktualisiert
+G-Code-Metadatenanalyse fuer grosse Dateien auf relevante Bereiche am Dateianfang und Dateiende begrenzt
+Worker-Timeouts nach grossen G-Code-Uploads durch vollstaendiges Durchsuchen der Datei verhindert
 Version in Anwendung und README auf 0.9.34 angehoben
 
 ## Version 0.9.33

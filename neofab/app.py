@@ -2231,71 +2231,88 @@ def _parse_gcode_duration_minutes(raw_value: str | None) -> int | None:
     return None
 
 
+GCODE_METADATA_SCAN_BYTES = 2 * 1024 * 1024
+
+
+def _read_gcode_metadata_lines(path: Path) -> list[str]:
+    """Read only the G-code regions where slicers normally store metadata."""
+    with path.open("rb") as handle:
+        head = handle.read(GCODE_METADATA_SCAN_BYTES)
+        file_size = handle.seek(0, os.SEEK_END)
+
+        tail = b""
+        if file_size > GCODE_METADATA_SCAN_BYTES:
+            handle.seek(max(GCODE_METADATA_SCAN_BYTES, file_size - GCODE_METADATA_SCAN_BYTES))
+            tail = handle.read(GCODE_METADATA_SCAN_BYTES)
+
+    content = head if not tail else head + b"\n" + tail
+    return content.decode("utf-8", errors="ignore").splitlines()
+
+
 def extract_gcode_metadata(path: Path) -> dict[str, float | int]:
     metadata: dict[str, float | int] = {}
     try:
-        with path.open("r", encoding="utf-8", errors="ignore") as handle:
-            for raw_line in handle:
-                line = raw_line.strip()
-                lower = line.lower()
+        for raw_line in _read_gcode_metadata_lines(path):
+            line = raw_line.strip()
+            lower = line.lower()
 
-                if "duration_min" not in metadata:
-                    time_match = re.search(r";\s*time\s*:\s*(\d+(?:[.,]\d+)?)\s*$", lower)
-                    if time_match:
-                        seconds = _parse_float_token(time_match.group(1))
-                        if seconds is not None:
-                            metadata["duration_min"] = max(0, int(round(seconds / 60)))
+            if "duration_min" not in metadata:
+                time_match = re.search(r";\s*time\s*:\s*(\d+(?:[.,]\d+)?)\s*$", lower)
+                if time_match:
+                    seconds = _parse_float_token(time_match.group(1))
+                    if seconds is not None:
+                        metadata["duration_min"] = max(0, int(round(seconds / 60)))
 
-                if "duration_min" not in metadata and any(
-                    token in lower for token in ("estimated printing time", "estimated print time", "print time", "printing time")
-                ):
-                    duration = _parse_gcode_duration_minutes(line)
-                    if duration is not None:
-                        metadata["duration_min"] = duration
+            if "duration_min" not in metadata and any(
+                token in lower for token in ("estimated printing time", "estimated print time", "print time", "printing time")
+            ):
+                duration = _parse_gcode_duration_minutes(line)
+                if duration is not None:
+                    metadata["duration_min"] = duration
 
-                if "filament_m" not in metadata:
-                    filament_bracket_m_match = re.search(r"filament\s+used\s*\[(mm|m)\]\s*=\s*(\d+(?:[.,]\d+)?)", lower)
-                    if filament_bracket_m_match:
-                        value = _parse_float_token(filament_bracket_m_match.group(2))
-                        if value is not None:
-                            metadata["filament_m"] = value / 1000 if filament_bracket_m_match.group(1) == "mm" else value
+            if "filament_m" not in metadata:
+                filament_bracket_m_match = re.search(r"filament\s+used\s*\[(mm|m)\]\s*=\s*(\d+(?:[.,]\d+)?)", lower)
+                if filament_bracket_m_match:
+                    value = _parse_float_token(filament_bracket_m_match.group(2))
+                    if value is not None:
+                        metadata["filament_m"] = value / 1000 if filament_bracket_m_match.group(1) == "mm" else value
 
-                if "filament_m" not in metadata:
-                    filament_m_match = re.search(r"filament\s+used.*?(\d+(?:[.,]\d+)?)\s*m\b", lower)
-                    if filament_m_match:
-                        value = _parse_float_token(filament_m_match.group(1))
-                        if value is not None:
-                            metadata["filament_m"] = value
+            if "filament_m" not in metadata:
+                filament_m_match = re.search(r"filament\s+used.*?(\d+(?:[.,]\d+)?)\s*m\b", lower)
+                if filament_m_match:
+                    value = _parse_float_token(filament_m_match.group(1))
+                    if value is not None:
+                        metadata["filament_m"] = value
 
-                if "filament_m" not in metadata:
-                    filament_mm_match = re.search(r"filament\s+used.*?(\d+(?:[.,]\d+)?)\s*mm\b", lower)
-                    if filament_mm_match:
-                        value = _parse_float_token(filament_mm_match.group(1))
-                        if value is not None:
-                            metadata["filament_m"] = value / 1000
+            if "filament_m" not in metadata:
+                filament_mm_match = re.search(r"filament\s+used.*?(\d+(?:[.,]\d+)?)\s*mm\b", lower)
+                if filament_mm_match:
+                    value = _parse_float_token(filament_mm_match.group(1))
+                    if value is not None:
+                        metadata["filament_m"] = value / 1000
 
-                if "filament_g" not in metadata:
-                    filament_bracket_g_match = re.search(
-                        r"(?:filament\s+used|total\s+filament\s+used)\s*\[g\]\s*=\s*(\d+(?:[.,]\d+)?)",
-                        lower,
-                    )
-                    if filament_bracket_g_match:
-                        value = _parse_float_token(filament_bracket_g_match.group(1))
-                        if value is not None:
-                            metadata["filament_g"] = value
+            if "filament_g" not in metadata:
+                filament_bracket_g_match = re.search(
+                    r"(?:filament\s+used|total\s+filament\s+used)\s*\[g\]\s*=\s*(\d+(?:[.,]\d+)?)",
+                    lower,
+                )
+                if filament_bracket_g_match:
+                    value = _parse_float_token(filament_bracket_g_match.group(1))
+                    if value is not None:
+                        metadata["filament_g"] = value
 
-                if "filament_g" not in metadata:
-                    filament_g_match = re.search(
-                        r"(?:filament\s+used|filament\s+weight|total\s+filament).*?(\d+(?:[.,]\d+)?)\s*g\b",
-                        lower,
-                    )
-                    if filament_g_match:
-                        value = _parse_float_token(filament_g_match.group(1))
-                        if value is not None:
-                            metadata["filament_g"] = value
+            if "filament_g" not in metadata:
+                filament_g_match = re.search(
+                    r"(?:filament\s+used|filament\s+weight|total\s+filament).*?(\d+(?:[.,]\d+)?)\s*g\b",
+                    lower,
+                )
+                if filament_g_match:
+                    value = _parse_float_token(filament_g_match.group(1))
+                    if value is not None:
+                        metadata["filament_g"] = value
 
-                if len(metadata) == 3:
-                    break
+            if len(metadata) == 3:
+                break
     except OSError:
         return metadata
 
