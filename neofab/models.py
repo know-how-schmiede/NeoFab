@@ -146,6 +146,7 @@ class Order(db.Model):
     messages = db.relationship("OrderMessage", back_populates="order", lazy=True)
     files = db.relationship("OrderFile", back_populates="order", lazy=True)
     images = db.relationship("OrderImage", back_populates="order", lazy=True)
+    videos = db.relationship("OrderVideo", back_populates="order", lazy=True)
     tags_entry = db.relationship("OrderTag", back_populates="order", uselist=False)
 
 
@@ -426,6 +427,24 @@ class OrderImage(db.Model):
     note = db.Column(db.String(255))
 
     order = db.relationship("Order", back_populates="images")
+
+
+# --- OrderVideo ---------------------------------------------------------------
+
+
+class OrderVideo(db.Model):
+    __tablename__ = "order_videos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
+    original_name = db.Column(db.String(255), nullable=False)
+    stored_name = db.Column(db.String(255), nullable=False)
+    file_type = db.Column(db.String(20))
+    filesize = db.Column(db.Integer)
+    note = db.Column(db.String(255))
+    uploaded_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    order = db.relationship("Order", back_populates="videos")
 
 
 # --- OrderTag -----------------------------------------------------------------

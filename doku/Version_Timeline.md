@@ -7,6 +7,9 @@ Upload-Pruefung im Server und Browser sowie die Groessenhinweise auf das neue Li
 Fehlermeldungen fuer zu grosse Dateien in Deutsch, Englisch und Franzoesisch auf 200 MB aktualisiert
 G-Code-Metadatenanalyse fuer grosse Dateien auf relevante Bereiche am Dateianfang und Dateiende begrenzt
 Worker-Timeouts nach grossen G-Code-Uploads durch vollstaendiges Durchsuchen der Datei verhindert
+Reiter 3D-Modelle / Bilder um Projektvideos mit Wiedergabe, Download und Loeschfunktion erweitert
+Video-Uploads bis maximal 200 MB sowie kurze bearbeitbare Bemerkungen je Video ergaenzt
+Unterstuetzte Videoformate auf MP4, WebM, OGV, OGG und MOV begrenzt
 Version in Anwendung und README auf 0.9.34 angehoben
 
 ## Version 0.9.33

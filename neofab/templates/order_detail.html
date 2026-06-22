@@ -727,7 +727,15 @@
                    type="file"
                    id="image_file"
                    name="image_file"
-                   accept=".png,.jpg,.jpeg,.gif,.webp">
+                   accept=".png,.jpg,.jpeg,.gif,.webp"
+                   data-upload-size-check="true"
+                   data-max-upload-size="{{ max_upload_size_bytes }}">
+            <div class="form-text">
+              {{ t("upload_max_size_hint") }} {{ max_upload_size_mb }} MB.
+            </div>
+            <div class="upload-size-feedback alert alert-danger mt-2 mb-0 d-none" role="alert">
+              {{ t("flash_upload_too_large") }}
+            </div>
           </div>
           <div class="row g-2 mb-2">
             <div class="col-md-8">
@@ -745,6 +753,121 @@
           <button type="submit" class="btn btn-secondary btn-sm">
             <i class="bi bi-plus-circle me-1"></i>
             {{ t("btn_upload_file") }}
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Projektvideos -->
+    <div class="card mb-3">
+      <div class="card-header">
+        <h3 class="h6 mb-0 d-flex align-items-center">
+          <i class="bi bi-camera-video me-2"></i>
+          {{ t("videos_header") }}
+        </h3>
+      </div>
+      <div class="card-body">
+        {% if order.videos %}
+          <div class="row g-3 mb-3">
+            {% for video in order.videos %}
+              <div class="col-12 col-xl-6">
+                <div class="card h-100">
+                  <video class="card-img-top bg-dark"
+                         controls
+                         preload="metadata"
+                         style="max-height: 360px;"
+                         aria-label="{{ video.original_name }}">
+                    <source src="{{ url_for('order_video_view', order_id=order.id, video_id=video.id) }}">
+                    {{ t("videos_browser_unsupported") }}
+                  </video>
+                  <div class="card-body">
+                    <div class="d-flex flex-wrap justify-content-between gap-2 mb-2">
+                      <div>
+                        <strong>{{ video.original_name }}</strong>
+                        {% if video.file_type %}
+                          <span class="badge bg-secondary ms-1">{{ video.file_type|upper }}</span>
+                        {% endif %}
+                        <small class="text-muted d-block">
+                          {% set parts = [] %}
+                          {% if video.filesize %}{% set _ = parts.append(((video.filesize / 1024 / 1024)|round(1)) ~ " MB") %}{% endif %}
+                          {% if video.uploaded_at %}{% set _ = parts.append("uploaded " ~ fmt_datetime(video.uploaded_at)) %}{% endif %}
+                          {{ " | ".join(parts) }}
+                        </small>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <a class="btn btn-sm btn-outline-primary"
+                           href="{{ url_for('download_order_video', order_id=order.id, video_id=video.id) }}">
+                          <i class="bi bi-download me-1"></i>{{ t("btn_download") }}
+                        </a>
+                        <form method="post" onsubmit="return confirm('{{ t('confirm_delete_video') }}');">
+                          <input type="hidden" name="action" value="delete_video">
+                          <input type="hidden" name="video_id" value="{{ video.id }}">
+                          <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-trash me-1"></i>{{ t("btn_delete") }}
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                    <form method="post">
+                      <input type="hidden" name="action" value="update_video">
+                      <input type="hidden" name="video_id" value="{{ video.id }}">
+                      <label for="video_note_{{ video.id }}" class="form-label">{{ t("videos_label_note") }}</label>
+                      <div class="input-group">
+                        <input type="text"
+                               class="form-control"
+                               id="video_note_{{ video.id }}"
+                               name="video_note"
+                               maxlength="255"
+                               value="{{ video.note or '' }}"
+                               placeholder="{{ t('videos_note_placeholder') }}">
+                        <button type="submit" class="btn btn-outline-secondary">
+                          <i class="bi bi-save me-1"></i>{{ t("btn_save_changes") }}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="text-muted">{{ t("videos_none") }}</p>
+        {% endif %}
+
+        <form method="post"
+              enctype="multipart/form-data"
+              action="{{ url_for('order_detail', order_id=order.id, tab='files') }}">
+          <input type="hidden" name="action" value="upload_video">
+          <div class="mb-2">
+            <label for="video_file" class="form-label">
+              <i class="bi bi-upload me-1"></i>{{ t("videos_upload_label") }}
+            </label>
+            <input class="form-control"
+                   type="file"
+                   id="video_file"
+                   name="video_file"
+                   accept=".mp4,.webm,.ogv,.ogg,.mov,video/mp4,video/webm,video/ogg,video/quicktime"
+                   data-upload-size-check="true"
+                   data-max-upload-size="{{ max_upload_size_bytes }}">
+            <div class="form-text">
+              {{ t("videos_upload_hint") }}
+              <br>{{ t("upload_max_size_hint") }} 200 MB.
+            </div>
+            <div class="upload-size-feedback alert alert-danger mt-2 mb-0 d-none" role="alert">
+              {{ t("flash_upload_too_large") }}
+            </div>
+          </div>
+          <div class="mb-2">
+            <label for="video_note" class="form-label">{{ t("videos_label_note") }}</label>
+            <input type="text"
+                   class="form-control"
+                   id="video_note"
+                   name="video_note"
+                   maxlength="255"
+                   placeholder="{{ t('videos_note_placeholder') }}">
+          </div>
+          <button type="submit" class="btn btn-secondary btn-sm">
+            <i class="bi bi-plus-circle me-1"></i>{{ t("videos_upload_button") }}
           </button>
         </form>
       </div>

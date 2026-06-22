@@ -114,6 +114,7 @@ from models import (
     OrderFile,
     OrderPrintJob,
     OrderImage,
+    OrderVideo,
     OrderTag,
     Material,
     Color,
@@ -203,6 +204,10 @@ app.config["UPLOAD_FOLDER"] = str(UPLOAD_FOLDER)
 IMAGE_UPLOAD_FOLDER = BASE_DIR / "uploads" / "images"
 os.makedirs(IMAGE_UPLOAD_FOLDER, exist_ok=True)
 app.config["IMAGE_UPLOAD_FOLDER"] = str(IMAGE_UPLOAD_FOLDER)
+
+VIDEO_UPLOAD_FOLDER = BASE_DIR / "uploads" / "videos"
+os.makedirs(VIDEO_UPLOAD_FOLDER, exist_ok=True)
+app.config["VIDEO_UPLOAD_FOLDER"] = str(VIDEO_UPLOAD_FOLDER)
 
 GCODE_UPLOAD_FOLDER = BASE_DIR / "uploads" / "gcode"
 os.makedirs(GCODE_UPLOAD_FOLDER, exist_ok=True)
@@ -716,6 +721,38 @@ def ensure_order_image_columns():
             db.session.commit()
     except Exception:
         app.logger.exception("Failed to ensure order_images columns exist")
+
+
+def ensure_order_videos_table():
+    """
+    Ensures the order_videos table exists for project video uploads.
+    """
+    try:
+        exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='order_videos'")
+        ).scalar()
+        if exists:
+            return
+
+        db.session.execute(
+            text(
+                """
+                CREATE TABLE order_videos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    order_id INTEGER NOT NULL,
+                    original_name VARCHAR(255) NOT NULL,
+                    stored_name VARCHAR(255) NOT NULL,
+                    file_type VARCHAR(20),
+                    filesize INTEGER,
+                    note VARCHAR(255),
+                    uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+        )
+        db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure order_videos table exists")
 
 
 def ensure_training_videos_table():
@@ -1787,6 +1824,7 @@ with app.app_context():
     ensure_user_password_reset_tokens_table()
     ensure_order_file_columns()
     ensure_order_image_columns()
+    ensure_order_videos_table()
     ensure_training_videos_table()
     ensure_printer_profiles_table()
     ensure_filament_materials_table()
@@ -4083,6 +4121,99 @@ def order_detail(order_id):
             flash(trans("flash_image_updated"), "success")
             return redirect(url_for("order_detail", order_id=order.id))
 
+        # --- 5c) Projektvideo hochladen -------------------------------------
+        elif action == "upload_video":
+            file = request.files.get("video_file")
+            video_note = (request.form.get("video_note") or "").strip()
+            if video_note:
+                video_note = video_note[:255]
+            if not file or not file.filename:
+                flash(trans("flash_select_video"), "warning")
+                return order_detail_redirect("files")
+
+            original_name = file.filename
+            safe_name = secure_filename(original_name)
+            _, ext = os.path.splitext(safe_name)
+            ext = ext.lower().lstrip(".")
+
+            allowed_ext = {"mp4", "webm", "ogv", "ogg", "mov"}
+            if ext not in allowed_ext:
+                flash(trans("flash_invalid_video"), "warning")
+                return order_detail_redirect("files")
+
+            video_entry = OrderVideo(
+                order_id=order.id,
+                original_name=original_name,
+                stored_name="",
+                file_type=ext,
+                note=video_note or None,
+            )
+            db.session.add(video_entry)
+            db.session.flush()
+
+            stored_name = f"{video_entry.id}_{safe_name}"
+            video_folder = Path(app.config["VIDEO_UPLOAD_FOLDER"]) / f"order_{order.id}"
+            video_folder.mkdir(parents=True, exist_ok=True)
+            full_path = video_folder / stored_name
+            file.save(str(full_path))
+
+            try:
+                video_entry.filesize = full_path.stat().st_size
+            except OSError:
+                video_entry.filesize = None
+
+            if video_entry.filesize and video_entry.filesize > MAX_UPLOAD_SIZE_MB * 1024 * 1024:
+                try:
+                    full_path.unlink()
+                except OSError:
+                    app.logger.warning("[order_detail] Could not remove oversized video: %s", full_path)
+                db.session.rollback()
+                flash(trans("flash_upload_too_large"), "danger")
+                return order_detail_redirect("files")
+
+            video_entry.stored_name = stored_name
+            video_entry.uploaded_at = datetime.utcnow()
+            db.session.commit()
+            write_audit_log(
+                app,
+                "file_uploaded",
+                user=current_user,
+                details={
+                    "order_id": order.id,
+                    "file_kind": "video",
+                    "file_id": video_entry.id,
+                    "original_name": video_entry.original_name,
+                    "stored_name": video_entry.stored_name,
+                    "file_type": video_entry.file_type,
+                    "filesize": video_entry.filesize,
+                },
+            )
+
+            flash(trans("flash_video_uploaded"), "success")
+            return order_detail_redirect("files")
+
+        # --- 5d) Projektvideo bearbeiten ------------------------------------
+        elif action == "update_video":
+            try:
+                video_id = int(request.form.get("video_id", "0"))
+            except ValueError:
+                video_id = 0
+
+            video_entry = OrderVideo.query.filter_by(
+                id=video_id,
+                order_id=order.id,
+            ).first()
+            if not video_entry:
+                flash(trans("flash_video_not_found"), "warning")
+                return order_detail_redirect("files")
+
+            video_note = (request.form.get("video_note") or "").strip()
+            video_entry.note = video_note[:255] if video_note else None
+            db.session.commit()
+
+            flash(trans("flash_video_updated"), "success")
+            return order_detail_redirect("files")
+
         # --- 5c) Plakatdatei hochladen (nur Plotter-Auftraege) -------------
         elif action == "upload_poster_file":
             if not is_plotter_order(order):
@@ -4997,6 +5128,34 @@ def order_detail(order_id):
             flash(trans("flash_image_deleted"), "info")
             return redirect(url_for("order_detail", order_id=order.id))
 
+        # --- Projektvideo loeschen ------------------------------------------
+        elif action == "delete_video":
+            try:
+                video_id = int(request.form.get("video_id", "0"))
+            except ValueError:
+                video_id = 0
+
+            video_entry = OrderVideo.query.filter_by(
+                id=video_id,
+                order_id=order.id,
+            ).first()
+            if not video_entry:
+                flash(trans("flash_video_not_found"), "warning")
+                return order_detail_redirect("files")
+
+            video_folder = Path(app.config["VIDEO_UPLOAD_FOLDER"]) / f"order_{order.id}"
+            full_path = video_folder / video_entry.stored_name
+            if full_path.exists():
+                try:
+                    full_path.unlink()
+                except OSError:
+                    app.logger.warning("[order_detail] Could not delete video on disk: %s", full_path)
+
+            db.session.delete(video_entry)
+            db.session.commit()
+            flash(trans("flash_video_deleted"), "info")
+            return order_detail_redirect("files")
+
     # --- Ungelesene Nachrichten vor Read-Update pruefen ---------------------
     read_status = OrderReadStatus.query.filter_by(
         order_id=order.id,
@@ -5349,6 +5508,52 @@ def download_order_image(order_id, image_id):
         path=image_entry.stored_name,
         as_attachment=True,
         download_name=image_entry.original_name,
+    )
+
+
+@app.route("/orders/<int:order_id>/videos/<int:video_id>/view")
+@login_required
+def order_video_view(order_id, video_id):
+    order = Order.query.get_or_404(order_id)
+    if not can_view_order(order, current_user):
+        abort(403)
+
+    video_entry = OrderVideo.query.filter_by(id=video_id, order_id=order.id).first_or_404()
+    video_folder = Path(app.config["VIDEO_UPLOAD_FOLDER"]) / f"order_{order.id}"
+    full_path = video_folder / video_entry.stored_name
+    if not full_path.exists():
+        abort(404)
+
+    mime = mimetypes.guess_type(video_entry.original_name or video_entry.stored_name)[0]
+    return send_from_directory(
+        directory=str(video_folder),
+        path=video_entry.stored_name,
+        as_attachment=False,
+        mimetype=mime,
+        conditional=True,
+    )
+
+
+@app.route("/orders/<int:order_id>/videos/<int:video_id>/download")
+@login_required
+def download_order_video(order_id, video_id):
+    trans = inject_globals().get("t")
+    order = Order.query.get_or_404(order_id)
+    if not can_view_order(order, current_user):
+        abort(403)
+
+    video_entry = OrderVideo.query.filter_by(id=video_id, order_id=order.id).first_or_404()
+    video_folder = Path(app.config["VIDEO_UPLOAD_FOLDER"]) / f"order_{order.id}"
+    full_path = video_folder / video_entry.stored_name
+    if not full_path.exists():
+        flash(trans("flash_video_missing_server"), "danger")
+        return redirect(url_for("order_detail", order_id=order.id, tab="files"))
+
+    return send_from_directory(
+        directory=str(video_folder),
+        path=video_entry.stored_name,
+        as_attachment=True,
+        download_name=video_entry.original_name,
     )
 
 # ============================================================

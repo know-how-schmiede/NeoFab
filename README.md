@@ -35,6 +35,9 @@ The application is built for multilingual use with English as the default langua
 - **Poster thumbnails**  
   Uploaded poster images show thumbnails in the order view. PDF files show a first-page preview when supported by the runtime, with a PDF fallback preview otherwise.
 
+- **Project videos**
+  Orders can include MP4, WebM, OGV, OGG, or MOV videos with an optional short note and a maximum upload size of 200 MB.
+
 - **STL and 3MF viewer**  
   Browser-based model preview with reset, grid, axes, labels, wireframe mode, model information, and thumbnail support.
 
