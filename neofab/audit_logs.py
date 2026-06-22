@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +11,7 @@ from flask import has_request_context, request
 DEFAULT_LOG_FILE = "NeoFab_Log.log"
 DELETE_LOG_FILE = "NeoFab_DelLog.log"
 LEGACY_DELETE_LOG_FILE = "NeoFab_DeleteLog.log"
+_last_cleanup_date_by_root: dict[str, date] = {}
 
 
 def get_log_root(app) -> Path:
@@ -22,6 +23,88 @@ def get_log_root(app) -> Path:
 
 def _day_folder(root: Path, timestamp: datetime) -> Path:
     return root / f"{timestamp.year:04d}" / f"{timestamp.month:02d}" / f"{timestamp.day:02d}"
+
+
+def cleanup_expired_log_files(app, retention_days: int, today: date | None = None) -> dict[str, int]:
+    """Delete log files whose dated folder is older than the retention period."""
+    root = get_log_root(app)
+    result = {"deleted_files": 0, "deleted_bytes": 0}
+    if retention_days < 1 or not root.exists():
+        return result
+
+    today = today or datetime.utcnow().date()
+    cutoff_date = today - timedelta(days=retention_days)
+    root_resolved = root.resolve()
+
+    for path in root.rglob("*.log"):
+        if not path.is_file():
+            continue
+
+        try:
+            relative_parts = path.relative_to(root).parts
+            if len(relative_parts) >= 4:
+                log_date = date(
+                    int(relative_parts[0]),
+                    int(relative_parts[1]),
+                    int(relative_parts[2]),
+                )
+            else:
+                log_date = datetime.fromtimestamp(path.stat().st_mtime).date()
+        except (OSError, ValueError):
+            continue
+
+        if log_date >= cutoff_date:
+            continue
+
+        try:
+            resolved_path = path.resolve()
+            if root_resolved not in resolved_path.parents:
+                continue
+            file_size = path.stat().st_size
+            path.unlink()
+            result["deleted_files"] += 1
+            result["deleted_bytes"] += file_size
+        except OSError:
+            app.logger.warning("Could not automatically delete expired log file: %s", path)
+
+    directories = sorted(
+        (path for path in root.rglob("*") if path.is_dir()),
+        key=lambda path: len(path.parts),
+        reverse=True,
+    )
+    for directory in directories:
+        try:
+            directory.rmdir()
+        except OSError:
+            pass
+
+    return result
+
+
+def maybe_cleanup_expired_logs(app, force: bool = False) -> dict[str, int]:
+    """Run enabled log cleanup at most once per UTC day and process."""
+    from config import load_app_settings
+
+    settings = load_app_settings(app)
+    if not settings.get("log_auto_cleanup_enabled"):
+        return {"deleted_files": 0, "deleted_bytes": 0}
+
+    today = datetime.utcnow().date()
+    root_key = str(get_log_root(app).resolve())
+    if not force and _last_cleanup_date_by_root.get(root_key) == today:
+        return {"deleted_files": 0, "deleted_bytes": 0}
+
+    retention_days = int(settings.get("log_retention_days") or 0)
+    result = cleanup_expired_log_files(app, retention_days, today=today)
+    _last_cleanup_date_by_root[root_key] = today
+    if result["deleted_files"]:
+        app.logger.info(
+            "Automatic log cleanup deleted %s file(s), %s byte(s), retention=%s day(s)",
+            result["deleted_files"],
+            result["deleted_bytes"],
+            retention_days,
+        )
+    return result
 
 
 def write_audit_log(
@@ -39,6 +122,7 @@ def write_audit_log(
     types and levels can be added without changing the storage format.
     """
     try:
+        maybe_cleanup_expired_logs(app)
         now = datetime.utcnow()
         folder = _day_folder(get_log_root(app), now)
         folder.mkdir(parents=True, exist_ok=True)

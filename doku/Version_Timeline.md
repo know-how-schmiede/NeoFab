@@ -10,6 +10,9 @@ Worker-Timeouts nach grossen G-Code-Uploads durch vollstaendiges Durchsuchen der
 Reiter 3D-Modelle / Bilder um Projektvideos mit Wiedergabe, Download und Loeschfunktion erweitert
 Video-Uploads bis maximal 200 MB sowie kurze bearbeitbare Bemerkungen je Video ergaenzt
 Unterstuetzte Videoformate auf MP4, WebM, OGV, OGG und MOV begrenzt
+Systemeinstellungen im Reiter Allgemein um optionale automatische Log-Loeschung erweitert
+Aufbewahrungsdauer fuer Logdateien in Tagen administrativ konfigurierbar gemacht
+Abgelaufene Tageslogs werden beim Anwendungsstart und danach hoechstens einmal taeglich automatisch entfernt
 Version in Anwendung und README auf 0.9.34 angehoben
 
 ## Version 0.9.33

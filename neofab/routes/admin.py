@@ -29,7 +29,14 @@ from sqlalchemy.exc import OperationalError
 from werkzeug.utils import secure_filename
 
 from auth_utils import roles_required
-from audit_logs import DELETE_LOG_FILE, delete_log_file, list_log_files, read_log_entries, write_audit_log
+from audit_logs import (
+    DELETE_LOG_FILE,
+    delete_log_file,
+    list_log_files,
+    maybe_cleanup_expired_logs,
+    read_log_entries,
+    write_audit_log,
+)
 from config import (
     DASHBOARD_ROWS_PER_PAGE_OPTIONS,
     EMAIL_ACTION_DEFS,
@@ -757,6 +764,14 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 registration_allowed_domains = serialize_registration_domains(
                     normalize_registration_domains(request.form.get("registration_allowed_domains", ""))
                 )
+                log_auto_cleanup_enabled = coerce_bool(
+                    request.form.get("log_auto_cleanup_enabled"),
+                    False,
+                )
+                log_retention_days = coerce_positive_int(
+                    request.form.get("log_retention_days"),
+                    None,
+                )
 
                 if timeout_value is None:
                     flash(trans("flash_settings_invalid_timeout"), "danger")
@@ -768,6 +783,8 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     flash(trans("flash_settings_invalid_time_display_offset"), "danger")
                 elif registration_domain_check_enabled and not registration_allowed_domains:
                     flash(trans("flash_settings_invalid_registration_domains"), "danger")
+                elif log_retention_days is None:
+                    flash(trans("flash_settings_invalid_log_retention"), "danger")
                 else:
                     try:
                         updated_settings = settings.copy()
@@ -778,7 +795,11 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                         updated_settings["time_display_offset_hours"] = offset_value
                         updated_settings["registration_domain_check_enabled"] = registration_domain_check_enabled
                         updated_settings["registration_allowed_domains"] = registration_allowed_domains
+                        updated_settings["log_auto_cleanup_enabled"] = log_auto_cleanup_enabled
+                        updated_settings["log_retention_days"] = log_retention_days
                         save_app_settings(current_app, updated_settings)
+                        if log_auto_cleanup_enabled:
+                            maybe_cleanup_expired_logs(current_app, force=True)
                         flash(trans("flash_settings_saved"), "success")
                         return redirect(url_for(".admin_settings"))
                     except Exception:
@@ -1170,6 +1191,8 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 "activation_token_valid_minutes": settings.get("activation_token_valid_minutes", 120),
                 "registration_domain_check_enabled": bool(settings.get("registration_domain_check_enabled")),
                 "registration_allowed_domains": settings.get("registration_allowed_domains", ""),
+                "log_auto_cleanup_enabled": bool(settings.get("log_auto_cleanup_enabled")),
+                "log_retention_days": settings.get("log_retention_days", 30),
                 "smtp_host": settings.get("smtp_host", ""),
                 "smtp_port": settings.get("smtp_port", 0),
                 "smtp_use_tls": bool(settings.get("smtp_use_tls")),
@@ -1234,6 +1257,8 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 "activation_token_valid_minutes",
                 "registration_domain_check_enabled",
                 "registration_allowed_domains",
+                "log_auto_cleanup_enabled",
+                "log_retention_days",
                 "smtp_host",
                 "smtp_port",
                 "smtp_use_tls",
@@ -1251,7 +1276,9 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             if "status_messages" in raw:
                 updated_settings["status_messages"] = filter_status_messages(raw.get("status_messages"))
 
-            save_app_settings(current_app, updated_settings)
+            saved_settings = save_app_settings(current_app, updated_settings)
+            if saved_settings.get("log_auto_cleanup_enabled"):
+                maybe_cleanup_expired_logs(current_app, force=True)
             flash(trans("flash_settings_imported"), "success")
         except Exception:
             current_app.logger.exception("Failed to import settings")

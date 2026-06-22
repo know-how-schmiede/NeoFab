@@ -92,7 +92,7 @@ from auth_utils import (
     register_session_timeout,
     SESSION_LAST_ACTIVE_KEY,
 )
-from audit_logs import write_audit_log
+from audit_logs import maybe_cleanup_expired_logs, write_audit_log
 from routes import create_admin_blueprint
 from models import (
     db,
@@ -1837,6 +1837,7 @@ with app.app_context():
     ensure_order_read_status_table()
     ensure_announcements_table()
     ensure_announcement_reads_table()
+    maybe_cleanup_expired_logs(app, force=True)
 
 
 def save_image_thumbnail(source_path: Path, target_path: Path, max_width: int = THUMBNAIL_MAX_WIDTH) -> bool:

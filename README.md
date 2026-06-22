@@ -63,7 +63,7 @@ The application is built for multilingual use with English as the default langua
   Admins can archive orders and permanently delete orders including database records and related files.
 
 - **Audit and log support**  
-  Logs include user activity, order changes, archive/delete operations, file cleanup details, and login timing diagnostics.
+  Logs include user activity, order changes, archive/delete operations, file cleanup details, and login timing diagnostics. Administrators can optionally enable automatic deletion after a configurable number of days.
 
 ## Tech Stack
 

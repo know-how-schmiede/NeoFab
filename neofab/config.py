@@ -56,6 +56,8 @@ DEFAULT_SETTINGS = {
     "activation_token_valid_minutes": 120,
     "registration_domain_check_enabled": False,
     "registration_allowed_domains": "",
+    "log_auto_cleanup_enabled": False,
+    "log_retention_days": 30,
     "smtp_host": "",
     "smtp_port": 0,
     "smtp_use_tls": False,
@@ -291,6 +293,14 @@ def load_app_settings(app, force_reload: bool = False) -> Dict[str, Any]:
                 settings["registration_allowed_domains"] = serialize_registration_domains(
                     normalize_registration_domains(loaded.get("registration_allowed_domains", ""))
                 )
+                settings["log_auto_cleanup_enabled"] = coerce_bool(
+                    loaded.get("log_auto_cleanup_enabled"),
+                    DEFAULT_SETTINGS["log_auto_cleanup_enabled"],
+                )
+                settings["log_retention_days"] = coerce_positive_int(
+                    loaded.get("log_retention_days"),
+                    DEFAULT_SETTINGS["log_retention_days"],
+                )
                 settings["smtp_host"] = str(loaded.get("smtp_host", "") or "").strip()
                 settings["smtp_port"] = coerce_positive_int(loaded.get("smtp_port"), 0)
                 settings["smtp_use_tls"] = bool(loaded.get("smtp_use_tls"))
@@ -368,6 +378,14 @@ def save_app_settings(app, new_settings: Dict[str, Any]) -> Dict[str, Any]:
         )
         settings["registration_allowed_domains"] = serialize_registration_domains(
             normalize_registration_domains(new_settings.get("registration_allowed_domains", ""))
+        )
+        settings["log_auto_cleanup_enabled"] = coerce_bool(
+            new_settings.get("log_auto_cleanup_enabled"),
+            DEFAULT_SETTINGS["log_auto_cleanup_enabled"],
+        )
+        settings["log_retention_days"] = coerce_positive_int(
+            new_settings.get("log_retention_days"),
+            DEFAULT_SETTINGS["log_retention_days"],
         )
         settings["smtp_host"] = str(new_settings.get("smtp_host", "") or "").strip()
         settings["smtp_port"] = coerce_positive_int(new_settings.get("smtp_port"), 0)
