@@ -429,7 +429,7 @@
   "flash_invalid_credentials": "Ungültige E-Mail oder Passwort.",
   "flash_invalid_file": "Es sind nur STL- und 3MF-Dateien erlaubt.",
   "flash_invalid_file_id": "Ungültige Datei-ID.",
-  "flash_upload_too_large": "Die Datei ist zu groß für den Upload. Maximal erlaubt sind 50 MB.",
+  "flash_upload_too_large": "Die Datei ist zu groß für den Upload. Maximal erlaubt sind 200 MB.",
   "flash_invalid_image": "Es sind nur Bilddateien (png, jpg, jpeg, gif, webp) erlaubt.",
   "flash_invalid_image_id": "Ungültige Bild-ID.",
   "flash_invalid_json": "Datei konnte nicht gelesen werden. Bitte gültigen JSON-Export hochladen.",

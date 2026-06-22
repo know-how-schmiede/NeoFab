@@ -1,5 +1,12 @@
 # Timeline NeoFab
 
+## Version 0.9.34
+
+Maximale Groesse fuer hochgeladene Dateien von 50 MB auf 200 MB angehoben
+Upload-Pruefung im Server und Browser sowie die Groessenhinweise auf das neue Limit abgestimmt
+Fehlermeldungen fuer zu grosse Dateien in Deutsch, Englisch und Franzoesisch auf 200 MB aktualisiert
+Version in Anwendung und README auf 0.9.34 angehoben
+
 ## Version 0.9.33
 
 Login um Passwort-vergessen-Funktion mit E-Mail-Link erweitert

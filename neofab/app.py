@@ -239,8 +239,8 @@ PDF_TEMPLATE_PATH = os.environ.get(
 )
 
 
-# Maximal erlaubte Upload-Gr├Â├ƒe (z.B. 50 MB)
-MAX_UPLOAD_SIZE_MB = 50
+# Maximal erlaubte Upload-Groesse
+MAX_UPLOAD_SIZE_MB = 200
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_SIZE_MB * 1024 * 1024
 
 # Einfache Logging-Konfiguration. Debug kann bei Bedarf ueber NEOFAB_LOG_LEVEL=DEBUG

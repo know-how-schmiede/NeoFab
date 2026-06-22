@@ -120,9 +120,9 @@ The main scripts are:
 
 ## Current Version
 
-Current application version: **0.9.33**
+Current application version: **0.9.34**
 
-Recent changes include self-service password reset links, email-based user account activation links, unified NeoFab button styling, and the latest UI/consistency updates documented in the project timeline.
+Recent changes include a 200 MB upload limit, self-service password reset links, email-based user account activation links, and the latest UI/consistency updates documented in the project timeline.
 
 The update script installs Python dependencies from `neofab/requirements.txt`, including PyMuPDF for rendering the first page of uploaded poster PDFs as thumbnails.
 

@@ -429,7 +429,7 @@
   "flash_invalid_credentials": "E-mail ou mot de passe invalide.",
   "flash_invalid_file": "Seuls les fichiers STL et 3MF sont autorisés.",
   "flash_invalid_file_id": "ID de fichier invalide.",
-  "flash_upload_too_large": "Le fichier est trop volumineux pour le téléversement. La taille maximale autorisée est de 50 MB.",
+  "flash_upload_too_large": "Le fichier est trop volumineux pour le téléversement. La taille maximale autorisée est de 200 MB.",
   "flash_invalid_image": "Seuls les fichiers image (png, jpg, jpeg, gif, webp) sont autorisés.",
   "flash_invalid_image_id": "ID d'image invalide.",
   "flash_invalid_json": "Fichier illisible. Veuillez téléverser une exportation JSON valide.",
