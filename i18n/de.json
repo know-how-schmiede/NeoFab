@@ -645,7 +645,7 @@
   "dashboard_rows_per_page": "Zeilen",
   "dashboard_filter_all": "Alle",
   "dashboard_search_label": "Suche",
-  "dashboard_search_placeholder": "Titel, Beschreibung, Anforderer oder Erstelldatum suchen",
+  "dashboard_search_placeholder": "Auftragsnummer, Titel, Beschreibung, Anforderer oder Erstelldatum suchen",
   "dashboard_search_button": "Suchen",
   "dashboard_search_reset": "Zuruecksetzen",
   "nav_login": "Login",

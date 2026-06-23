@@ -647,7 +647,7 @@
   "dashboard_rows_per_page": "Lignes",
   "dashboard_filter_all": "Tous",
   "dashboard_search_label": "Recherche",
-  "dashboard_search_placeholder": "Rechercher titre, description, demandeur ou date de creation",
+  "dashboard_search_placeholder": "Rechercher numero, titre, description, demandeur ou date de creation",
   "dashboard_search_button": "Rechercher",
   "dashboard_search_reset": "Reinitialiser",
   "nav_login": "Connexion",

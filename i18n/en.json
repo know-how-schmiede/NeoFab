@@ -688,7 +688,7 @@
   "dashboard_rows_per_page": "Rows",
   "dashboard_filter_all": "All",
   "dashboard_search_label": "Search",
-  "dashboard_search_placeholder": "Search title, description, requester, or creation date",
+  "dashboard_search_placeholder": "Search order number, title, description, requester, or creation date",
   "dashboard_search_button": "Search",
   "dashboard_search_reset": "Reset",
   "nav_login": "Login",

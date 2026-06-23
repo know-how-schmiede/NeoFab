@@ -6090,7 +6090,11 @@ def dashboard():
                     created_at.strftime("%Y-%m-%d %H:%M"),
                     created_at.strftime("%d.%m.%Y %H:%M"),
                 ]
+            display_title = f"#{order.id}-{order.title or ''}"
             return [
+                str(order.id),
+                f"#{order.id}",
+                display_title,
                 order.title or "",
                 order.description or "",
                 order.user.email if order.user else "",
