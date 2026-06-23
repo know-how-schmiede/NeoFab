@@ -123,9 +123,9 @@ The main scripts are:
 
 ## Current Version
 
-Current application version: **0.9.35**
+Current application version: **0.9.36**
 
-Recent changes include configurable dashboard columns, short area identifiers in the order list, a 200 MB upload limit, and the latest status and email-event documentation in the project timeline.
+Recent changes include a dashboard free-text search for title, requester and creation date, configurable dashboard columns, short area identifiers in the order list, and the latest status and email-event documentation in the project timeline.
 
 The update script installs Python dependencies from `neofab/requirements.txt`, including PyMuPDF for rendering the first page of uploaded poster PDFs as thumbnails.
 

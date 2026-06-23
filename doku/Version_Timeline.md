@@ -1,5 +1,12 @@
 # Timeline NeoFab
 
+## Version 0.9.36
+
+Auftragsliste um eine zweite Filterzeile mit Freitextsuche erweitert
+Freitextsuche durchsucht Titel, Anforderer und Erstelldatum der Auftraege
+Suchbegriff bleibt beim Sortieren, Blaettern und Aendern der angezeigten Zeilen erhalten
+Version in Anwendung und README auf 0.9.36 angehoben
+
 ## Version 0.9.35
 
 Bereichsstammdaten in den Systemeinstellungen um eine eindeutige Kurzfassung erweitert

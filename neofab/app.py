@@ -5856,6 +5856,7 @@ def dashboard():
     selected_category_id_raw = _get_persistent_dashboard_filter("category")
     selected_area_id_raw = _get_persistent_dashboard_filter("area")
     selected_status = _get_persistent_dashboard_filter("status")
+    dashboard_search_query = (request.args.get("q") or "").strip()
 
     if request.method == "POST":
         action = (request.form.get("action") or "").strip()
@@ -6076,6 +6077,30 @@ def dashboard():
         orders = [order for order in orders if order.area_id == selected_area_id]
     if selected_status:
         orders = [order for order in orders if (order.status or "") == selected_status]
+    if dashboard_search_query:
+        search_term = dashboard_search_query.lower()
+
+        def _dashboard_search_values(order):
+            created_at = order.created_at
+            created_values = []
+            if created_at:
+                created_values = [
+                    created_at.strftime("%Y-%m-%d"),
+                    created_at.strftime("%d.%m.%Y"),
+                    created_at.strftime("%Y-%m-%d %H:%M"),
+                    created_at.strftime("%d.%m.%Y %H:%M"),
+                ]
+            return [
+                order.title or "",
+                order.user.email if order.user else "",
+                *created_values,
+            ]
+
+        orders = [
+            order
+            for order in orders
+            if any(search_term in value.lower() for value in _dashboard_search_values(order))
+        ]
 
     def _dashboard_sort_value(order):
         if sort_by == "category":
@@ -6254,6 +6279,7 @@ def dashboard():
         selected_category_id=selected_category_id,
         selected_area_id=selected_area_id,
         selected_status=selected_status,
+        dashboard_search_query=dashboard_search_query,
         total_orders=total_orders,
         total_pages=total_pages,
         page_start=page_start + 1 if total_orders else 0,
