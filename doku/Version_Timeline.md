@@ -1,5 +1,12 @@
 # Timeline NeoFab
 
+## Version 0.9.37
+
+Auftrags-IDs ueber eine eigene Sequenz gegen Wiederverwendung nach Einzel-Loeschungen abgesichert
+Wartungsfunktion zum Loeschen aller Auftraege und Zuruecksetzen der Auftrags-IDs in die Systemeinstellungen verschoben
+Reset der Auftragsdaten durch Checkbox und Eingabe von RESET mit zwei Sicherheitsabfragen abgesichert
+Version in Anwendung und README auf 0.9.37 angehoben
+
 ## Version 0.9.36
 
 Auftragsliste um eine zweite Filterzeile mit Freitextsuche erweitert

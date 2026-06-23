@@ -216,6 +216,28 @@
           </div>
 
           <div class="col-12">
+            <div class="border border-danger rounded p-3">
+              <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                <div>
+                  <h2 class="h6 text-danger mb-1">{{ t("admin_settings_order_reset_title") }}</h2>
+                  <p class="mb-1">{{ t("admin_settings_order_reset_desc").format(count=order_count|default(0)) }}</p>
+                  <p class="mb-0 small text-muted">{{ t("admin_settings_order_reset_help") }}</p>
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-outline-danger"
+                  data-bs-toggle="modal"
+                  data-bs-target="#deleteAllOrdersModal"
+                  {% if not order_count %}disabled{% endif %}
+                >
+                  <i class="bi bi-trash3 me-1"></i>
+                  {{ t("btn_delete_all_orders_reset_ids") }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12">
             <div class="alert alert-secondary small mb-0">
               {{ t("admin_settings_storage_hint").format(path=settings_path) }}
             </div>
@@ -672,6 +694,45 @@
         </form>
         {{ settings_export_import() }}
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="deleteAllOrdersModal" tabindex="-1" aria-labelledby="deleteAllOrdersModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content border-danger">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteAllOrdersModalLabel">{{ t("admin_orders_delete_all_title") }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('btn_cancel') }}"></button>
+      </div>
+      <form method="post" action="{{ url_for('admin.admin_orders_delete_all') }}" class="m-0">
+        <div class="modal-body">
+          <p>{{ t("admin_orders_delete_all_confirm") }}</p>
+          <p class="text-danger fw-semibold">{{ t("admin_orders_delete_all_warning") }}</p>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="confirm_delete_all_orders" name="confirm_delete_all_orders" required>
+            <label class="form-check-label" for="confirm_delete_all_orders">
+              {{ t("admin_orders_delete_all_confirm_checkbox") }}
+            </label>
+          </div>
+          <label class="form-label" for="confirm_delete_all_orders_text">
+            {{ t("admin_orders_delete_all_confirm_text_label") }}
+          </label>
+          <input
+            type="text"
+            class="form-control"
+            id="confirm_delete_all_orders_text"
+            name="confirm_delete_all_orders_text"
+            autocomplete="off"
+            required
+          >
+          <div class="form-text">{{ t("admin_orders_delete_all_confirm_text_help") }}</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t("btn_cancel") }}</button>
+          <button type="submit" class="btn btn-danger">{{ t("btn_delete_all_orders_reset_ids") }}</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>

@@ -10,18 +10,10 @@
       <i class="bi bi-archive me-1"></i>
       {{ t("admin_orders_heading") }}
     </h2>
-    <div class="d-flex flex-wrap justify-content-end gap-2">
-      {% if orders %}
-        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteAllOrdersModal">
-          <i class="bi bi-trash3 me-1"></i>
-          {{ t("btn_delete_all_orders_reset_ids") }}
-        </button>
-      {% endif %}
-      <a href="{{ url_for('admin.admin_panel') }}" class="btn btn-sm btn-outline-secondary">
-        <i class="bi bi-arrow-left me-1"></i>
-        {{ t("btn_back_admin") }}
-      </a>
-    </div>
+    <a href="{{ url_for('admin.admin_panel') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>
+      {{ t("btn_back_admin") }}
+    </a>
   </div>
 
   <div class="card-body p-2">
@@ -109,27 +101,6 @@
     {% else %}
       <p class="mb-0">{{ t("admin_orders_none") }}</p>
     {% endif %}
-  </div>
-</div>
-
-<div class="modal fade" id="deleteAllOrdersModal" tabindex="-1" aria-labelledby="deleteAllOrdersModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content border-danger">
-      <div class="modal-header">
-        <h5 class="modal-title" id="deleteAllOrdersModalLabel">{{ t("admin_orders_delete_all_title") }}</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('btn_cancel') }}"></button>
-      </div>
-      <div class="modal-body">
-        <p>{{ t("admin_orders_delete_all_confirm") }}</p>
-        <p class="mb-0 text-danger fw-semibold">{{ t("admin_orders_delete_all_warning") }}</p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t("btn_cancel") }}</button>
-        <form method="post" action="{{ url_for('admin.admin_orders_delete_all') }}" class="m-0">
-          <button type="submit" class="btn btn-danger">{{ t("btn_delete_all_orders_reset_ids") }}</button>
-        </form>
-      </div>
-    </div>
   </div>
 </div>
 

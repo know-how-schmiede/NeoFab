@@ -727,12 +727,17 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             flash(trans("flash_order_delete_failed"), "danger")
         return redirect(url_for(".admin_orders"))
 
-    @bp.route("/orders/delete-all", methods=["POST"], endpoint="admin_orders_delete_all")
+    @bp.route("/settings/orders/delete-all", methods=["POST"], endpoint="admin_orders_delete_all")
     @roles_required("admin")
     def admin_orders_delete_all():
         trans = t
         orders = Order.query.order_by(Order.id.asc()).all()
         deleted_order_ids = [order.id for order in orders]
+        confirmation_checked = request.form.get("confirm_delete_all_orders") == "on"
+        confirmation_text = (request.form.get("confirm_delete_all_orders_text") or "").strip()
+        if not confirmation_checked or confirmation_text != "RESET":
+            flash(trans("flash_orders_delete_reset_confirmation_required"), "danger")
+            return redirect(url_for(".admin_settings"))
         try:
             write_audit_log(
                 current_app,
@@ -749,6 +754,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 for table_name, count in deleted_counts.items():
                     deleted_counts_total[table_name] = deleted_counts_total.get(table_name, 0) + count
 
+            db.session.flush()
             reset_order_id_sequence()
             db.session.commit()
             write_audit_log(
@@ -796,7 +802,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 log_file=DELETE_LOG_FILE,
             )
             flash(trans("flash_orders_delete_reset_failed"), "danger")
-        return redirect(url_for(".admin_orders"))
+        return redirect(url_for(".admin_settings"))
 
     @bp.route("/settings", methods=["GET", "POST"], endpoint="admin_settings")
     @roles_required("admin")
@@ -1210,6 +1216,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             }
             for entry in normalize_dashboard_columns(settings.get("dashboard_columns"))
         ]
+        order_count = Order.query.count()
 
         return render_template(
             "admin_settings.html",
@@ -1222,6 +1229,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             email_action_state_options=email_action_state_options,
             dashboard_column_options=dashboard_column_options,
             order_areas=OrderArea.query.order_by(OrderArea.name.asc()).all(),
+            order_count=order_count,
         )
 
     @bp.route("/areas/export", endpoint="admin_area_export")

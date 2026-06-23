@@ -123,9 +123,9 @@ The main scripts are:
 
 ## Current Version
 
-Current application version: **0.9.36**
+Current application version: **0.9.37**
 
-Recent changes include a dashboard free-text search for title, requester and creation date, configurable dashboard columns, short area identifiers in the order list, and the latest status and email-event documentation in the project timeline.
+Recent changes include unique order IDs with a controlled full order reset in the system settings, dashboard free-text search, configurable dashboard columns, short area identifiers in the order list, and the latest status and email-event documentation in the project timeline.
 
 The update script installs Python dependencies from `neofab/requirements.txt`, including PyMuPDF for rendering the first page of uploaded poster PDFs as thumbnails.
 
