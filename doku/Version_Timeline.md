@@ -1,5 +1,14 @@
 # Timeline NeoFab
 
+## Version 0.9.35
+
+Bereichsstammdaten in den Systemeinstellungen um eine eindeutige Kurzfassung erweitert
+Kurzfassungen der Bereiche in der Auftragsliste anstelle der langen Bezeichner angezeigt
+Lange Bereichsbezeichner in der Auftragsliste als Tooltip der Kurzfassung hinterlegt
+Bereichs-Import und -Export um die Kurzfassung erweitert
+Bestehende Bereiche bei der Datenbankaktualisierung kompatibel mit einer Kurzfassung vorbelegt
+Version in Anwendung und README auf 0.9.35 angehoben
+
 ## Version 0.9.34
 
 Maximale Groesse fuer hochgeladene Dateien von 50 MB auf 200 MB angehoben

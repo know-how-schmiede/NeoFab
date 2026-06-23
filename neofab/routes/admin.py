@@ -968,20 +968,29 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     flash(trans("flash_settings_save_error"), "danger")
             elif form_type == "area_add":
                 area_name = (request.form.get("area_name") or "").strip()
+                area_short_name = (request.form.get("area_short_name") or "").strip()
                 if not area_name:
                     flash(trans("flash_area_required"), "danger")
+                elif not area_short_name:
+                    flash(trans("flash_area_short_name_required"), "danger")
                 else:
                     exists = OrderArea.query.filter(func.lower(OrderArea.name) == area_name.lower()).first()
+                    short_name_exists = OrderArea.query.filter(
+                        func.lower(OrderArea.short_name) == area_short_name.lower()
+                    ).first()
                     if exists:
                         flash(trans("flash_area_exists"), "danger")
+                    elif short_name_exists:
+                        flash(trans("flash_area_short_name_exists"), "danger")
                     else:
-                        db.session.add(OrderArea(name=area_name))
+                        db.session.add(OrderArea(name=area_name, short_name=area_short_name))
                         db.session.commit()
                         flash(trans("flash_area_created"), "success")
                         return redirect(url_for(".admin_settings", tab="areas"))
             elif form_type == "area_update":
                 area_id_raw = (request.form.get("area_id") or "").strip()
                 area_name = (request.form.get("area_name") or "").strip()
+                area_short_name = (request.form.get("area_short_name") or "").strip()
                 try:
                     area_id = int(area_id_raw)
                 except ValueError:
@@ -992,12 +1001,20 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     flash(trans("flash_area_not_found"), "warning")
                 elif not area_name:
                     flash(trans("flash_area_required"), "danger")
+                elif not area_short_name:
+                    flash(trans("flash_area_short_name_required"), "danger")
                 else:
                     duplicate = OrderArea.query.filter(func.lower(OrderArea.name) == area_name.lower()).first()
+                    short_name_duplicate = OrderArea.query.filter(
+                        func.lower(OrderArea.short_name) == area_short_name.lower()
+                    ).first()
                     if duplicate and duplicate.id != area.id:
                         flash(trans("flash_area_exists"), "danger")
+                    elif short_name_duplicate and short_name_duplicate.id != area.id:
+                        flash(trans("flash_area_short_name_exists"), "danger")
                     else:
                         area.name = area_name
+                        area.short_name = area_short_name
                         area.updated_at = datetime.utcnow()
                         db.session.commit()
                         flash(trans("flash_area_updated"), "success")
@@ -1102,7 +1119,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         payload = {
             "version": APP_VERSION,
             "areas": [
-                {"name": area.name}
+                {"name": area.name, "short_name": area.short_name}
                 for area in areas
             ],
         }
@@ -1134,16 +1151,46 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             flash(trans("flash_invalid_json"), "danger")
             return redirect(url_for(".admin_settings", tab="areas"))
 
-        normalized_names: list[str] = []
-        seen_lower: set[str] = set()
+        normalized_areas: list[tuple[str, str]] = []
+        seen_names: set[str] = set()
+        seen_short_names: set[str] = set()
         skipped = 0
         for entry in rows:
             name = (entry.get("name") or "").strip() if isinstance(entry, dict) else ""
-            key = name.lower()
-            if not name or key in seen_lower:
+            short_name = (entry.get("short_name") or name).strip() if isinstance(entry, dict) else ""
+            name_key = name.lower()
+            short_name_key = short_name.lower()
+            if (
+                not name
+                or not short_name
+                or name_key in seen_names
+                or short_name_key in seen_short_names
+            ):
                 skipped += 1
                 continue
-            seen_lower.add(key)
+            seen_names.add(name_key)
+            seen_short_names.add(short_name_key)
+            normalized_areas.append((name, short_name))
+
+        created = 0
+        for name, short_name in normalized_areas:
+            exists = OrderArea.query.filter(
+                (func.lower(OrderArea.name) == name.lower())
+                | (func.lower(OrderArea.short_name) == short_name.lower())
+            ).first()
+            if exists:
+                skipped += 1
+                continue
+            db.session.add(OrderArea(name=name, short_name=short_name))
+            created += 1
+
+        db.session.commit()
+        flash(
+            trans("flash_import_result_simple").format(created=created, skipped=skipped),
+            "success",
+        )
+        return redirect(url_for(".admin_settings", tab="areas"))
+
     @bp.route("/logs", endpoint="admin_logs")
     @roles_required("admin")
     def admin_logs():

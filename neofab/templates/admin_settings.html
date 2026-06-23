@@ -406,7 +406,7 @@
         <form method="post" class="row g-3">
           <input type="hidden" name="form_type" value="area_add">
           <input type="hidden" name="active_tab" value="areas">
-          <div class="col-md-8">
+          <div class="col-md-5">
             <label for="area_name" class="form-label">{{ t("admin_area_identifier_label") }}</label>
             <input
               type="text"
@@ -417,6 +417,19 @@
               required
             >
             <div class="form-text">{{ t("admin_area_identifier_help") }}</div>
+          </div>
+          <div class="col-md-3">
+            <label for="area_short_name" class="form-label">{{ t("admin_area_short_name_label") }}</label>
+            <input
+              type="text"
+              class="form-control"
+              id="area_short_name"
+              name="area_short_name"
+              maxlength="30"
+              placeholder="{{ t('admin_area_short_name_placeholder') }}"
+              required
+            >
+            <div class="form-text">{{ t("admin_area_short_name_help") }}</div>
           </div>
           <div class="col-md-4 d-flex align-items-end">
             <button type="submit" class="btn btn-success w-100">{{ t("admin_areas_add") }}</button>
@@ -431,6 +444,7 @@
               <thead>
                 <tr>
                   <th>{{ t("admin_areas_column_identifier") }}</th>
+                  <th>{{ t("admin_areas_column_short_name") }}</th>
                   <th class="text-end" style="width: 260px;">{{ t("table_actions") }}</th>
                 </tr>
               </thead>
@@ -438,22 +452,34 @@
                 {% for area in order_areas %}
                   <tr>
                     <td data-label="{{ t('admin_areas_column_identifier') }}">
-                      <form method="post" class="d-flex gap-2 align-items-center">
+                      <form method="post" id="area-update-{{ area.id }}">
                         <input type="hidden" name="form_type" value="area_update">
                         <input type="hidden" name="active_tab" value="areas">
                         <input type="hidden" name="area_id" value="{{ area.id }}">
+                      </form>
                         <input
                           type="text"
                           name="area_name"
                           class="form-control"
                           maxlength="120"
                           value="{{ area.name }}"
+                          form="area-update-{{ area.id }}"
                           required
                         >
-                        <button type="submit" class="btn btn-sm btn-primary">{{ t("btn_save") }}</button>
-                      </form>
+                    </td>
+                    <td data-label="{{ t('admin_areas_column_short_name') }}">
+                      <input
+                        type="text"
+                        name="area_short_name"
+                        class="form-control"
+                        maxlength="30"
+                        value="{{ area.short_name }}"
+                        form="area-update-{{ area.id }}"
+                        required
+                      >
                     </td>
                     <td class="text-end" data-label="{{ t('table_actions') }}">
+                      <button type="submit" class="btn btn-sm btn-primary" form="area-update-{{ area.id }}">{{ t("btn_save") }}</button>
                       <form method="post" class="d-inline">
                         <input type="hidden" name="form_type" value="area_delete">
                         <input type="hidden" name="active_tab" value="areas">

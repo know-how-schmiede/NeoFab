@@ -1358,9 +1358,35 @@ def ensure_order_area_schema():
                     CREATE TABLE order_areas (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         name VARCHAR(120) NOT NULL UNIQUE,
+                        short_name VARCHAR(30) NOT NULL UNIQUE,
                         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
+                    """
+                )
+            )
+            db.session.commit()
+
+        area_cols = {
+            row[1]
+            for row in db.session.execute(text("PRAGMA table_info(order_areas)"))
+        }
+        if "short_name" not in area_cols:
+            db.session.execute(text("ALTER TABLE order_areas ADD COLUMN short_name VARCHAR(30)"))
+            db.session.execute(
+                text(
+                    """
+                    UPDATE order_areas
+                    SET short_name = name
+                    WHERE short_name IS NULL OR TRIM(short_name) = ''
+                    """
+                )
+            )
+            db.session.execute(
+                text(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS uq_order_areas_short_name
+                    ON order_areas(short_name)
                     """
                 )
             )
@@ -1397,7 +1423,7 @@ def ensure_order_area_schema():
             db.session.commit()
 
         if not OrderArea.query.first():
-            db.session.add(OrderArea(name="Standard"))
+            db.session.add(OrderArea(name="Standard", short_name="Standard"))
             db.session.commit()
     except Exception:
         app.logger.exception("Failed to ensure order area schema exists")
