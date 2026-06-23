@@ -61,12 +61,14 @@ from PIL import Image, ImageDraw
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape, Template
 from config import (
+    DASHBOARD_COLUMN_DEFS,
     DASHBOARD_ROWS_PER_PAGE_OPTIONS,
     DEFAULT_SETTINGS,
     SETTINGS_FILE,
     is_registration_domain_allowed,
     coerce_positive_int,
     load_app_settings,
+    normalize_dashboard_columns,
     normalize_registration_domains,
     save_app_settings,
 )
@@ -5807,6 +5809,18 @@ def dashboard():
     if sort_dir not in {"asc", "desc"}:
         sort_dir = "desc"
     settings = load_app_settings(app)
+    dashboard_column_defs = {
+        item["key"]: item
+        for item in DASHBOARD_COLUMN_DEFS
+    }
+    dashboard_columns = [
+        {
+            **entry,
+            "label": trans(dashboard_column_defs[entry["key"]]["label"]),
+        }
+        for entry in normalize_dashboard_columns(settings.get("dashboard_columns"))
+        if entry["visible"]
+    ]
     per_page_options = list(DASHBOARD_ROWS_PER_PAGE_OPTIONS)
     default_per_page = settings.get("dashboard_rows_per_page") or DEFAULT_SETTINGS["dashboard_rows_per_page"]
     if default_per_page not in per_page_options:
@@ -6233,6 +6247,7 @@ def dashboard():
         page=page,
         per_page=per_page,
         per_page_options=per_page_options,
+        dashboard_columns=dashboard_columns,
         category_filters=category_filters,
         area_filters=area_filters,
         status_filters=status_filters,

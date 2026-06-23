@@ -48,9 +48,27 @@ DEFAULT_EMAIL_ACTION_SETTINGS = {
     for key in EMAIL_ACTION_KEYS
 }
 
+DASHBOARD_COLUMN_DEFS = (
+    {"key": "category", "label": "order_category_label"},
+    {"key": "communication", "label": "communication_header"},
+    {"key": "area", "label": "order_area_label"},
+    {"key": "title", "label": "title"},
+    {"key": "status", "label": "status"},
+    {"key": "owner", "label": "owner"},
+    {"key": "created", "label": "created"},
+    {"key": "files", "label": "files"},
+    {"key": "print_jobs", "label": "print_jobs_header"},
+    {"key": "actions", "label": "actions"},
+)
+DEFAULT_DASHBOARD_COLUMNS = [
+    {"key": item["key"], "visible": True}
+    for item in DASHBOARD_COLUMN_DEFS
+]
+
 DEFAULT_SETTINGS = {
     "session_timeout_minutes": 30,
     "dashboard_rows_per_page": 25,
+    "dashboard_columns": DEFAULT_DASHBOARD_COLUMNS,
     "time_display_offset_hours": 0,
     "account_activation_required": True,
     "activation_token_valid_minutes": 120,
@@ -98,6 +116,37 @@ def coerce_dashboard_rows_per_page(value: Any, fallback: int | None = None) -> i
     fallback_value = fallback if fallback in DASHBOARD_ROWS_PER_PAGE_OPTIONS else DEFAULT_SETTINGS["dashboard_rows_per_page"]
     value_int = coerce_positive_int(value, fallback_value)
     return value_int if value_int in DASHBOARD_ROWS_PER_PAGE_OPTIONS else fallback_value
+
+
+def normalize_dashboard_columns(value: Any) -> list[Dict[str, Any]]:
+    allowed_keys = [item["key"] for item in DASHBOARD_COLUMN_DEFS]
+    normalized: list[Dict[str, Any]] = []
+    seen: set[str] = set()
+
+    if isinstance(value, list):
+        for entry in value:
+            if isinstance(entry, dict):
+                key = str(entry.get("key", "") or "").strip()
+                visible = coerce_bool(entry.get("visible"), True)
+            else:
+                key = str(entry or "").strip()
+                visible = True
+            if key not in allowed_keys or key in seen:
+                continue
+            normalized.append({"key": key, "visible": visible})
+            seen.add(key)
+
+    for key in allowed_keys:
+        if key not in seen:
+            normalized.append({"key": key, "visible": True})
+
+    if not any(item["visible"] for item in normalized):
+        for item in normalized:
+            if item["key"] == "title":
+                item["visible"] = True
+                break
+
+    return normalized
 
 
 def coerce_time_display_offset_hours(value: Any, fallback: int | None = None) -> int:
@@ -274,6 +323,9 @@ def load_app_settings(app, force_reload: bool = False) -> Dict[str, Any]:
                     loaded.get("dashboard_rows_per_page"),
                     DEFAULT_SETTINGS["dashboard_rows_per_page"],
                 )
+                settings["dashboard_columns"] = normalize_dashboard_columns(
+                    loaded.get("dashboard_columns", DEFAULT_SETTINGS["dashboard_columns"])
+                )
                 settings["time_display_offset_hours"] = coerce_time_display_offset_hours(
                     loaded.get("time_display_offset_hours"),
                     DEFAULT_SETTINGS["time_display_offset_hours"],
@@ -359,6 +411,9 @@ def save_app_settings(app, new_settings: Dict[str, Any]) -> Dict[str, Any]:
         settings["dashboard_rows_per_page"] = coerce_dashboard_rows_per_page(
             new_settings.get("dashboard_rows_per_page"),
             DEFAULT_SETTINGS["dashboard_rows_per_page"],
+        )
+        settings["dashboard_columns"] = normalize_dashboard_columns(
+            new_settings.get("dashboard_columns", DEFAULT_SETTINGS["dashboard_columns"])
         )
         settings["time_display_offset_hours"] = coerce_time_display_offset_hours(
             new_settings.get("time_display_offset_hours"),

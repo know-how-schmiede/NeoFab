@@ -30,6 +30,11 @@
         </button>
       </li>
       <li class="nav-item" role="presentation">
+        <button class="nav-link" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab" aria-controls="dashboard" aria-selected="false">
+          {{ t("admin_settings_tab_dashboard") }}
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
         <button class="nav-link" id="email-tab" data-bs-toggle="tab" data-bs-target="#email" type="button" role="tab" aria-controls="email" aria-selected="false">
           {{ t("admin_settings_tab_email") }}
         </button>
@@ -220,6 +225,76 @@
             <button type="submit" class="btn btn-primary">
               {{ t("btn_save") }}
             </button>
+            <a href="{{ url_for('admin.admin_panel') }}" class="btn btn-secondary">
+              {{ t("btn_back_admin") }}
+            </a>
+          </div>
+        </form>
+        {{ settings_export_import() }}
+      </div>
+
+      <div class="tab-pane fade" id="dashboard" role="tabpanel" aria-labelledby="dashboard-tab">
+        <form method="post" class="row g-3">
+          <input type="hidden" name="form_type" value="dashboard">
+          <input type="hidden" name="active_tab" value="dashboard">
+
+          <div class="col-12">
+            <div class="alert alert-secondary small mb-0">
+              {{ t("dashboard_columns_help") }}
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="table-responsive nf-admin-wrap">
+              <table class="table table-striped align-middle nf-admin-table">
+                <thead>
+                  <tr>
+                    <th style="width: 120px;">{{ t("dashboard_columns_visible") }}</th>
+                    <th>{{ t("dashboard_columns_name") }}</th>
+                    <th class="text-end" style="width: 150px;">{{ t("dashboard_columns_order") }}</th>
+                  </tr>
+                </thead>
+                <tbody id="dashboardColumnRows">
+                  {% for column in dashboard_column_options %}
+                    <tr>
+                      <td data-label="{{ t('dashboard_columns_visible') }}">
+                        <input type="hidden" name="dashboard_column_order" value="{{ column.key }}">
+                        <div class="form-check">
+                          <input
+                            class="form-check-input"
+                            type="checkbox"
+                            name="dashboard_column_visible"
+                            value="{{ column.key }}"
+                            id="dashboard_column_{{ column.key }}"
+                            {% if column.visible %}checked{% endif %}
+                          >
+                          <label class="form-check-label visually-hidden" for="dashboard_column_{{ column.key }}">
+                            {{ column.label }}
+                          </label>
+                        </div>
+                      </td>
+                      <td data-label="{{ t('dashboard_columns_name') }}" class="fw-semibold">
+                        {{ column.label }}
+                      </td>
+                      <td class="text-end" data-label="{{ t('dashboard_columns_order') }}">
+                        <div class="btn-group btn-group-sm" role="group">
+                          <button type="button" class="btn btn-outline-secondary dashboard-column-up" title="{{ t('dashboard_columns_move_up') }}">
+                            <i class="bi bi-arrow-up"></i>
+                          </button>
+                          <button type="button" class="btn btn-outline-secondary dashboard-column-down" title="{{ t('dashboard_columns_move_down') }}">
+                            <i class="bi bi-arrow-down"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="col-12 d-flex gap-2 align-items-center">
+            <button type="submit" class="btn btn-primary">{{ t("btn_save") }}</button>
             <a href="{{ url_for('admin.admin_panel') }}" class="btn btn-secondary">
               {{ t("btn_back_admin") }}
             </a>
@@ -611,6 +686,26 @@
   if (!tabButton) return;
   const tab = bootstrap.Tab.getOrCreateInstance(tabButton);
   tab.show();
+})();
+
+(function() {
+  const rows = document.getElementById("dashboardColumnRows");
+  if (!rows) return;
+
+  rows.addEventListener("click", function(event) {
+    const button = event.target.closest(".dashboard-column-up, .dashboard-column-down");
+    if (!button) return;
+    const row = button.closest("tr");
+    if (!row) return;
+
+    if (button.classList.contains("dashboard-column-up")) {
+      const previous = row.previousElementSibling;
+      if (previous) rows.insertBefore(row, previous);
+    } else {
+      const next = row.nextElementSibling;
+      if (next) rows.insertBefore(next, row);
+    }
+  });
 })();
 </script>
 {% endblock %}

@@ -38,6 +38,7 @@ from audit_logs import (
     write_audit_log,
 )
 from config import (
+    DASHBOARD_COLUMN_DEFS,
     DASHBOARD_ROWS_PER_PAGE_OPTIONS,
     EMAIL_ACTION_DEFS,
     EMAIL_ACTION_KEYS,
@@ -50,6 +51,7 @@ from config import (
     coerce_positive_int,
     load_app_settings,
     normalize_registration_domains,
+    normalize_dashboard_columns,
     serialize_registration_domains,
     normalize_email_actions,
     save_app_settings,
@@ -732,13 +734,13 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         trans = t
         settings = load_app_settings(current_app, force_reload=True)
         active_tab = (request.args.get("tab") or "general").strip().lower()
-        if active_tab not in {"general", "email", "status-messages", "legal", "areas"}:
+        if active_tab not in {"general", "dashboard", "email", "status-messages", "legal", "areas"}:
             active_tab = "general"
 
         if request.method == "POST":
             form_type = request.form.get("form_type", "general")
             active_tab = (request.form.get("active_tab") or active_tab or "general").strip().lower()
-            if active_tab not in {"general", "email", "status-messages", "legal", "areas"}:
+            if active_tab not in {"general", "dashboard", "email", "status-messages", "legal", "areas"}:
                 active_tab = "general"
 
             if form_type == "general":
@@ -806,6 +808,33 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                         current_app.logger.exception("Failed to save admin settings")
                         flash(trans("flash_settings_save_error"), "danger")
 
+            elif form_type == "dashboard":
+                ordered_keys = request.form.getlist("dashboard_column_order")
+                visible_keys = set(request.form.getlist("dashboard_column_visible"))
+                allowed_keys = {item["key"] for item in DASHBOARD_COLUMN_DEFS}
+                ordered_keys = [
+                    key
+                    for key in ordered_keys
+                    if key in allowed_keys
+                ]
+                dashboard_columns = normalize_dashboard_columns(
+                    [
+                        {"key": key, "visible": key in visible_keys}
+                        for key in ordered_keys
+                    ]
+                )
+                if not visible_keys.intersection(allowed_keys):
+                    flash(trans("flash_dashboard_columns_required"), "danger")
+                else:
+                    try:
+                        updated_settings = settings.copy()
+                        updated_settings["dashboard_columns"] = dashboard_columns
+                        save_app_settings(current_app, updated_settings)
+                        flash(trans("flash_dashboard_settings_saved"), "success")
+                        return redirect(url_for(".admin_settings", tab="dashboard"))
+                    except Exception:
+                        current_app.logger.exception("Failed to save dashboard settings")
+                        flash(trans("flash_settings_save_error"), "danger")
             elif form_type == "email":
                 smtp_host = (request.form.get("smtp_host") or "").strip()
                 smtp_port = coerce_positive_int(request.form.get("smtp_port"), 0)
@@ -1099,6 +1128,17 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             {"value": EMAIL_ACTION_STATE_ENABLED, "label": trans("email_action_enabled")},
             {"value": EMAIL_ACTION_STATE_DISABLED, "label": trans("email_action_disabled")},
         ]
+        dashboard_column_defs = {
+            item["key"]: item
+            for item in DASHBOARD_COLUMN_DEFS
+        }
+        dashboard_column_options = [
+            {
+                **entry,
+                "label": trans(dashboard_column_defs[entry["key"]]["label"]),
+            }
+            for entry in normalize_dashboard_columns(settings.get("dashboard_columns"))
+        ]
 
         return render_template(
             "admin_settings.html",
@@ -1109,6 +1149,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             status_style_options=status_style_options,
             email_action_groups=email_action_groups,
             email_action_state_options=email_action_state_options,
+            dashboard_column_options=dashboard_column_options,
             order_areas=OrderArea.query.order_by(OrderArea.name.asc()).all(),
         )
 
@@ -1233,6 +1274,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             "settings": {
                 "session_timeout_minutes": settings.get("session_timeout_minutes"),
                 "dashboard_rows_per_page": settings.get("dashboard_rows_per_page"),
+                "dashboard_columns": normalize_dashboard_columns(settings.get("dashboard_columns")),
                 "time_display_offset_hours": settings.get("time_display_offset_hours", 0),
                 "account_activation_required": bool(settings.get("account_activation_required", True)),
                 "activation_token_valid_minutes": settings.get("activation_token_valid_minutes", 120),
@@ -1299,6 +1341,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             for key in (
                 "session_timeout_minutes",
                 "dashboard_rows_per_page",
+                "dashboard_columns",
                 "time_display_offset_hours",
                 "account_activation_required",
                 "activation_token_valid_minutes",
