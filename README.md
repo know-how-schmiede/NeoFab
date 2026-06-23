@@ -125,7 +125,7 @@ The main scripts are:
 
 Current application version: **0.9.35**
 
-Recent changes include short area identifiers in the order list, a 200 MB upload limit, self-service password reset links, and the latest UI/consistency updates documented in the project timeline.
+Recent changes include configurable dashboard columns, short area identifiers in the order list, a 200 MB upload limit, and the latest status and email-event documentation in the project timeline.
 
 The update script installs Python dependencies from `neofab/requirements.txt`, including PyMuPDF for rendering the first page of uploaded poster PDFs as thumbnails.
 

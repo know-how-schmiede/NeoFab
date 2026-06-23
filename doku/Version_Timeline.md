@@ -7,6 +7,13 @@ Kurzfassungen der Bereiche in der Auftragsliste anstelle der langen Bezeichner a
 Lange Bereichsbezeichner in der Auftragsliste als Tooltip der Kurzfassung hinterlegt
 Bereichs-Import und -Export um die Kurzfassung erweitert
 Bestehende Bereiche bei der Datenbankaktualisierung kompatibel mit einer Kurzfassung vorbelegt
+Auswahl der angezeigten Zeilen an das untere linke Ende der Auftragsliste verschoben
+Systemeinstellungen um einen eigenen Reiter Dashboard erweitert
+Sichtbarkeit der Spalten in der Auftragsliste systemweit konfigurierbar gemacht
+Reihenfolge der Dashboard-Spalten ueber Hoch- und Runter-Schaltflaechen anpassbar gemacht
+Dashboard-Spaltenkonfiguration in den Import und Export der Systemeinstellungen aufgenommen
+Auftragsliste dynamisch anhand der gespeicherten Spaltenreihenfolge aufgebaut
+Dokumentation Liste_Status_Infos.md mit Statusautomatiken und E-Mail-Ereignissen ergaenzt
 Version in Anwendung und README auf 0.9.35 angehoben
 
 ## Version 0.9.34

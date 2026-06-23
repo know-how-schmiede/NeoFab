@@ -37,6 +37,7 @@
               </option>
             {% endfor %}
           </select>
+          <div class="form-text">{{ t("new_order_category_help") }}</div>
         </div>
 
         <!-- Area -->
@@ -56,6 +57,7 @@
               <option value="{{ area.id }}">{{ area.name }}</option>
             {% endfor %}
           </select>
+          <div class="form-text">{{ t("new_order_area_help") }}</div>
         </div>
 
         <!-- Title -->
@@ -71,6 +73,7 @@
             name="title"
             required
           >
+          <div class="form-text">{{ t("new_order_title_help") }}</div>
         </div>
 
         <!-- Description -->
@@ -85,6 +88,7 @@
             name="description"
             rows="4"
           ></textarea>
+          <div class="form-text">{{ t("new_order_description_help") }}</div>
         </div>
 
         <div class="col-md-6">
@@ -99,6 +103,7 @@
             name="project_group"
             maxlength="255"
           >
+          <div class="form-text">{{ t("new_order_project_group_help") }}</div>
         </div>
 
         <!-- Cost Center -->
@@ -117,6 +122,7 @@
               <option value="{{ cc.id }}">{{ cc.name }}</option>
             {% endfor %}
           </select>
+          <div class="form-text">{{ t("new_order_cost_center_help") }}</div>
         </div>
 
       </div>
