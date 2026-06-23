@@ -38,12 +38,7 @@
       <form method="get" class="d-flex flex-wrap align-items-center gap-2">
         <input type="hidden" name="sort" value="{{ sort_by }}">
         <input type="hidden" name="dir" value="{{ sort_dir }}">
-        <label for="dashboard_per_page" class="form-label small mb-0">{{ t("dashboard_rows_per_page") }}</label>
-        <select id="dashboard_per_page" name="per_page" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
-          {% for option in per_page_options %}
-            <option value="{{ option }}" {% if option == per_page %}selected{% endif %}>{{ option }}</option>
-          {% endfor %}
-        </select>
+        <input type="hidden" name="per_page" value="{{ per_page }}">
 
         <label for="dashboard_category_filter" class="form-label small mb-0">{{ t("order_category_label") }}</label>
         <select id="dashboard_category_filter" name="category" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
@@ -193,23 +188,40 @@
           </tbody>
         </table>
       </div>
-      <nav class="d-flex justify-content-end mt-2" aria-label="{{ t('dashboard_pagination_label') }}">
-        <ul class="pagination pagination-sm mb-0">
-          <li class="page-item {% if page <= 1 %}disabled{% endif %}">
-            <a class="page-link" href="{{ url_for('dashboard', sort=sort_by, dir=sort_dir, per_page=per_page, page=page - 1, category=selected_category_query, area=selected_area_query, status=selected_status) }}" aria-label="{{ t('dashboard_previous_page') }}">
-              <i class="bi bi-chevron-left"></i>
-            </a>
-          </li>
-          <li class="page-item disabled">
-            <span class="page-link">{{ page }} / {{ total_pages }}</span>
-          </li>
-          <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
-            <a class="page-link" href="{{ url_for('dashboard', sort=sort_by, dir=sort_dir, per_page=per_page, page=page + 1, category=selected_category_query, area=selected_area_query, status=selected_status) }}" aria-label="{{ t('dashboard_next_page') }}">
-              <i class="bi bi-chevron-right"></i>
-            </a>
-          </li>
-        </ul>
-      </nav>
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2">
+        <form method="get" class="d-flex align-items-center gap-2">
+          <input type="hidden" name="sort" value="{{ sort_by }}">
+          <input type="hidden" name="dir" value="{{ sort_dir }}">
+          <input type="hidden" name="page" value="1">
+          <input type="hidden" name="category" value="{{ selected_category_query }}">
+          <input type="hidden" name="area" value="{{ selected_area_query }}">
+          <input type="hidden" name="status" value="{{ selected_status }}">
+          <label for="dashboard_per_page" class="form-label small mb-0">{{ t("dashboard_rows_per_page") }}</label>
+          <select id="dashboard_per_page" name="per_page" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+            {% for option in per_page_options %}
+              <option value="{{ option }}" {% if option == per_page %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+          </select>
+        </form>
+
+        <nav aria-label="{{ t('dashboard_pagination_label') }}">
+          <ul class="pagination pagination-sm mb-0">
+            <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+              <a class="page-link" href="{{ url_for('dashboard', sort=sort_by, dir=sort_dir, per_page=per_page, page=page - 1, category=selected_category_query, area=selected_area_query, status=selected_status) }}" aria-label="{{ t('dashboard_previous_page') }}">
+                <i class="bi bi-chevron-left"></i>
+              </a>
+            </li>
+            <li class="page-item disabled">
+              <span class="page-link">{{ page }} / {{ total_pages }}</span>
+            </li>
+            <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+              <a class="page-link" href="{{ url_for('dashboard', sort=sort_by, dir=sort_dir, per_page=per_page, page=page + 1, category=selected_category_query, area=selected_area_query, status=selected_status) }}" aria-label="{{ t('dashboard_next_page') }}">
+                <i class="bi bi-chevron-right"></i>
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
     {% else %}
       <p class="mb-0">{{ t("no_orders") }}</p>
     {% endif %}
