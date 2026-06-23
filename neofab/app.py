@@ -6092,6 +6092,7 @@ def dashboard():
                 ]
             return [
                 order.title or "",
+                order.description or "",
                 order.user.email if order.user else "",
                 *created_values,
             ]
