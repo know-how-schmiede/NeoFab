@@ -83,7 +83,7 @@ from notifications import (
     send_user_activation_notification,
     send_user_welcome_notification,
 )
-from schema_utils import ensure_training_playlist_schema
+from schema_utils import ensure_order_id_sequence_table, ensure_training_playlist_schema, reserve_next_order_id
 from status_messages import (
     ORDER_STATUS_DEFS,
     PRINT_JOB_STATUS_DEFS,
@@ -1865,6 +1865,7 @@ with app.app_context():
     ensure_order_read_status_table()
     ensure_announcements_table()
     ensure_announcement_reads_table()
+    ensure_order_id_sequence_table()
     maybe_cleanup_expired_logs(app, force=True)
 
 
@@ -3512,6 +3513,7 @@ def new_order():
             )
 
         order = Order(
+            id=reserve_next_order_id(),
             title=title,
             description=description or None,
             status=status,

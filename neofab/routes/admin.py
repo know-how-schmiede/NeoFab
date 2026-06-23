@@ -56,7 +56,7 @@ from config import (
     normalize_email_actions,
     save_app_settings,
 )
-from schema_utils import ensure_training_playlist_schema
+from schema_utils import ensure_training_playlist_schema, reset_order_id_sequence
 from status_messages import (
     STATUS_GROUP_DEFS,
     STATUS_STYLE_OPTIONS,
@@ -725,6 +725,77 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 log_file=DELETE_LOG_FILE,
             )
             flash(trans("flash_order_delete_failed"), "danger")
+        return redirect(url_for(".admin_orders"))
+
+    @bp.route("/orders/delete-all", methods=["POST"], endpoint="admin_orders_delete_all")
+    @roles_required("admin")
+    def admin_orders_delete_all():
+        trans = t
+        orders = Order.query.order_by(Order.id.asc()).all()
+        deleted_order_ids = [order.id for order in orders]
+        try:
+            write_audit_log(
+                current_app,
+                "orders_reset_requested",
+                user=current_user,
+                details={"order_count": len(orders), "order_ids": deleted_order_ids},
+                log_file=DELETE_LOG_FILE,
+            )
+            file_delete_results = []
+            deleted_counts_total: dict[str, int] = {}
+            for order in orders:
+                file_delete_results.extend(_delete_order_files(order.id))
+                deleted_counts = _delete_order_from_database(order)
+                for table_name, count in deleted_counts.items():
+                    deleted_counts_total[table_name] = deleted_counts_total.get(table_name, 0) + count
+
+            reset_order_id_sequence()
+            db.session.commit()
+            write_audit_log(
+                current_app,
+                "orders_reset_completed",
+                user=current_user,
+                details={
+                    "order_count": len(orders),
+                    "order_ids": deleted_order_ids,
+                    "deleted_counts": deleted_counts_total,
+                    "file_delete_results": file_delete_results,
+                    "order_id_sequence_reset": True,
+                },
+            )
+            write_audit_log(
+                current_app,
+                "orders_reset_completed",
+                user=current_user,
+                details={
+                    "order_count": len(orders),
+                    "order_ids": deleted_order_ids,
+                    "deleted_counts": deleted_counts_total,
+                    "file_delete_results": file_delete_results,
+                    "order_id_sequence_reset": True,
+                },
+                log_file=DELETE_LOG_FILE,
+            )
+            flash(trans("flash_orders_deleted_sequence_reset"), "info")
+        except Exception as exc:
+            db.session.rollback()
+            current_app.logger.exception("Failed to delete all orders and reset order id sequence")
+            write_audit_log(
+                current_app,
+                "orders_reset_failed",
+                user=current_user,
+                level="error",
+                details={"order_count": len(orders), "order_ids": deleted_order_ids, "error": str(exc)},
+            )
+            write_audit_log(
+                current_app,
+                "orders_reset_failed",
+                user=current_user,
+                level="error",
+                details={"order_count": len(orders), "order_ids": deleted_order_ids, "error": str(exc)},
+                log_file=DELETE_LOG_FILE,
+            )
+            flash(trans("flash_orders_delete_reset_failed"), "danger")
         return redirect(url_for(".admin_orders"))
 
     @bp.route("/settings", methods=["GET", "POST"], endpoint="admin_settings")
