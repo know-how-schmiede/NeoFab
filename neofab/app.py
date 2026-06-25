@@ -12,7 +12,6 @@
 from version import APP_VERSION
 from datetime import datetime, timedelta
 from pathlib import Path
-from zoneinfo import ZoneInfo
 import base64
 import binascii
 import hashlib
@@ -88,6 +87,12 @@ from status_messages import (
     ORDER_STATUS_DEFS,
     PRINT_JOB_STATUS_DEFS,
     build_status_context,
+)
+from time_utils import (
+    format_app_datetime,
+    get_app_timezone_name,
+    parse_app_datetime_input,
+    to_app_datetime,
 )
 from auth_utils import (
     roles_required,
@@ -319,40 +324,20 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 load_app_settings(app)
 
 
-APP_TIMEZONE_NAME = os.environ.get("NEOFAB_TIMEZONE", "Europe/Berlin")
-try:
-    APP_LOCAL_TIMEZONE = ZoneInfo(APP_TIMEZONE_NAME)
-except Exception:
-    APP_LOCAL_TIMEZONE = ZoneInfo("UTC")
-APP_UTC_TIMEZONE = ZoneInfo("UTC")
-
-
 def to_local_datetime(value: datetime | None) -> datetime | None:
-    if value is None:
-        return None
     try:
-        if value.tzinfo is None:
-            value = value.replace(tzinfo=APP_UTC_TIMEZONE)
-        return value.astimezone(APP_LOCAL_TIMEZONE)
+        settings = load_app_settings(app)
     except Exception:
-        return value
+        settings = None
+    return to_app_datetime(value, settings)
 
 
 def format_local_datetime(value: datetime | None, fmt: str = "%Y-%m-%d %H:%M") -> str:
-    local_value = to_local_datetime(value)
-    if local_value is None:
-        return ""
     try:
         settings = load_app_settings(app)
-        offset_hours = int(settings.get("time_display_offset_hours", 0) or 0)
     except Exception:
-        offset_hours = 0
-    if offset_hours:
-        local_value = local_value + timedelta(hours=offset_hours)
-    try:
-        return local_value.strftime(fmt)
-    except Exception:
-        return ""
+        settings = None
+    return format_app_datetime(value, settings, fmt)
 
 
 def get_status_context(translator=None) -> dict:
@@ -411,6 +396,7 @@ def inject_globals():
         "theme_bootswatch_slug": theme_bootswatch_slug,
         "t": t,
         "fmt_datetime": format_local_datetime,
+        "app_timezone_name": get_app_timezone_name(),
         "time_display_offset_hours": int(settings.get("time_display_offset_hours", 0) or 0),
         "render_markdown": render_legal_markdown,
     }
@@ -2406,7 +2392,7 @@ def apply_gcode_metadata_to_job(job: OrderPrintJob, path: Path) -> bool:
 
 
 def current_print_start_time() -> datetime:
-    return datetime.now().replace(second=0, microsecond=0)
+    return datetime.utcnow().replace(second=0, microsecond=0)
 
 
 # ============================================================
@@ -4743,7 +4729,7 @@ def order_detail(order_id):
             started_at = None
             if started_at_raw:
                 try:
-                    started_at = datetime.fromisoformat(started_at_raw)
+                    started_at = parse_app_datetime_input(started_at_raw, load_app_settings(app))
                 except ValueError:
                     flash(trans("flash_print_job_invalid_start"), "danger")
                     return order_detail_redirect("print-jobs")
@@ -4922,7 +4908,7 @@ def order_detail(order_id):
             started_at = None
             if started_at_raw:
                 try:
-                    started_at = datetime.fromisoformat(started_at_raw)
+                    started_at = parse_app_datetime_input(started_at_raw, load_app_settings(app))
                 except ValueError:
                     flash(trans("flash_print_job_invalid_start"), "danger")
                     return redirect(url_for("order_detail", order_id=order.id))
@@ -6469,7 +6455,7 @@ def build_order_context(order, translator) -> dict:
             app.logger.warning("Could not embed poster thumbnail for PDF (%s): %s", chosen, exc)
             return ""
 
-    generated_at = fmt_dt(datetime.now())
+    generated_at = fmt_dt(datetime.utcnow())
     status_context = get_status_context(translator)
     status_labels = status_context.get("order_status_labels", {})
     print_job_status_labels = status_context.get("print_job_status_labels", {})

@@ -1,5 +1,13 @@
 # Timeline NeoFab
 
+## Version 0.9.38
+
+Zeitangaben in Oberflaeche, Logfile-Ansicht, Dashboard-Uhr, E-Mail-Benachrichtigungen und PDF-Export auf eine gemeinsame Formatter-Logik umgestellt
+UTC-Zeitstempel aus Audit-Logs werden in der Admin-Ansicht als konfigurierte NeoFab-Lokalzeit angezeigt
+Lokale Eingaben fuer Druck-Startzeiten werden beim Speichern korrekt nach UTC zurueckgerechnet
+Dashboard-Uhr an die konfigurierte NeoFab-Zeitzone und den Anzeige-Offset angepasst
+Version in Anwendung und README auf 0.9.38 angehoben
+
 ## Version 0.9.37
 
 Auftrags-IDs ueber eine eigene Sequenz gegen Wiederverwendung nach Einzel-Loeschungen abgesichert

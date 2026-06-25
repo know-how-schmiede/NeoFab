@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import os
 import smtplib
 from collections.abc import Mapping
-from datetime import datetime, timedelta
+from datetime import datetime
 from email.utils import getaddresses
 from email.message import EmailMessage
-from zoneinfo import ZoneInfo
 
 from flask import url_for
 from flask_login import current_user
@@ -15,6 +13,7 @@ from audit_logs import write_audit_log
 from config import is_email_action_enabled, load_app_settings
 from i18n_utils import DEFAULT_LANG, SUPPORTED_LANGS
 from models import Announcement, Order, User
+from time_utils import format_app_datetime
 
 
 class _SafeFormatDict(dict):
@@ -23,35 +22,7 @@ class _SafeFormatDict(dict):
 
 
 def _format_app_datetime(value: datetime | None, settings: Mapping[str, object]) -> str:
-    if value is None:
-        return ""
-
-    try:
-        app_timezone_name = os.environ.get("NEOFAB_TIMEZONE", "Europe/Berlin")
-        try:
-            app_local_tz = ZoneInfo(app_timezone_name)
-        except Exception:
-            app_local_tz = ZoneInfo("UTC")
-        app_utc_tz = ZoneInfo("UTC")
-
-        if value.tzinfo is None:
-            value = value.replace(tzinfo=app_utc_tz)
-        value = value.astimezone(app_local_tz)
-    except Exception:
-        pass
-
-    try:
-        offset_hours = int(settings.get("time_display_offset_hours", 0) or 0)
-    except Exception:
-        offset_hours = 0
-
-    if offset_hours:
-        value = value + timedelta(hours=offset_hours)
-
-    try:
-        return value.strftime("%Y-%m-%d %H:%M")
-    except Exception:
-        return ""
+    return format_app_datetime(value, settings)
 
 
 def _split_email_recipients(raw: str | None) -> list[str]:

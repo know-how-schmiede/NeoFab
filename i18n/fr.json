@@ -41,7 +41,7 @@
   "admin_logs_no_file_selected": "Aucun fichier journal selectionne",
   "admin_logs_no_files": "Aucun fichier journal disponible.",
   "admin_logs_open": "Ouvrir les journaux",
-  "admin_logs_time": "Heure (UTC)",
+  "admin_logs_time": "Heure",
   "admin_logs_title": "Fichiers journaux",
   "admin_material_desc": "Gérer les matériaux d'impression 3D (ex. PLA, ABS, PETG, TPU).",
   "admin_material_form_title_edit": "Modifier le matériau",

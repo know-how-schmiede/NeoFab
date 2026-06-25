@@ -41,7 +41,7 @@
   "admin_logs_no_file_selected": "Kein Logfile ausgewaehlt",
   "admin_logs_no_files": "Noch keine Logfiles vorhanden.",
   "admin_logs_open": "Logfiles oeffnen",
-  "admin_logs_time": "Zeitpunkt (UTC)",
+  "admin_logs_time": "Zeitpunkt",
   "admin_logs_title": "Logfiles",
   "admin_material_desc": "3D-Druckmaterialien verwalten (z. B. PLA, ABS, PETG, TPU).",
   "admin_material_form_title_edit": "Material bearbeiten",

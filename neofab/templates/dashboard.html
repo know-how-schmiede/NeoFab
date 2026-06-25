@@ -422,13 +422,12 @@
   const dateTimeEl = document.getElementById("dashboardCurrentDateTime");
   if (dateTimeEl) {
     const offsetHours = {{ time_display_offset_hours|default(0) }};
+    const appTimeZone = {{ app_timezone_name|tojson }};
     const updateDateTime = () => {
-      const now = new Date();
-      if (offsetHours) {
-        now.setHours(now.getHours() + offsetHours);
-      }
-      const datePart = now.toLocaleDateString();
-      const timePart = now.toLocaleTimeString();
+      const now = new Date(Date.now() + (offsetHours * 60 * 60 * 1000));
+      const formatOptions = { timeZone: appTimeZone };
+      const datePart = now.toLocaleDateString(undefined, formatOptions);
+      const timePart = now.toLocaleTimeString(undefined, formatOptions);
       dateTimeEl.textContent = "{{ t('dashboard_current_datetime_prefix') }} " + datePart + " " + timePart;
     };
     updateDateTime();

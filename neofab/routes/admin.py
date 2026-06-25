@@ -11,7 +11,6 @@ from typing import Callable, Optional
 from urllib.parse import parse_qs, urlparse
 import smtplib
 from email.message import EmailMessage
-from zoneinfo import ZoneInfo
 
 from flask import (
     Blueprint,
@@ -65,6 +64,7 @@ from status_messages import (
     filter_status_messages,
     resolve_status_messages,
 )
+from time_utils import format_app_datetime
 from models import (
     Color,
     CostCenter,
@@ -299,36 +299,28 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
     t = lambda key: _translator(get_translator)(key)
 
     def _fmt_datetime(value: datetime | None) -> str:
-        if value is None:
-            return ""
-
-        try:
-            app_timezone_name = os.environ.get("NEOFAB_TIMEZONE", "Europe/Berlin")
-            try:
-                app_local_tz = ZoneInfo(app_timezone_name)
-            except Exception:
-                app_local_tz = ZoneInfo("UTC")
-            app_utc_tz = ZoneInfo("UTC")
-
-            if value.tzinfo is None:
-                value = value.replace(tzinfo=app_utc_tz)
-            value = value.astimezone(app_local_tz)
-        except Exception:
-            pass
-
         try:
             settings = load_app_settings(current_app)
-            offset_hours = int(settings.get("time_display_offset_hours", 0) or 0)
         except Exception:
-            offset_hours = 0
+            settings = None
+        return format_app_datetime(value, settings)
 
-        if offset_hours:
-            value = value + timedelta(hours=offset_hours)
+    def _fmt_log_timestamp(value: object) -> str:
+        if not value:
+            return ""
+        if isinstance(value, datetime):
+            return _fmt_datetime(value)
+
+        raw_value = str(value).strip()
+        if not raw_value:
+            return ""
 
         try:
-            return value.strftime("%Y-%m-%d %H:%M")
-        except Exception:
-            return ""
+            parsed_value = datetime.fromisoformat(raw_value.replace("Z", "+00:00"))
+        except ValueError:
+            return raw_value
+
+        return _fmt_datetime(parsed_value) or raw_value
 
     admin_announcement_form_token_key = "admin_announcement_form_token"
     announcement_priority_meta = {
@@ -1318,6 +1310,9 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         selected_file = request.args.get("file") or None
         log_files = list_log_files(current_app)
         selected_file, entries = read_log_entries(current_app, selected_file, max_entries=500)
+        for entry in entries:
+            if isinstance(entry, dict):
+                entry["timestamp_display"] = _fmt_log_timestamp(entry.get("timestamp_utc"))
         return render_template(
             "admin_logs.html",
             log_files=log_files,

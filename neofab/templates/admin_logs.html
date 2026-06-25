@@ -69,7 +69,7 @@
           <tbody>
             {% for entry in entries %}
               <tr>
-                <td class="text-nowrap" data-label="{{ t('admin_logs_time') }}">{{ entry.timestamp_utc or "" }}</td>
+                <td class="text-nowrap" data-label="{{ t('admin_logs_time') }}">{{ entry.timestamp_display or entry.timestamp_utc or "" }}</td>
                 <td data-label="{{ t('admin_logs_level') }}">{{ entry.level or "" }}</td>
                 <td data-label="{{ t('admin_logs_event') }}">{{ entry.event or entry.raw or "" }}</td>
                 <td class="small" data-label="{{ t('admin_logs_details') }}">
