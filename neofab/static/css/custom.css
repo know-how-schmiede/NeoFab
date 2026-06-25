@@ -37,6 +37,8 @@
 	--nf-avatar-text: #0f172a;
 	--nf-footer-link: #475569;
 	--nf-footer-link-hover: #1d4ed8;
+	--nf-content-link: #1d4ed8;
+	--nf-content-link-hover: #1e40af;
 	--nf-tab-link: #475569;
 	--nf-tab-link-hover: #1d4ed8;
 	--nf-tab-active-bg: #ffffff;
@@ -110,6 +112,8 @@ html[data-theme-mode="dark"] {
 	--nf-avatar-text: #e5e7eb;
 	--nf-footer-link: #dbeafe;
 	--nf-footer-link-hover: #ffffff;
+	--nf-content-link: #bfdbfe;
+	--nf-content-link-hover: #ffffff;
 	--nf-tab-link: #cbd5e1;
 	--nf-tab-link-hover: #ffffff;
 	--nf-tab-active-bg: #0f172a;
@@ -240,6 +244,18 @@ html[data-theme-mode="dark"] .nf-admin-table a:hover {
 
 html[data-theme-mode="dark"] .link-dark {
 	color: #e5e7eb !important;
+}
+
+.nf-content-link {
+	color: var(--nf-content-link) !important;
+	text-decoration-color: color-mix(in srgb, var(--nf-content-link) 55%, transparent);
+	text-underline-offset: 0.12em;
+}
+
+.nf-content-link:hover,
+.nf-content-link:focus {
+	color: var(--nf-content-link-hover) !important;
+	text-decoration-color: currentColor;
 }
 
 html[data-theme-mode="dark"] .pagination .page-link {

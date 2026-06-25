@@ -6,6 +6,8 @@ Zeitangaben in Oberflaeche, Logfile-Ansicht, Dashboard-Uhr, E-Mail-Benachrichtig
 UTC-Zeitstempel aus Audit-Logs werden in der Admin-Ansicht als konfigurierte NeoFab-Lokalzeit angezeigt
 Lokale Eingaben fuer Druck-Startzeiten werden beim Speichern korrekt nach UTC zurueckgerechnet
 Dashboard-Uhr an die konfigurierte NeoFab-Zeitzone und den Anzeige-Offset angepasst
+Link-Farbe der NeoFab-Info-Seite fuer Hell- und Dunkelmodus kontrastreich angepasst
+Design-Smoke-Test um Info-Links mit echter Content-Link-Klasse erweitert
 Version in Anwendung und README auf 0.9.38 angehoben
 
 ## Version 0.9.37
