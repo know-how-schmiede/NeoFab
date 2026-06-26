@@ -137,9 +137,9 @@ The main scripts are:
 
 ## Current Version
 
-Current application version: **0.9.39**
+Current application version: **0.9.40**
 
-Recent changes include a system setting for limiting procurement article description previews while keeping the full description available as a tooltip.
+Recent changes include search and filter controls in user management for email/name, role, status, and created or last-login date ranges.
 
 The update script installs Python dependencies from `neofab/requirements.txt`, including PyMuPDF for rendering the first page of uploaded poster PDFs as thumbnails.
 

@@ -23,7 +23,7 @@ from flask import (
     url_for,
 )
 from flask_login import current_user
-from sqlalchemy import func
+from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import OperationalError
 from werkzeug.utils import secure_filename
 
@@ -1614,8 +1614,89 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
     @roles_required("admin")
     def admin_user_list():
         """Übersicht aller User (nur für Admin)."""
-        users = User.query.order_by(User.id.asc()).all()
-        return render_template("admin_users.html", users=users)
+        trans = t
+        search_query = (request.args.get("q") or "").strip()
+        role_filter = (request.args.get("role") or "").strip()
+        status_filter = (request.args.get("status") or "").strip()
+        date_from_raw = (request.args.get("date_from") or "").strip()
+        date_to_raw = (request.args.get("date_to") or "").strip()
+
+        if role_filter not in USER_ROLE_VALUES:
+            role_filter = ""
+        if status_filter not in {"active", "inactive", "deleted"}:
+            status_filter = ""
+
+        def parse_date_filter(raw_value: str) -> datetime | None:
+            if not raw_value:
+                return None
+            try:
+                return datetime.strptime(raw_value, "%Y-%m-%d")
+            except ValueError:
+                flash(trans("flash_user_filter_invalid_date"), "warning")
+                return None
+
+        date_from = parse_date_filter(date_from_raw)
+        date_to = parse_date_filter(date_to_raw)
+        date_to_exclusive = date_to + timedelta(days=1) if date_to else None
+
+        query = User.query
+        if search_query:
+            like_value = f"%{search_query}%"
+            query = query.filter(
+                or_(
+                    User.email.ilike(like_value),
+                    User.first_name.ilike(like_value),
+                    User.last_name.ilike(like_value),
+                    (
+                        func.coalesce(User.first_name, "")
+                        + " "
+                        + func.coalesce(User.last_name, "")
+                    ).ilike(like_value),
+                )
+            )
+
+        if date_from or date_to_exclusive:
+            date_conditions = []
+            for column in (User.created_at, User.last_login_at):
+                column_conditions = []
+                if date_from:
+                    column_conditions.append(column >= date_from)
+                if date_to_exclusive:
+                    column_conditions.append(column < date_to_exclusive)
+                date_conditions.append(and_(*column_conditions))
+            query = query.filter(or_(*date_conditions))
+
+        if role_filter:
+            query = query.filter(User.role == role_filter)
+
+        if status_filter == "deleted":
+            query = query.filter(User.deleted_at.isnot(None))
+        elif status_filter == "active":
+            query = query.filter(User.deleted_at.is_(None), User.is_active.is_(True))
+        elif status_filter == "inactive":
+            query = query.filter(User.deleted_at.is_(None), User.is_active.is_(False))
+
+        users = query.order_by(User.id.asc()).all()
+        filters = {
+            "q": search_query,
+            "role": role_filter,
+            "status": status_filter,
+            "date_from": date_from_raw,
+            "date_to": date_to_raw,
+        }
+        status_filter_options = [
+            ("", trans("dashboard_filter_all")),
+            ("active", trans("user_status_active")),
+            ("inactive", trans("user_status_inactive")),
+            ("deleted", trans("user_status_deleted")),
+        ]
+        return render_template(
+            "admin_users.html",
+            users=users,
+            filters=filters,
+            role_options=USER_ROLE_OPTIONS,
+            status_filter_options=status_filter_options,
+        )
 
     def _is_last_active_admin(user: User) -> bool:
         if user.role != "admin" or not user.is_active or user.deleted_at is not None:

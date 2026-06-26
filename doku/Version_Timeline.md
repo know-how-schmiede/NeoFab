@@ -1,5 +1,12 @@
 # Timeline NeoFab
 
+## Version 0.9.40
+
+Benutzerverwaltung um eine Suche nach E-Mail, Vorname und Nachname erweitert
+Datumsfilter in der Benutzerverwaltung ergaenzt, der wahlweise Erstelldatum oder letzten Login im angegebenen Von-bis-Bereich beruecksichtigt
+Rollen- und Statusfilter fuer die Benutzerliste ergaenzt
+Version in Anwendung und README auf 0.9.40 angehoben
+
 ## Version 0.9.39
 
 Systemeinstellungen im Reiter Allgemein um die maximale sichtbare Zeichenanzahl fuer Artikel-Beschreibungen in Beschaffungsauftraegen erweitert

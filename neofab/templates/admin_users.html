@@ -28,6 +28,69 @@
   </div>
 
   <div class="card-body p-2">
+    <form method="get" class="row g-2 align-items-end mb-3">
+      <div class="col-12 col-lg-4">
+        <label for="user_search_q" class="form-label mb-1">{{ t("dashboard_search_label") }}</label>
+        <input
+          type="search"
+          class="form-control form-control-sm"
+          id="user_search_q"
+          name="q"
+          value="{{ filters.q if filters else '' }}"
+          placeholder="{{ t('admin_users_search_placeholder') }}"
+        >
+      </div>
+      <div class="col-6 col-md-3 col-lg-2">
+        <label for="user_date_from" class="form-label mb-1">{{ t("admin_users_date_from") }}</label>
+        <input
+          type="date"
+          class="form-control form-control-sm"
+          id="user_date_from"
+          name="date_from"
+          value="{{ filters.date_from if filters else '' }}"
+        >
+      </div>
+      <div class="col-6 col-md-3 col-lg-2">
+        <label for="user_date_to" class="form-label mb-1">{{ t("admin_users_date_to") }}</label>
+        <input
+          type="date"
+          class="form-control form-control-sm"
+          id="user_date_to"
+          name="date_to"
+          value="{{ filters.date_to if filters else '' }}"
+        >
+      </div>
+      <div class="col-6 col-md-3 col-lg-2">
+        <label for="user_role_filter" class="form-label mb-1">{{ t("table_role") }}</label>
+        <select class="form-select form-select-sm" id="user_role_filter" name="role">
+          <option value="">{{ t("dashboard_filter_all") }}</option>
+          {% for value, label_key in role_options %}
+            <option value="{{ value }}" {% if filters and filters.role == value %}selected{% endif %}>
+              {{ t(label_key) }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-3 col-lg-2">
+        <label for="user_status_filter" class="form-label mb-1">{{ t("table_status") }}</label>
+        <select class="form-select form-select-sm" id="user_status_filter" name="status">
+          {% for value, label in status_filter_options %}
+            <option value="{{ value }}" {% if filters and filters.status == value %}selected{% endif %}>
+              {{ label }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 d-flex gap-2">
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="bi bi-search me-1"></i>{{ t("dashboard_search_button") }}
+        </button>
+        <a href="{{ url_for('admin.admin_user_list') }}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-x-circle me-1"></i>{{ t("dashboard_search_reset") }}
+        </a>
+      </div>
+    </form>
+
     {% if users %}
       <div class="table-responsive nf-admin-wrap">
         <table class="table table-striped table-hover table-sm align-middle mb-0 nf-admin-table">
