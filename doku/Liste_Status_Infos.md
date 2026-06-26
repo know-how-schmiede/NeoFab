@@ -1,6 +1,6 @@
 # NeoFab: Statusaenderungen und E-Mail-Ereignisse
 
-Stand: NeoFab 0.9.35
+Stand: NeoFab 0.9.41
 
 Dieses Dokument beschreibt die im aktuellen Programmcode hinterlegten Statuswerte,
 automatischen Statusaenderungen und Ereignisse, bei denen NeoFab eine E-Mail
@@ -179,10 +179,33 @@ Mitarbeiter koennen ihn auf `ordered` und danach auf `delivered` setzen.
 Die Synchronisation erfolgt beim Anlegen, Bearbeiten, als bestellt Markieren,
 als geliefert Markieren und Loeschen eines Artikels.
 
-**Aktueller E-Mail-Stand:** Die automatische Statusaenderung eines
-Beschaffungsauftrags ruft derzeit keine Auftragsstatus-E-Mail auf. Das gilt auch
-fuer den Wechsel auf `in_progress` durch **Bestellt** und auf `completed` durch
-**Geliefert**.
+### E-Mails bei Beschaffungsartikeln
+
+Wenn die Synchronisation der Beschaffungsartikel den uebergeordneten Auftrag
+auf `in_progress` oder `completed` setzt, wird die dazugehoerige
+Auftragsstatus-E-Mail versendet, sofern die jeweilige E-Mail-Aktion aktiviert
+ist.
+
+Wenn nach dem Markieren eines Artikels als `ordered` oder `delivered` erstmals
+alle Artikel des Beschaffungsauftrags bestellt oder geliefert sind, wird eine
+Status-E-Mail mit Artikelliste versendet.
+
+Die E-Mail enthaelt die bestellten Artikel mit Artikelname, Menge und Preis pro
+Artikel.
+
+Dabei wird die bestehende Status-E-Mail-Logik verwendet:
+
+- Der Versand nutzt je nach resultierendem Auftragsstatus den Aktionsschluessel
+  `order_in_progress` oder `order_completed`.
+- Empfaenger sind Administratoren, Auftragsbesitzer und E-Mail-Adressen der
+  zugeordneten Kostenstelle.
+- Bei Administratoren und beim Auftragsbesitzer wird die Profileinstellung
+  **Status-E-Mails empfangen** beruecksichtigt.
+
+Weitere Artikelstatusaenderungen versenden keine erneute Vollstaendig-bestellt-
+E-Mail, solange der Auftrag bereits in diesem Zustand ist. Eine normale
+Auftragsstatus-E-Mail kann weiterhin versendet werden, wenn sich der
+uebergeordnete Auftragsstatus dabei erneut wirksam aendert.
 
 ## 5. Benutzerkontostatus
 
@@ -272,8 +295,9 @@ Stammdaten versendet keine E-Mail und aendert keinen Auftragsstatus.
 | Passwort-Reset | Reset-Anforderung fuer ein aktives, nicht geloeschtes Konto | Betroffener Benutzer | Nein |
 | Begruessungs-E-Mail | Konto wird ohne Aktivierung direkt angelegt, neues Konto wird aktiviert oder ein neues Konto wird importiert | Neuer Benutzer und Administratoren | `user_welcome` |
 | Neuer Auftrag | Ein Auftrag wurde erfolgreich erstellt | Administratoren und Auftragsbesitzer | `new_order` |
-| Auftrag in Bearbeitung | Wirksamer manueller oder angebundener automatischer Wechsel auf `in_progress` | Administratoren, Auftragsbesitzer und Kostenstelle | `order_in_progress` |
-| Auftrag abgeschlossen | Wirksamer manueller oder angebundener automatischer Wechsel auf `completed` | Administratoren, Auftragsbesitzer und Kostenstelle | `order_completed` |
+| Auftrag in Bearbeitung | Wirksamer manueller oder angebundener automatischer Wechsel auf `in_progress`, inklusive Beschaffungsartikeln | Administratoren, Auftragsbesitzer und Kostenstelle | `order_in_progress` |
+| Auftrag abgeschlossen | Wirksamer manueller oder angebundener automatischer Wechsel auf `completed`, inklusive Beschaffungsartikeln | Administratoren, Auftragsbesitzer und Kostenstelle | `order_completed` |
+| Beschaffungsartikel vollstaendig bestellt | Nach dem Markieren eines Beschaffungsartikels sind alle Artikel des Auftrags `ordered` oder `delivered`; die E-Mail enthaelt Artikelname, Menge und Preis | Administratoren, Auftragsbesitzer und Kostenstelle | `order_in_progress` oder `order_completed` |
 | Plakat gedruckt | Ein Plakat wird erstmals auf `printed` gesetzt | Administratoren, Auftragsbesitzer und Kostenstelle | `poster_printed` |
 | Achtung-eMail-Mitteilung | Neue Mitteilung wird mit Prioritaet `attention_email` erstellt | Alle aktiven, nicht geloeschten Benutzer | `announcement_attention_email` |
 | Test-E-Mail | Administrator startet den SMTP-Test in den Systemeinstellungen | Manuell eingetragene Testadresse | Nein |
@@ -284,8 +308,8 @@ Stammdaten versendet keine E-Mail und aendert keinen Auftragsstatus.
 - derzeit auch Auftragsstatus `cancelled`,
 - Statusaenderung eines einzelnen 3D-Druckauftrags ohne resultierenden
   Auftragswechsel auf `in_progress` oder `completed`,
-- Statusaenderungen von Beschaffungsartikeln und daraus automatisch entstehende
-  Auftragsstatusaenderungen,
+- Einzelne Statusaenderungen von Beschaffungsartikeln ohne wirksamen
+  Auftragsstatuswechsel auf `in_progress` oder `completed`,
 - Rueckstufung eines Plotter-Auftrags durch Loeschen eines Plakats,
 - Benutzer aktivieren, deaktivieren oder loeschen,
 - Lese-/Ungelesen-Markierungen,

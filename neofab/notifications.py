@@ -759,6 +759,8 @@ def send_order_status_change_notification(
     new_status: str,
     status_labels: Mapping[str, str] | None = None,
     action_key: str = "order_status_changed",
+    procurement_articles: list[object] | None = None,
+    procurement_all_ordered: bool = False,
 ) -> bool:
     """
     Notify admins and the order owner about a status change.
@@ -803,7 +805,14 @@ def send_order_status_change_notification(
         area_name = order.area.name if order.area else "-"
         for language, lang_recipients in recipients_by_language.items():
             msg = EmailMessage()
-            if new_status == "in_progress":
+            if procurement_all_ordered:
+                if language == "de":
+                    msg["Subject"] = f"NeoFab: Alle Artikel fuer Auftrag #{order.id} sind bestellt"
+                elif language == "fr":
+                    msg["Subject"] = f"NeoFab : Tous les articles de la commande #{order.id} sont commandes"
+                else:
+                    msg["Subject"] = f"NeoFab: All articles for order #{order.id} are ordered"
+            elif new_status == "in_progress":
                 if language == "de":
                     msg["Subject"] = f"NeoFab: Auftrag #{order.id} ist jetzt in Bearbeitung"
                 elif language == "fr":
@@ -830,7 +839,9 @@ def send_order_status_change_notification(
                 msg["Reply-To"] = order.user.email
 
             if language == "de":
-                if new_status == "in_progress":
+                if procurement_all_ordered:
+                    intro = "Alle Artikel dieses Beschaffungsauftrags sind bestellt."
+                elif new_status == "in_progress":
                     intro = "Der Auftrag wurde auf In Bearbeitung gesetzt."
                 elif new_status == "completed":
                     intro = "Der Auftrag wurde auf Abgeschlossen gesetzt."
@@ -854,7 +865,9 @@ def send_order_status_change_notification(
                 if order.summary_short:
                     body_lines.extend(["", "Kurzbeschreibung:", order.summary_short])
             elif language == "fr":
-                if new_status == "in_progress":
+                if procurement_all_ordered:
+                    intro = "Tous les articles de cette commande d'achat sont commandes."
+                elif new_status == "in_progress":
                     intro = "La commande a ete passee en cours."
                 elif new_status == "completed":
                     intro = "La commande a ete passee en terminee."
@@ -878,7 +891,9 @@ def send_order_status_change_notification(
                 if order.summary_short:
                     body_lines.extend(["", "Resume:", order.summary_short])
             else:
-                if new_status == "in_progress":
+                if procurement_all_ordered:
+                    intro = "All articles for this procurement order are ordered."
+                elif new_status == "in_progress":
                     intro = "The order is now in progress."
                 elif new_status == "completed":
                     intro = "The order is now completed."
@@ -901,6 +916,28 @@ def send_order_status_change_notification(
                 ]
                 if order.summary_short:
                     body_lines.extend(["", "Summary:", order.summary_short])
+
+            if procurement_articles:
+                if language == "de":
+                    body_lines.extend(["", "Bestellte Artikel:"])
+                    quantity_label = "Menge"
+                    price_label = "Preis"
+                elif language == "fr":
+                    body_lines.extend(["", "Articles commandes:"])
+                    quantity_label = "Quantite"
+                    price_label = "Prix"
+                else:
+                    body_lines.extend(["", "Ordered articles:"])
+                    quantity_label = "Quantity"
+                    price_label = "Price"
+                for article in procurement_articles:
+                    article_name = getattr(article, "article_name", "") or f"#{getattr(article, 'id', '')}"
+                    quantity = getattr(article, "quantity", None) or 1
+                    price = getattr(article, "price_per_unit_incl_vat", None)
+                    price_text = f"{price:.2f} EUR" if price is not None else "-"
+                    body_lines.append(
+                        f"- {article_name} | {quantity_label}: {quantity} | {price_label}: {price_text}"
+                    )
 
             body_lines.extend(_notification_footer(settings, order_url, language))
             msg.set_content("\n".join(body_lines))

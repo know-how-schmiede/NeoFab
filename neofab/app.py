@@ -562,6 +562,42 @@ def sync_procurement_order_status_from_articles(order: Order) -> bool:
     return False
 
 
+def _procurement_articles_for_order(order: Order) -> list[OrderProcurementArticle]:
+    return (
+        OrderProcurementArticle.query
+        .filter_by(order_id=order.id)
+        .order_by(OrderProcurementArticle.created_at.asc(), OrderProcurementArticle.id.asc())
+        .all()
+    )
+
+
+def _all_procurement_articles_ordered(order: Order) -> bool:
+    articles = _procurement_articles_for_order(order)
+    if not articles:
+        return False
+    ordered_like = {"ordered", "delivered"}
+    return all(((article.status or "open").strip().lower()) in ordered_like for article in articles)
+
+
+def _send_procurement_all_ordered_status_email(
+    app,
+    order: Order,
+    previous_status: str,
+    status_labels: dict[str, str],
+) -> None:
+    action_key = f"order_{order.status}" if order.status in {"in_progress", "completed"} else "order_in_progress"
+    send_order_status_change_notification(
+        app,
+        order,
+        previous_status,
+        order.status,
+        status_labels,
+        action_key=action_key,
+        procurement_articles=_procurement_articles_for_order(order),
+        procurement_all_ordered=True,
+    )
+
+
 def can_manage_order_category(order: Order, user: User) -> bool:
     if getattr(user, "role", None) == "admin":
         return True
@@ -4521,6 +4557,7 @@ def order_detail(order_id):
             )
             db.session.add(article)
             db.session.flush()
+            previous_status = order.status
 
             if note_file and note_file.filename:
                 safe_note_name = secure_filename(note_file_original_name or "note")
@@ -4538,6 +4575,12 @@ def order_detail(order_id):
 
             sync_procurement_order_status_from_articles(order)
             db.session.commit()
+            _send_relevant_order_status_email(
+                app,
+                order,
+                previous_status,
+                get_status_context(trans).get("order_status_labels", {}),
+            )
             flash(trans("flash_procurement_article_created"), "success")
             return order_detail_redirect("articles")
 
@@ -4590,8 +4633,15 @@ def order_detail(order_id):
             article.article_url = article_url[:1000] if article_url else None
             article.quantity = quantity
             article.price_per_unit_incl_vat = price_per_unit_incl_vat
+            previous_status = order.status
             sync_procurement_order_status_from_articles(order)
             db.session.commit()
+            _send_relevant_order_status_email(
+                app,
+                order,
+                previous_status,
+                get_status_context(trans).get("order_status_labels", {}),
+            )
 
             flash(trans("flash_procurement_article_updated"), "success")
             return order_detail_redirect("articles")
@@ -4616,11 +4666,29 @@ def order_detail(order_id):
                 flash(trans("flash_procurement_article_not_found"), "warning")
                 return order_detail_redirect("articles")
 
+            previous_status = order.status
+            all_articles_ordered_before = _all_procurement_articles_ordered(order)
             was_ordered = (article.status or "open").strip().lower() == "ordered"
             if not was_ordered:
                 article.status = "ordered"
             sync_procurement_order_status_from_articles(order)
             db.session.commit()
+            all_articles_ordered_after = _all_procurement_articles_ordered(order)
+
+            if not all_articles_ordered_before and all_articles_ordered_after:
+                _send_procurement_all_ordered_status_email(
+                    app,
+                    order,
+                    previous_status,
+                    get_status_context(trans).get("order_status_labels", {}),
+                )
+            else:
+                _send_relevant_order_status_email(
+                    app,
+                    order,
+                    previous_status,
+                    get_status_context(trans).get("order_status_labels", {}),
+                )
 
             if not was_ordered:
                 flash(trans("flash_procurement_article_marked_ordered"), "success")
@@ -4648,11 +4716,29 @@ def order_detail(order_id):
                 flash(trans("flash_procurement_article_not_found"), "warning")
                 return order_detail_redirect("articles")
 
+            previous_status = order.status
+            all_articles_ordered_before = _all_procurement_articles_ordered(order)
             was_delivered = (article.status or "open").strip().lower() == "delivered"
             if not was_delivered:
                 article.status = "delivered"
             sync_procurement_order_status_from_articles(order)
             db.session.commit()
+            all_articles_ordered_after = _all_procurement_articles_ordered(order)
+
+            if not all_articles_ordered_before and all_articles_ordered_after:
+                _send_procurement_all_ordered_status_email(
+                    app,
+                    order,
+                    previous_status,
+                    get_status_context(trans).get("order_status_labels", {}),
+                )
+            else:
+                _send_relevant_order_status_email(
+                    app,
+                    order,
+                    previous_status,
+                    get_status_context(trans).get("order_status_labels", {}),
+                )
 
             if not was_delivered:
                 flash(trans("flash_procurement_article_marked_delivered"), "success")
@@ -4689,8 +4775,15 @@ def order_detail(order_id):
 
             db.session.delete(article)
             db.session.flush()
+            previous_status = order.status
             sync_procurement_order_status_from_articles(order)
             db.session.commit()
+            _send_relevant_order_status_email(
+                app,
+                order,
+                previous_status,
+                get_status_context(trans).get("order_status_labels", {}),
+            )
 
             flash(trans("flash_procurement_article_deleted"), "info")
             return order_detail_redirect("articles")

@@ -1,5 +1,12 @@
 # Timeline NeoFab
 
+## Version 0.9.41
+
+Status-E-Mail fuer Beschaffungsauftraege ergaenzt, sobald alle Artikel bestellt oder geliefert sind
+Status-E-Mail fuer vollstaendig bestellte Beschaffungsartikel listet Artikelname, Menge und Preis je Artikel auf
+Versand nutzt die bestehenden Status-E-Mail-Empfaenger und die konfigurierbaren Status-Mail-Aktionen
+Version in Anwendung und README auf 0.9.41 angehoben
+
 ## Version 0.9.40
 
 Benutzerverwaltung um eine Suche nach E-Mail, Vorname und Nachname erweitert
