@@ -1,5 +1,12 @@
 # Timeline NeoFab
 
+## Version 0.9.39
+
+Systemeinstellungen im Reiter Allgemein um die maximale sichtbare Zeichenanzahl fuer Artikel-Beschreibungen in Beschaffungsauftraegen erweitert
+Artikel-Beschreibungen in Beschaffungsauftraegen werden in der Liste auf den konfigurierten Wert gekuerzt
+Der vollstaendige Text der Artikel-Beschreibung bleibt als Tooltip sichtbar
+Version in Anwendung und README auf 0.9.39 angehoben
+
 ## Version 0.9.38
 
 Zeitangaben in Oberflaeche, Logfile-Ansicht, Dashboard-Uhr, E-Mail-Benachrichtigungen und PDF-Export auf eine gemeinsame Formatter-Logik umgestellt

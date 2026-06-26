@@ -137,9 +137,9 @@ The main scripts are:
 
 ## Current Version
 
-Current application version: **0.9.38**
+Current application version: **0.9.39**
 
-Recent changes include unified local time formatting for UI, log viewer, dashboard clock, notification emails and PDF exports, plus UTC-safe handling of print job start times.
+Recent changes include a system setting for limiting procurement article description previews while keeping the full description available as a tooltip.
 
 The update script installs Python dependencies from `neofab/requirements.txt`, including PyMuPDF for rendering the first page of uploaded poster PDFs as thumbnails.
 

@@ -5303,6 +5303,11 @@ def order_detail(order_id):
             .order_by(OrderProcurementArticle.created_at.desc())
             .all()
         )
+    settings = load_app_settings(app)
+    procurement_article_description_preview_chars = coerce_positive_int(
+        settings.get("procurement_article_description_preview_chars"),
+        DEFAULT_SETTINGS["procurement_article_description_preview_chars"],
+    )
 
     status_context = get_status_context(inject_globals().get("t"))
     app.logger.debug(
@@ -5323,6 +5328,7 @@ def order_detail(order_id):
         print_jobs=print_jobs,
         poster_files=poster_files,
         procurement_articles=procurement_articles,
+        procurement_article_description_preview_chars=procurement_article_description_preview_chars,
         print_job_statuses=status_context["print_job_statuses"],
         print_job_status_labels=status_context["print_job_status_labels"],
         print_job_status_styles=status_context["print_job_status_styles"],

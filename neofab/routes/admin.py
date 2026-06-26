@@ -843,6 +843,10 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     request.form.get("log_retention_days"),
                     None,
                 )
+                procurement_article_description_preview_chars = coerce_positive_int(
+                    request.form.get("procurement_article_description_preview_chars"),
+                    None,
+                )
 
                 if timeout_value is None:
                     flash(trans("flash_settings_invalid_timeout"), "danger")
@@ -856,6 +860,8 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     flash(trans("flash_settings_invalid_registration_domains"), "danger")
                 elif log_retention_days is None:
                     flash(trans("flash_settings_invalid_log_retention"), "danger")
+                elif procurement_article_description_preview_chars is None:
+                    flash(trans("flash_settings_invalid_procurement_article_description_preview_chars"), "danger")
                 else:
                     try:
                         updated_settings = settings.copy()
@@ -868,6 +874,9 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                         updated_settings["registration_allowed_domains"] = registration_allowed_domains
                         updated_settings["log_auto_cleanup_enabled"] = log_auto_cleanup_enabled
                         updated_settings["log_retention_days"] = log_retention_days
+                        updated_settings["procurement_article_description_preview_chars"] = (
+                            procurement_article_description_preview_chars
+                        )
                         save_app_settings(current_app, updated_settings)
                         if log_auto_cleanup_enabled:
                             maybe_cleanup_expired_logs(current_app, force=True)
@@ -1356,6 +1365,9 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 "registration_allowed_domains": settings.get("registration_allowed_domains", ""),
                 "log_auto_cleanup_enabled": bool(settings.get("log_auto_cleanup_enabled")),
                 "log_retention_days": settings.get("log_retention_days", 30),
+                "procurement_article_description_preview_chars": settings.get(
+                    "procurement_article_description_preview_chars", 100
+                ),
                 "smtp_host": settings.get("smtp_host", ""),
                 "smtp_port": settings.get("smtp_port", 0),
                 "smtp_use_tls": bool(settings.get("smtp_use_tls")),
@@ -1423,6 +1435,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 "registration_allowed_domains",
                 "log_auto_cleanup_enabled",
                 "log_retention_days",
+                "procurement_article_description_preview_chars",
                 "smtp_host",
                 "smtp_port",
                 "smtp_use_tls",

@@ -76,6 +76,7 @@ DEFAULT_SETTINGS = {
     "registration_allowed_domains": "",
     "log_auto_cleanup_enabled": False,
     "log_retention_days": 30,
+    "procurement_article_description_preview_chars": 100,
     "smtp_host": "",
     "smtp_port": 0,
     "smtp_use_tls": False,
@@ -353,6 +354,10 @@ def load_app_settings(app, force_reload: bool = False) -> Dict[str, Any]:
                     loaded.get("log_retention_days"),
                     DEFAULT_SETTINGS["log_retention_days"],
                 )
+                settings["procurement_article_description_preview_chars"] = coerce_positive_int(
+                    loaded.get("procurement_article_description_preview_chars"),
+                    DEFAULT_SETTINGS["procurement_article_description_preview_chars"],
+                )
                 settings["smtp_host"] = str(loaded.get("smtp_host", "") or "").strip()
                 settings["smtp_port"] = coerce_positive_int(loaded.get("smtp_port"), 0)
                 settings["smtp_use_tls"] = bool(loaded.get("smtp_use_tls"))
@@ -441,6 +446,10 @@ def save_app_settings(app, new_settings: Dict[str, Any]) -> Dict[str, Any]:
         settings["log_retention_days"] = coerce_positive_int(
             new_settings.get("log_retention_days"),
             DEFAULT_SETTINGS["log_retention_days"],
+        )
+        settings["procurement_article_description_preview_chars"] = coerce_positive_int(
+            new_settings.get("procurement_article_description_preview_chars"),
+            DEFAULT_SETTINGS["procurement_article_description_preview_chars"],
         )
         settings["smtp_host"] = str(new_settings.get("smtp_host", "") or "").strip()
         settings["smtp_port"] = coerce_positive_int(new_settings.get("smtp_port"), 0)

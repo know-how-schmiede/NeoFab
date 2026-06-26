@@ -1084,7 +1084,11 @@
                       {{ " | ".join(parts) }}
                     </small>
                     {% if article.article_description %}
-                      <div class="small mt-1">{{ article.article_description }}</div>
+                      {% set description_limit = procurement_article_description_preview_chars|default(100)|int %}
+                      {% set article_description = article.article_description or '' %}
+                      <div class="small mt-1" title="{{ article_description }}">
+                        {{ article_description[:description_limit] }}
+                      </div>
                     {% endif %}
                     <div class="small mt-2 d-flex flex-wrap gap-2">
                       {% if article.article_url %}
