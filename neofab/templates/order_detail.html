@@ -1086,8 +1086,9 @@
                     {% if article.article_description %}
                       {% set description_limit = procurement_article_description_preview_chars|default(100)|int %}
                       {% set article_description = article.article_description or '' %}
+                      {% set is_description_truncated = article_description|length > description_limit %}
                       <div class="small mt-1" title="{{ article_description }}">
-                        {{ article_description[:description_limit] }}
+                        {{ article_description[:description_limit] }}{% if is_description_truncated %}...{% endif %}
                       </div>
                     {% endif %}
                     <div class="small mt-2 d-flex flex-wrap gap-2">
