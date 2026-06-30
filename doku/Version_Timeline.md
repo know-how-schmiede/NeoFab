@@ -1,5 +1,12 @@
 # Timeline NeoFab
 
+## Version 0.9.43
+
+Aktionszeile der Beschaffungsartikel immer unterhalb der Artikeldaten angezeigt statt rechts am Rand
+Link zum Artikel in die Aktionszeile verschoben und dort an erster Position platziert
+Bestellt-Button fuer bestellte und gelieferte Artikel gefuellt dargestellt und deaktivierte Primary-Buttons stabil dunkelblau gehalten
+Version in Anwendung und README auf 0.9.43 angehoben
+
 ## Version 0.9.42
 
 Lieferantenfeld fuer Beschaffungsartikel bietet bereits in diesem Auftrag eingegebene Lieferanten als Auswahl an

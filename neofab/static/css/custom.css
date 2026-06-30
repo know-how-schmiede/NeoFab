@@ -365,6 +365,9 @@ fieldset:disabled .btn {
 	--bs-btn-active-color: #ffffff;
 	--bs-btn-active-bg: var(--nf-primary-hover);
 	--bs-btn-active-border-color: var(--nf-primary-hover);
+	--bs-btn-disabled-color: #ffffff;
+	--bs-btn-disabled-bg: var(--nf-primary);
+	--bs-btn-disabled-border-color: var(--nf-primary);
 }
 
 .btn-primary:hover,

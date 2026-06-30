@@ -1068,52 +1068,48 @@
           <ul class="list-group mb-3">
             {% for article in procurement_articles %}
               <li class="list-group-item">
-                <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+                <div>
                   <div>
-                    <div>
-                      <strong>{{ article.article_name }}</strong>
-                      <span class="badge bg-secondary ms-1">&times;{{ article.quantity or 1 }}</span>
-                      {% set article_status = (article.status or 'open') %}
-                      {% if article_status == 'delivered' %}
-                        <span class="badge bg-success ms-1">{{ t("articles_status_delivered") }}</span>
-                      {% elif article_status == 'ordered' %}
-                        <span class="badge bg-primary ms-1">{{ t("articles_status_ordered") }}</span>
-                      {% else %}
-                        <span class="badge bg-warning text-dark ms-1">{{ t("articles_status_open") }}</span>
-                      {% endif %}
-                    </div>
-                    <small class="text-muted d-block">
-                      {% set parts = [] %}
-                      {% if article.supplier %}{% set _ = parts.append(t("articles_supplier_label") ~ ": " ~ article.supplier) %}{% endif %}
-                      {% if article.price_per_unit_incl_vat is not none %}{% set _ = parts.append(t("articles_price_label") ~ ": " ~ ("%.2f"|format(article.price_per_unit_incl_vat)) ~ " EUR") %}{% endif %}
-                      {% if article.created_at %}{% set _ = parts.append("uploaded " ~ fmt_datetime(article.created_at)) %}{% endif %}
-                      {{ " | ".join(parts) }}
-                    </small>
-                    {% if article.article_description %}
-                      {% set description_limit = procurement_article_description_preview_chars|default(100)|int %}
-                      {% set article_description = article.article_description or '' %}
-                      {% set is_description_truncated = article_description|length > description_limit %}
-                      <div class="small mt-1" title="{{ article_description }}">
-                        {{ article_description[:description_limit] }}{% if is_description_truncated %}...{% endif %}
-                      </div>
+                    <strong>{{ article.article_name }}</strong>
+                    <span class="badge bg-secondary ms-1">&times;{{ article.quantity or 1 }}</span>
+                    {% set article_status = (article.status or 'open') %}
+                    {% if article_status == 'delivered' %}
+                      <span class="badge bg-success ms-1">{{ t("articles_status_delivered") }}</span>
+                    {% elif article_status == 'ordered' %}
+                      <span class="badge bg-primary ms-1">{{ t("articles_status_ordered") }}</span>
+                    {% else %}
+                      <span class="badge bg-warning text-dark ms-1">{{ t("articles_status_open") }}</span>
                     {% endif %}
-                    <div class="small mt-2 d-flex flex-wrap gap-2">
-                      {% if article.article_url %}
-                        <a class="btn btn-sm btn-outline-secondary" href="{{ article.article_url }}" target="_blank" rel="noopener noreferrer">
-                          <i class="bi bi-link-45deg me-1"></i>{{ t("articles_link_label") }}
-                        </a>
-                      {% endif %}
-                      {% if article.note_file_stored_name %}
-                        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('download_procurement_article_note_file', order_id=order.id, article_id=article.id) }}">
-                          <i class="bi bi-download me-1"></i>{{ t("articles_note_download") }}
-                        </a>
-                      {% endif %}
-                    </div>
                   </div>
+                  <small class="text-muted d-block">
+                    {% set parts = [] %}
+                    {% if article.supplier %}{% set _ = parts.append(t("articles_supplier_label") ~ ": " ~ article.supplier) %}{% endif %}
+                    {% if article.price_per_unit_incl_vat is not none %}{% set _ = parts.append(t("articles_price_label") ~ ": " ~ ("%.2f"|format(article.price_per_unit_incl_vat)) ~ " EUR") %}{% endif %}
+                    {% if article.created_at %}{% set _ = parts.append("uploaded " ~ fmt_datetime(article.created_at)) %}{% endif %}
+                    {{ " | ".join(parts) }}
+                  </small>
+                  {% if article.article_description %}
+                    {% set description_limit = procurement_article_description_preview_chars|default(100)|int %}
+                    {% set article_description = article.article_description or '' %}
+                    {% set is_description_truncated = article_description|length > description_limit %}
+                    <div class="small mt-1" title="{{ article_description }}">
+                      {{ article_description[:description_limit] }}{% if is_description_truncated %}...{% endif %}
+                    </div>
+                  {% endif %}
 
-                  <div class="d-flex gap-2">
+                  <div class="d-flex flex-wrap gap-2 mt-2">
+                    {% if article.article_url %}
+                      <a class="btn btn-sm btn-outline-secondary" href="{{ article.article_url }}" target="_blank" rel="noopener noreferrer">
+                        <i class="bi bi-link-45deg me-1"></i>{{ t("articles_link_label") }}
+                      </a>
+                    {% endif %}
+                    {% if article.note_file_stored_name %}
+                      <a class="btn btn-sm btn-outline-primary" href="{{ url_for('download_procurement_article_note_file', order_id=order.id, article_id=article.id) }}">
+                        <i class="bi bi-download me-1"></i>{{ t("articles_note_download") }}
+                      </a>
+                    {% endif %}
                     {% if current_user.role in ['admin', 'worker'] %}
-                      {% if article_status == 'ordered' %}
+                      {% if article_status in ['ordered', 'delivered'] %}
                         <button type="button" class="btn btn-sm btn-primary" disabled>
                           <i class="bi bi-bag-check me-1"></i>{{ t("articles_mark_ordered") }}
                         </button>
