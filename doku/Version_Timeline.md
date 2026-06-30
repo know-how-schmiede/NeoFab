@@ -1,5 +1,11 @@
 # Timeline NeoFab
 
+## Version 0.9.42
+
+Lieferantenfeld fuer Beschaffungsartikel bietet bereits in diesem Auftrag eingegebene Lieferanten als Auswahl an
+Neue Lieferanten koennen weiterhin frei eingegeben werden und stehen nach dem Speichern beim naechsten Artikel zur Auswahl
+Version in Anwendung und README auf 0.9.42 angehoben
+
 ## Version 0.9.41
 
 Status-E-Mail fuer Beschaffungsauftraege ergaenzt, sobald alle Artikel bestellt oder geliefert sind

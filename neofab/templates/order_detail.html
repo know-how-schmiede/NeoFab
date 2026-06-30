@@ -1050,6 +1050,12 @@
 
   {% if 'articles' in visible_tabs %}
   <div class="tab-pane fade {% if active_tab == 'articles' %}show active{% endif %}" id="articles-tab-pane" role="tabpanel" aria-labelledby="articles-tab">
+    {% set supplier_options = [] %}
+    {% for article in procurement_articles %}
+      {% if article.supplier and article.supplier not in supplier_options %}
+        {% set _ = supplier_options.append(article.supplier) %}
+      {% endif %}
+    {% endfor %}
     <div class="card mb-3">
       <div class="card-header">
         <h3 class="h6 mb-0 d-flex align-items-center">
@@ -1174,8 +1180,15 @@
             </div>
             <div class="col-md-6">
               <label for="article_supplier" class="form-label">{{ t("articles_supplier_label") }}</label>
-              <input type="text" class="form-control" id="article_supplier" name="article_supplier" maxlength="255">
+              <input type="text" class="form-control" id="article_supplier" name="article_supplier" maxlength="255" list="article_supplier_options">
             </div>
+            {% if supplier_options %}
+              <datalist id="article_supplier_options">
+                {% for supplier in supplier_options %}
+                  <option value="{{ supplier }}">
+                {% endfor %}
+              </datalist>
+            {% endif %}
             <div class="col-12">
               <label for="article_description" class="form-label">{{ t("articles_description_label") }}</label>
               <textarea class="form-control" id="article_description" name="article_description" rows="2"></textarea>
@@ -1705,7 +1718,7 @@
             </div>
             <div class="col-md-6">
               <label for="edit_article_supplier" class="form-label">{{ t("articles_supplier_label") }}</label>
-              <input class="form-control" type="text" id="edit_article_supplier" name="article_supplier" maxlength="255">
+              <input class="form-control" type="text" id="edit_article_supplier" name="article_supplier" maxlength="255" list="article_supplier_options">
             </div>
             <div class="col-12">
               <label for="edit_article_description" class="form-label">{{ t("articles_description_label") }}</label>
