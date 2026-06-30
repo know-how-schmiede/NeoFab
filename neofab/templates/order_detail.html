@@ -1065,14 +1065,68 @@
       </div>
       <div class="card-body">
         {% if procurement_articles %}
+          <div class="row g-2 align-items-end mb-3" data-article-filters>
+            <div class="col-md-3">
+              <label for="article_filter_supplier" class="form-label small mb-1">{{ t("articles_filter_supplier_label") }}</label>
+              <select id="article_filter_supplier" class="form-select form-select-sm" data-article-filter-supplier>
+                <option value="">{{ t("dashboard_filter_all") }}</option>
+                {% for supplier in supplier_options %}
+                  <option value="{{ supplier|lower }}">{{ supplier }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label for="article_filter_search" class="form-label small mb-1">{{ t("articles_filter_search_label") }}</label>
+              <input id="article_filter_search"
+                     class="form-control form-control-sm"
+                     type="search"
+                     data-article-filter-search
+                     placeholder="{{ t('articles_filter_search_placeholder') }}">
+            </div>
+            <div class="col-md-2">
+              <label for="article_filter_status" class="form-label small mb-1">{{ t("articles_filter_status_label") }}</label>
+              <select id="article_filter_status" class="form-select form-select-sm" data-article-filter-status>
+                <option value="">{{ t("dashboard_filter_all") }}</option>
+                <option value="ordered">{{ t("articles_filter_ordered") }}</option>
+                <option value="not_ordered">{{ t("articles_filter_not_ordered") }}</option>
+                <option value="delivered">{{ t("articles_filter_delivered") }}</option>
+                <option value="not_delivered">{{ t("articles_filter_not_delivered") }}</option>
+              </select>
+            </div>
+            <div class="col-6 col-md-2">
+              <label for="article_filter_price_min" class="form-label small mb-1">{{ t("articles_filter_price_min") }}</label>
+              <input id="article_filter_price_min"
+                     class="form-control form-control-sm"
+                     type="number"
+                     min="0"
+                     step="0.01"
+                     data-article-filter-price-min>
+            </div>
+            <div class="col-6 col-md-2">
+              <label for="article_filter_price_max" class="form-label small mb-1">{{ t("articles_filter_price_max") }}</label>
+              <input id="article_filter_price_max"
+                     class="form-control form-control-sm"
+                     type="number"
+                     min="0"
+                     step="0.01"
+                     data-article-filter-price-max>
+            </div>
+          </div>
           <ul class="list-group mb-3">
             {% for article in procurement_articles %}
-              <li class="list-group-item">
+              {% set article_status = (article.status or 'open') %}
+              <li class="list-group-item"
+                  data-procurement-article-row
+                  data-article-supplier="{{ (article.supplier or '')|lower }}"
+                  data-article-status="{{ article_status }}"
+                  data-article-ordered="{{ '1' if article_status in ['ordered', 'delivered'] else '0' }}"
+                  data-article-delivered="{{ '1' if article_status == 'delivered' else '0' }}"
+                  data-article-price="{{ article.price_per_unit_incl_vat if article.price_per_unit_incl_vat is not none else '' }}"
+                  data-article-search="{{ (article.article_name ~ ' ' ~ (article.supplier or '') ~ ' ' ~ (article.article_description or '') ~ ' ' ~ (article.article_url or ''))|lower }}">
                 <div>
                   <div>
                     <strong>{{ article.article_name }}</strong>
                     <span class="badge bg-secondary ms-1">&times;{{ article.quantity or 1 }}</span>
-                    {% set article_status = (article.status or 'open') %}
                     {% if article_status == 'delivered' %}
                       <span class="badge bg-success ms-1">{{ t("articles_status_delivered") }}</span>
                     {% elif article_status == 'ordered' %}
@@ -1163,6 +1217,7 @@
               </li>
             {% endfor %}
           </ul>
+          <p class="text-muted d-none" data-article-filter-empty>{{ t("articles_filter_no_results") }}</p>
         {% else %}
           <p class="text-muted">{{ t("articles_none") }}</p>
         {% endif %}
@@ -2330,6 +2385,68 @@
     if (quantityInput) quantityInput.value = posterQuantity;
     if (dueDateInput) dueDateInput.value = posterDueDate;
   });
+})();
+
+(function() {
+  const filterContainer = document.querySelector("[data-article-filters]");
+  if (!filterContainer) return;
+
+  const supplierFilter = filterContainer.querySelector("[data-article-filter-supplier]");
+  const searchFilter = filterContainer.querySelector("[data-article-filter-search]");
+  const statusFilter = filterContainer.querySelector("[data-article-filter-status]");
+  const priceMinFilter = filterContainer.querySelector("[data-article-filter-price-min]");
+  const priceMaxFilter = filterContainer.querySelector("[data-article-filter-price-max]");
+  const articleRows = Array.from(document.querySelectorAll("[data-procurement-article-row]"));
+  const emptyMessage = document.querySelector("[data-article-filter-empty]");
+
+  function parseFilterNumber(value) {
+    const normalized = String(value || "").trim().replace(",", ".");
+    if (!normalized) return null;
+    const parsed = Number.parseFloat(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function applyArticleFilters() {
+    const selectedSupplier = (supplierFilter ? supplierFilter.value : "").toLowerCase();
+    const query = (searchFilter ? searchFilter.value : "").trim().toLowerCase();
+    const selectedStatus = statusFilter ? statusFilter.value : "";
+    const minPrice = parseFilterNumber(priceMinFilter ? priceMinFilter.value : "");
+    const maxPrice = parseFilterNumber(priceMaxFilter ? priceMaxFilter.value : "");
+    let visibleCount = 0;
+
+    articleRows.forEach((row) => {
+      const supplier = row.getAttribute("data-article-supplier") || "";
+      const searchText = row.getAttribute("data-article-search") || "";
+      const price = parseFilterNumber(row.getAttribute("data-article-price"));
+      const isOrdered = row.getAttribute("data-article-ordered") === "1";
+      const isDelivered = row.getAttribute("data-article-delivered") === "1";
+
+      let visible = true;
+      if (selectedSupplier && supplier !== selectedSupplier) visible = false;
+      if (query && !searchText.includes(query)) visible = false;
+      if (selectedStatus === "ordered" && !isOrdered) visible = false;
+      if (selectedStatus === "not_ordered" && isOrdered) visible = false;
+      if (selectedStatus === "delivered" && !isDelivered) visible = false;
+      if (selectedStatus === "not_delivered" && isDelivered) visible = false;
+      if (minPrice !== null && (price === null || price < minPrice)) visible = false;
+      if (maxPrice !== null && (price === null || price > maxPrice)) visible = false;
+
+      row.classList.toggle("d-none", !visible);
+      if (visible) visibleCount += 1;
+    });
+
+    if (emptyMessage) {
+      emptyMessage.classList.toggle("d-none", visibleCount !== 0);
+    }
+  }
+
+  [supplierFilter, searchFilter, statusFilter, priceMinFilter, priceMaxFilter].forEach((input) => {
+    if (!input) return;
+    input.addEventListener("input", applyArticleFilters);
+    input.addEventListener("change", applyArticleFilters);
+  });
+
+  applyArticleFilters();
 })();
 
 (function() {

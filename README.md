@@ -137,9 +137,9 @@ The main scripts are:
 
 ## Current Version
 
-Current application version: **0.9.43**
+Current application version: **0.9.44**
 
-Recent changes include a clearer procurement article action row with stable ordered-button styling and the article link placed with the other actions.
+Recent changes include supplier, text, status, and price-range filters for procurement articles.
 
 The update script installs Python dependencies from `neofab/requirements.txt`, including PyMuPDF for rendering the first page of uploaded poster PDFs as thumbnails.
 

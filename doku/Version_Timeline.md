@@ -1,5 +1,11 @@
 # Timeline NeoFab
 
+## Version 0.9.44
+
+Beschaffungsartikel-Liste um Filter fuer Lieferanten, Freitextsuche, Bestellt/Nicht bestellt, Geliefert/Nicht geliefert und Preisspanne erweitert
+Filter wirken direkt auf die Artikel des aktuellen Auftrags und zeigen eine leere Ergebnis-Meldung, wenn kein Artikel passt
+Version in Anwendung und README auf 0.9.44 angehoben
+
 ## Version 0.9.43
 
 Aktionszeile der Beschaffungsartikel immer unterhalb der Artikeldaten angezeigt statt rechts am Rand
