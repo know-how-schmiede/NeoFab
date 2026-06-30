@@ -1065,7 +1065,9 @@
       </div>
       <div class="card-body">
         {% if procurement_articles %}
-          <div class="row g-2 align-items-end mb-3" data-article-filters>
+          <div class="row g-2 align-items-end mb-3"
+               data-article-filters
+               data-article-filter-storage-key="neofab.procurementArticleFilters.{{ order.id }}">
             <div class="col-md-3">
               <label for="article_filter_supplier" class="form-label small mb-1">{{ t("articles_filter_supplier_label") }}</label>
               <select id="article_filter_supplier" class="form-select form-select-sm" data-article-filter-supplier>
@@ -2398,12 +2400,69 @@
   const priceMaxFilter = filterContainer.querySelector("[data-article-filter-price-max]");
   const articleRows = Array.from(document.querySelectorAll("[data-procurement-article-row]"));
   const emptyMessage = document.querySelector("[data-article-filter-empty]");
+  const storageKey = filterContainer.getAttribute("data-article-filter-storage-key") || "";
 
   function parseFilterNumber(value) {
     const normalized = String(value || "").trim().replace(",", ".");
     if (!normalized) return null;
     const parsed = Number.parseFloat(normalized);
     return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function filterState() {
+    return {
+      supplier: supplierFilter ? supplierFilter.value : "",
+      search: searchFilter ? searchFilter.value : "",
+      status: statusFilter ? statusFilter.value : "",
+      priceMin: priceMinFilter ? priceMinFilter.value : "",
+      priceMax: priceMaxFilter ? priceMaxFilter.value : "",
+    };
+  }
+
+  function articleFilterStorage() {
+    if (!storageKey) return null;
+    try {
+      return window.localStorage;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function restoreArticleFilters() {
+    const storage = articleFilterStorage();
+    if (!storage) return;
+
+    try {
+      const rawState = storage.getItem(storageKey);
+      if (!rawState) return;
+
+      const state = JSON.parse(rawState);
+      if (supplierFilter && typeof state.supplier === "string") supplierFilter.value = state.supplier;
+      if (searchFilter && typeof state.search === "string") searchFilter.value = state.search;
+      if (statusFilter && typeof state.status === "string") statusFilter.value = state.status;
+      if (priceMinFilter && typeof state.priceMin === "string") priceMinFilter.value = state.priceMin;
+      if (priceMaxFilter && typeof state.priceMax === "string") priceMaxFilter.value = state.priceMax;
+    } catch (error) {
+      storage.removeItem(storageKey);
+    }
+  }
+
+  function persistArticleFilters() {
+    const storage = articleFilterStorage();
+    if (!storage) return;
+
+    const state = filterState();
+    const hasActiveFilter = Object.values(state).some((value) => value);
+
+    try {
+      if (hasActiveFilter) {
+        storage.setItem(storageKey, JSON.stringify(state));
+      } else {
+        storage.removeItem(storageKey);
+      }
+    } catch (error) {
+      // Ignore storage quota or privacy-mode failures; filtering still works for this page view.
+    }
   }
 
   function applyArticleFilters() {
@@ -2442,10 +2501,17 @@
 
   [supplierFilter, searchFilter, statusFilter, priceMinFilter, priceMaxFilter].forEach((input) => {
     if (!input) return;
-    input.addEventListener("input", applyArticleFilters);
-    input.addEventListener("change", applyArticleFilters);
+    input.addEventListener("input", () => {
+      persistArticleFilters();
+      applyArticleFilters();
+    });
+    input.addEventListener("change", () => {
+      persistArticleFilters();
+      applyArticleFilters();
+    });
   });
 
+  restoreArticleFilters();
   applyArticleFilters();
 })();
 
