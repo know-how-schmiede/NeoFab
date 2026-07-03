@@ -52,6 +52,29 @@ run_as_app_user() {
   sudo -u "$APP_USER" bash -lc "$*"
 }
 
+print_access_summary() {
+  local port="$1"
+  local ips
+  ips="$(hostname -I 2>/dev/null | xargs || true)"
+
+  echo "- Server IP address(es): ${ips:-unknown}"
+  echo "- NeoFab URL(s):"
+  if [[ -n "$ips" ]]; then
+    for ip in $ips; do
+      case "$ip" in
+        127.*|::1) continue ;;
+      esac
+      if [[ "$ip" == *:* ]]; then
+        echo "  http://[$ip]:$port"
+      else
+        echo "  http://$ip:$port"
+      fi
+    done
+  else
+    echo "  http://<server-ip>:$port"
+  fi
+}
+
 echo "==> Installing base packages..."
 apt update -y
 apt upgrade -y
@@ -113,6 +136,7 @@ NeoFab installation complete (terminal test setup)
 - Test server port:     $FLASK_PORT
 - Admin account:        $ADMIN_EMAIL
 - Database:             $APP_HOME/neofab/neofab.db
+$(print_access_summary "$FLASK_PORT")
 ----------------------------------------------------
 To start the test server in this terminal:
 sudo -u $APP_USER bash -lc 'cd "$APP_HOME/neofab" && source "$APP_HOME/.venv/bin/activate" && FLASK_APP=app FLASK_ENV=$FLASK_ENV flask run --host=0.0.0.0 --port=$FLASK_PORT'

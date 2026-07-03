@@ -1816,7 +1816,7 @@ def ensure_user_email_favorites_table():
             db.session.execute(
                 text(
                     """
-                    CREATE TABLE user_email_favorites (
+                    CREATE TABLE IF NOT EXISTS user_email_favorites (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         user_id INTEGER NOT NULL,
                         email VARCHAR(255) NOT NULL,

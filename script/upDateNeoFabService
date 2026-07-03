@@ -49,6 +49,40 @@ run_as_app_user() {
   sudo -u "$APP_USER" bash -lc "$*"
 }
 
+detect_service_port() {
+  local port=""
+  if [[ -f "$SERVICE_PATH" ]]; then
+    port="$(grep -Eo -- '-b[[:space:]]+[^[:space:]]+:[0-9]+' "$SERVICE_PATH" | tail -n 1 | sed -E 's/.*:([0-9]+)$/\1/' || true)"
+    if [[ -z "$port" ]]; then
+      port="$(grep -Eo -- '0\.0\.0\.0:[0-9]+' "$SERVICE_PATH" | tail -n 1 | cut -d: -f2 || true)"
+    fi
+  fi
+  echo "${port:-8080}"
+}
+
+print_access_summary() {
+  local port="$1"
+  local ips
+  ips="$(hostname -I 2>/dev/null | xargs || true)"
+
+  echo "- Server IP address(es): ${ips:-unknown}"
+  echo "- NeoFab URL(s):"
+  if [[ -n "$ips" ]]; then
+    for ip in $ips; do
+      case "$ip" in
+        127.*|::1) continue ;;
+      esac
+      if [[ "$ip" == *:* ]]; then
+        echo "  http://[$ip]:$port"
+      else
+        echo "  http://$ip:$port"
+      fi
+    done
+  else
+    echo "  http://<server-ip>:$port"
+  fi
+}
+
 echo "==> Stopping service $SERVICE_NAME ..."
 if systemctl is-active "$SERVICE_NAME" --quiet; then
   systemctl stop "$SERVICE_NAME"
@@ -74,6 +108,7 @@ run_as_app_user "cd \"$WORK_DIR\" && source \"$VENV_DIR/bin/activate\" && $ENV_E
 echo "==> Restarting service $SERVICE_NAME ..."
 systemctl daemon-reload
 systemctl restart "$SERVICE_NAME"
+SERVICE_PORT="$(detect_service_port)"
 
 echo
 echo "===================================================="
@@ -86,6 +121,8 @@ echo "- Virtualenv:     $VENV_DIR"
 echo "- Git remote:     $GIT_REMOTE"
 echo "- Branch:         ${GIT_BRANCH:-current}"
 echo "- Systemd unit:   $SERVICE_PATH"
+echo "- Service port:   $SERVICE_PORT"
+print_access_summary "$SERVICE_PORT"
 echo "----------------------------------------------------"
 echo "Useful commands:"
 echo "  systemctl status $SERVICE_NAME"

@@ -6,6 +6,7 @@ Profilseite zeigt die vom angemeldeten User verwendeten Favoriten-E-Mail-Adresse
 Favoriten-E-Mail-Adressen koennen im Profil geloescht werden und bleiben pro User getrennt
 Beim Versand der Beschaffungs-Artikelliste verwendete Empfaenger werden als persoenliche Vorschlaege gespeichert
 E-Mail-Felder wie die Beschaffungs-Artikelliste bieten die persoenlichen Favoriten als Auswahl an
+Installations- und Update-Scripte zeigen in der Abschlusszusammenfassung Server-IP und NeoFab-URL an
 Version in Anwendung und README auf 0.9.47 angehoben
 
 ## Version 0.9.46
