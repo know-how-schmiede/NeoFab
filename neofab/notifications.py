@@ -1139,77 +1139,87 @@ def send_procurement_article_list_email(
 
         snapshot_at = _format_app_datetime(datetime.utcnow(), settings)
         sent_by = current_user.email if current_user.is_authenticated else ""
-        msg = EmailMessage()
-        msg["Subject"] = f"NeoFab: Artikelliste Auftrag #{order.id}"
-        msg["From"] = smtp_from
-        msg["To"] = ", ".join(recipients)
-        if sent_by:
-            msg["Reply-To"] = sent_by
+        subject = f"NeoFab: Artikelliste Auftrag #{order.id}"
+        section_separator = "=" * 60
+        article_separator = "-" * 60
 
-        body_lines = [
-            "Hallo,",
-            "",
-            "anbei die aktuelle Artikelliste aus NeoFab.",
-            "",
-            "Auftrag:",
-            f"- ID: {order.id}",
-            f"- Titel: {order.title}",
-            f"- Zeitpunkt: {snapshot_at}",
-            f"- Versendet von: {sent_by or '-'}",
-            "",
-            "Artikelliste:",
-        ]
         description_limit = coerce_positive_int(
             settings.get("procurement_article_description_preview_chars"),
             DEFAULT_SETTINGS["procurement_article_description_preview_chars"],
         )
 
-        if articles:
-            for index, article in enumerate(articles):
-                if index > 0:
-                    body_lines.extend(["", "-" * 60])
-                position_number = getattr(article, "position_number", None) or getattr(article, "id", "")
-                quantity = getattr(article, "quantity", None) or 1
-                price = getattr(article, "price_per_unit_incl_vat", None)
-                total = (price or 0.0) * quantity
-                supplier = getattr(article, "supplier", None) or "-"
-                status = getattr(article, "status", None) or "-"
-                price_text = f"{price:.2f} EUR" if price is not None else "-"
-                total_text = f"{total:.2f} EUR" if price is not None else "-"
-                body_lines.append(
-                    f"#{position_number} {getattr(article, 'article_name', '')}"
-                    f" | Lieferant: {supplier}"
-                    f" | Anzahl: {quantity}"
-                    f" | Status: {status}"
-                    f" | Preis pro Stueck: {price_text}"
-                    f" | Gesamt: {total_text}"
-                )
-                description = (getattr(article, "article_description", None) or "").strip()
-                if description:
-                    preview = description[:description_limit]
-                    if len(description) > description_limit:
-                        preview += "..."
-                    body_lines.append(f"  Beschreibung: {preview}")
-                article_url = (getattr(article, "article_url", None) or "").strip()
-                if article_url:
-                    body_lines.append(f"  Link: {article_url}")
-        else:
-            body_lines.append("- Keine Artikel vorhanden.")
+        for recipient in recipients:
+            msg = EmailMessage()
+            msg["Subject"] = subject
+            msg["From"] = smtp_from
+            msg["To"] = recipient
+            if sent_by:
+                msg["Reply-To"] = sent_by
 
-        body_lines.extend(
-            [
+            body_lines = [
+                f"Hallo {recipient},",
                 "",
-                "Statistik:",
-                f"- Artikel-Positionen: {position_count}",
-                f"- Gesamtpreis: {total_price:.2f} EUR",
+                "anbei die aktuelle Artikelliste aus NeoFab.",
                 "",
-                f"Auftrag oeffnen: {order_url}",
+                "Auftrag:",
+                section_separator,
+                f"- ID: {order.id}",
+                f"- Titel: {order.title}",
+                f"- Zeitpunkt: {snapshot_at}",
+                f"- Versendet von: {sent_by or '-'}",
+                "",
+                "Artikelliste:",
+                section_separator,
             ]
-        )
-        body_lines.extend(_notification_footer(settings, order_url, "de"))
-        msg.set_content("\n".join(body_lines))
 
-        _send_message(settings, msg)
+            if articles:
+                for index, article in enumerate(articles):
+                    if index > 0:
+                        body_lines.extend(["", article_separator])
+                    position_number = getattr(article, "position_number", None) or getattr(article, "id", "")
+                    quantity = getattr(article, "quantity", None) or 1
+                    price = getattr(article, "price_per_unit_incl_vat", None)
+                    total = (price or 0.0) * quantity
+                    supplier = getattr(article, "supplier", None) or "-"
+                    status = getattr(article, "status", None) or "-"
+                    price_text = f"{price:.2f} EUR" if price is not None else "-"
+                    total_text = f"{total:.2f} EUR" if price is not None else "-"
+                    body_lines.append(
+                        f"#{position_number} {getattr(article, 'article_name', '')}"
+                        f" | Lieferant: {supplier}"
+                        f" | Anzahl: {quantity}"
+                        f" | Status: {status}"
+                        f" | Preis pro Stueck: {price_text}"
+                        f" | Gesamt: {total_text}"
+                    )
+                    description = (getattr(article, "article_description", None) or "").strip()
+                    if description:
+                        preview = description[:description_limit]
+                        if len(description) > description_limit:
+                            preview += "..."
+                        body_lines.append(f"  Beschreibung: {preview}")
+                    article_url = (getattr(article, "article_url", None) or "").strip()
+                    if article_url:
+                        body_lines.append(f"  Link: {article_url}")
+            else:
+                body_lines.append("- Keine Artikel vorhanden.")
+
+            body_lines.extend(
+                [
+                    "",
+                    section_separator,
+                    "Statistik:",
+                    f"- Artikel-Positionen: {position_count}",
+                    f"- Gesamtpreis: {total_price:.2f} EUR",
+                    "",
+                    f"Auftrag oeffnen: {order_url}",
+                ]
+            )
+            body_lines.extend(_notification_footer(settings, order_url, "de"))
+            msg.set_content("\n".join(body_lines))
+
+            _send_message(settings, msg)
+
         write_audit_log(
             app,
             "email_sent",
@@ -1217,7 +1227,7 @@ def send_procurement_article_list_email(
             details={
                 "kind": "procurement_article_list",
                 "order_id": order.id,
-                "subject": msg["Subject"],
+                "subject": subject,
                 "recipient_count": len(recipients),
                 "recipients": recipients,
                 "position_count": position_count,
