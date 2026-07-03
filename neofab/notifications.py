@@ -1142,6 +1142,7 @@ def send_procurement_article_list_email(
         subject = f"NeoFab: Artikelliste Auftrag #{order.id}"
         section_separator = "=" * 60
         article_separator = "-" * 60
+        owner_recipients = _split_email_recipients(getattr(getattr(order, "user", None), "email", None))
 
         description_limit = coerce_positive_int(
             settings.get("procurement_article_description_preview_chars"),
@@ -1153,6 +1154,13 @@ def send_procurement_article_list_email(
             msg["Subject"] = subject
             msg["From"] = smtp_from
             msg["To"] = recipient
+            cc_recipients = [
+                owner_email
+                for owner_email in owner_recipients
+                if owner_email.lower() != recipient.lower()
+            ]
+            if cc_recipients:
+                msg["Cc"] = ", ".join(cc_recipients)
             if sent_by:
                 msg["Reply-To"] = sent_by
 
@@ -1230,6 +1238,7 @@ def send_procurement_article_list_email(
                 "subject": subject,
                 "recipient_count": len(recipients),
                 "recipients": recipients,
+                "cc_recipients": owner_recipients,
                 "position_count": position_count,
                 "total_price": total_price,
                 "snapshot_at": snapshot_at,
