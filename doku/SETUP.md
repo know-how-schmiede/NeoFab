@@ -221,6 +221,57 @@ Die aktiven Startparameter koennen mit folgendem Befehl kontrolliert werden:
 systemctl cat neofab
 ```
 
+### Git-Fehler beim Update durch gesetzte Datei-Rechte beheben
+
+Wenn `script/upDateNeoFabService` beim `git pull` mit einer Meldung wie dieser abbricht:
+
+```txt
+error: Your local changes to the following files would be overwritten by merge:
+        script/setupNeoFab
+        script/upDateNeoFabService
+Please commit your changes or stash them before you merge.
+Aborting
+```
+
+dann zuerst pruefen, ob es nur Datei-Rechte sind oder echte Inhaltsaenderungen:
+
+```bash
+cd /home/neofab/projects/neofab
+sudo -u neofab git status --short
+sudo -u neofab git diff --summary -- script/setupNeoFab script/setupNeoFabService script/upDateNeoFabService script/resetAdminPassword
+sudo -u neofab git diff -- script/setupNeoFab script/setupNeoFabService script/upDateNeoFabService script/resetAdminPassword
+```
+
+Wenn `git diff --summary` nur `mode change` zeigt und der normale `git diff` keinen Inhalt ausgibt, handelt es sich nur um Datei-Rechte. Dann kann Git angewiesen werden, Datei-Rechte nicht als Aenderung zu behandeln:
+
+```bash
+cd /home/neofab/projects/neofab
+sudo -u neofab git config core.fileMode false
+sudo -u neofab git restore --staged --worktree script/setupNeoFab script/setupNeoFabService script/upDateNeoFabService script/resetAdminPassword
+```
+
+Falls die Scripte ausfuehrbar bleiben sollen, die Rechte danach setzen. Durch `core.fileMode false` blockieren diese Rechte das naechste Update nicht mehr:
+
+```bash
+sudo chmod +x /home/neofab/projects/neofab/script/setupNeoFab
+sudo chmod +x /home/neofab/projects/neofab/script/setupNeoFabService
+sudo chmod +x /home/neofab/projects/neofab/script/upDateNeoFabService
+sudo chmod +x /home/neofab/projects/neofab/script/resetAdminPassword
+```
+
+Danach das Update erneut starten:
+
+```bash
+sudo bash /home/neofab/projects/neofab/script/upDateNeoFabService
+```
+
+Wenn der normale `git diff` Inhalt zeigt, nicht blind `git restore` ausfuehren. Dann zuerst die lokalen Aenderungen sichern oder bewusst verwerfen:
+
+```bash
+cd /home/neofab/projects/neofab
+sudo -u neofab git diff -- script/setupNeoFab script/setupNeoFabService script/upDateNeoFabService script/resetAdminPassword > /tmp/neofab-local-script-changes.patch
+```
+
 ### Windows PowerShell
 
 ```bash

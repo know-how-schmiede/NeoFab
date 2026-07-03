@@ -65,7 +65,9 @@ print_access_summary() {
   local ips
   ips="$(hostname -I 2>/dev/null | xargs || true)"
 
+  echo "Access / URL:"
   echo "- Server IP address(es): ${ips:-unknown}"
+  echo "- Service port:          $port"
   echo "- NeoFab URL(s):"
   if [[ -n "$ips" ]]; then
     for ip in $ips; do
@@ -121,7 +123,6 @@ echo "- Virtualenv:     $VENV_DIR"
 echo "- Git remote:     $GIT_REMOTE"
 echo "- Branch:         ${GIT_BRANCH:-current}"
 echo "- Systemd unit:   $SERVICE_PATH"
-echo "- Service port:   $SERVICE_PORT"
 print_access_summary "$SERVICE_PORT"
 echo "----------------------------------------------------"
 echo "Useful commands:"
