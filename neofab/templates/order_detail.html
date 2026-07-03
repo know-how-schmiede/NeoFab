@@ -1127,6 +1127,7 @@
               {% set article_status = (article.status or 'open') %}
               {% set article_quantity = article.quantity or 1 %}
               {% set article_total_price = (article.price_per_unit_incl_vat or 0) * article_quantity %}
+              {% set article_position_number = article.position_number or loop.index %}
               <li class="list-group-item"
                   data-procurement-article-row
                   data-article-supplier="{{ (article.supplier or '')|lower }}"
@@ -1134,10 +1135,10 @@
                   data-article-ordered="{{ '1' if article_status in ['ordered', 'delivered'] else '0' }}"
                   data-article-delivered="{{ '1' if article_status == 'delivered' else '0' }}"
                   data-article-price="{{ article.price_per_unit_incl_vat if article.price_per_unit_incl_vat is not none else '' }}"
-                  data-article-search="{{ ('#' ~ loop.index ~ ' ' ~ article.article_name ~ ' ' ~ (article.supplier or '') ~ ' ' ~ (article.article_description or '') ~ ' ' ~ (article.article_url or ''))|lower }}">
+                  data-article-search="{{ ('#' ~ article_position_number ~ ' ' ~ article.article_name ~ ' ' ~ (article.supplier or '') ~ ' ' ~ (article.article_description or '') ~ ' ' ~ (article.article_url or ''))|lower }}">
                 <div>
                   <div>
-                    <span class="badge text-bg-light border me-1">#{{ loop.index }}</span>
+                    <span class="badge text-bg-light border me-1">#{{ article_position_number }}</span>
                     <strong>{{ article.article_name }}</strong>
                     <span class="badge bg-secondary ms-1">&times;{{ article_quantity }}</span>
                     {% if article_status == 'delivered' %}

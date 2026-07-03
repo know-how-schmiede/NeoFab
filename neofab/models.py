@@ -265,6 +265,7 @@ class OrderProcurementArticle(db.Model):
     article_description = db.Column(db.Text)
     supplier = db.Column(db.String(255))
     article_url = db.Column(db.String(1000))
+    position_number = db.Column(db.Integer)
     quantity = db.Column(db.Integer, nullable=False, default=1)
     price_per_unit_incl_vat = db.Column(db.Float)
     note_file_original_name = db.Column(db.String(255))

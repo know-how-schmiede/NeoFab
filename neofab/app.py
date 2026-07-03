@@ -566,9 +566,32 @@ def _procurement_articles_for_order(order: Order) -> list[OrderProcurementArticl
     return (
         OrderProcurementArticle.query
         .filter_by(order_id=order.id)
+        .order_by(OrderProcurementArticle.position_number.asc(), OrderProcurementArticle.created_at.asc(), OrderProcurementArticle.id.asc())
+        .all()
+    )
+
+
+def ensure_procurement_article_position_numbers(order_id: int) -> bool:
+    articles = (
+        OrderProcurementArticle.query
+        .filter_by(order_id=order_id)
         .order_by(OrderProcurementArticle.created_at.asc(), OrderProcurementArticle.id.asc())
         .all()
     )
+    next_position = max(
+        (article.position_number or 0 for article in articles),
+        default=0,
+    ) + 1
+    changed = False
+    for article in articles:
+        if article.position_number:
+            continue
+        article.position_number = next_position
+        next_position += 1
+        changed = True
+    if changed:
+        db.session.flush()
+    return changed
 
 
 def _all_procurement_articles_ordered(order: Order) -> bool:
@@ -1298,6 +1321,7 @@ def ensure_order_category_schema():
                         article_description TEXT,
                         supplier VARCHAR(255),
                         article_url VARCHAR(1000),
+                        position_number INTEGER,
                         quantity INTEGER NOT NULL DEFAULT 1,
                         price_per_unit_incl_vat FLOAT,
                         note_file_original_name VARCHAR(255),
@@ -1327,6 +1351,8 @@ def ensure_order_category_schema():
                 procurement_statements.append("ALTER TABLE order_procurement_articles ADD COLUMN supplier VARCHAR(255)")
             if "article_url" not in procurement_cols:
                 procurement_statements.append("ALTER TABLE order_procurement_articles ADD COLUMN article_url VARCHAR(1000)")
+            if "position_number" not in procurement_cols:
+                procurement_statements.append("ALTER TABLE order_procurement_articles ADD COLUMN position_number INTEGER")
             if "quantity" not in procurement_cols:
                 procurement_statements.append(
                     "ALTER TABLE order_procurement_articles ADD COLUMN quantity INTEGER NOT NULL DEFAULT 1"
@@ -1363,6 +1389,17 @@ def ensure_order_category_schema():
                 db.session.execute(text(stmt))
             if procurement_statements:
                 db.session.commit()
+            if "position_number" not in procurement_cols:
+                order_ids = [
+                    row[0]
+                    for row in db.session.execute(
+                        text("SELECT DISTINCT order_id FROM order_procurement_articles ORDER BY order_id")
+                    )
+                ]
+                for order_id in order_ids:
+                    ensure_procurement_article_position_numbers(order_id)
+                if order_ids:
+                    db.session.commit()
     except Exception:
         app.logger.exception("Failed to ensure order category schema exists")
 
@@ -4542,6 +4579,14 @@ def order_detail(order_id):
                     flash(trans("flash_procurement_invalid_note_file"), "warning")
                     return order_detail_redirect("articles")
 
+            ensure_procurement_article_position_numbers(order.id)
+            next_position_number = (
+                db.session.query(func.max(OrderProcurementArticle.position_number))
+                .filter_by(order_id=order.id)
+                .scalar()
+                or 0
+            ) + 1
+
             article = OrderProcurementArticle(
                 order_id=order.id,
                 article_name=article_name[:255],
@@ -4549,6 +4594,7 @@ def order_detail(order_id):
                 article_description=article_description,
                 supplier=supplier[:255] if supplier else None,
                 article_url=article_url[:1000] if article_url else None,
+                position_number=next_position_number,
                 quantity=quantity,
                 price_per_unit_incl_vat=price_per_unit_incl_vat,
                 note_file_original_name=note_file_original_name,
@@ -5395,9 +5441,17 @@ def order_detail(order_id):
         procurement_articles = (
             OrderProcurementArticle.query
             .filter_by(order_id=order.id)
-            .order_by(OrderProcurementArticle.created_at.desc())
+            .order_by(OrderProcurementArticle.position_number.asc(), OrderProcurementArticle.created_at.asc(), OrderProcurementArticle.id.asc())
             .all()
         )
+        if ensure_procurement_article_position_numbers(order.id):
+            db.session.commit()
+            procurement_articles = (
+                OrderProcurementArticle.query
+                .filter_by(order_id=order.id)
+                .order_by(OrderProcurementArticle.position_number.asc(), OrderProcurementArticle.created_at.asc(), OrderProcurementArticle.id.asc())
+                .all()
+            )
         procurement_article_position_count = len(procurement_articles)
         procurement_article_total_price = sum(
             (article.price_per_unit_incl_vat or 0.0) * (article.quantity or 1)

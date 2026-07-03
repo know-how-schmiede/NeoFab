@@ -3,6 +3,7 @@
 ## Version 0.9.45
 
 Beschaffungsartikel zeigen fortlaufende Positionsnummern direkt vor dem Artikeltitel
+Positionsnummern von Beschaffungsartikeln werden dauerhaft gespeichert und nach dem Loeschen nicht wiederverwendet
 Auftragsansicht zeigt die Anzahl der enthaltenen Artikel-Positionen und den Gesamtpreis der Beschaffungsartikel
 Gesamtpreis wird aus Artikelpreis pro Stueck mal Anzahl je Artikel berechnet
 Version in Anwendung und README auf 0.9.45 angehoben
