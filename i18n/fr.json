@@ -385,6 +385,8 @@
   "articles_link_label": "Lien vers l'article",
   "articles_quantity_label": "Quantite",
   "articles_price_label": "Prix unitaire TTC",
+  "articles_position_count_label": "Positions d'article",
+  "articles_total_price_label": "Prix total",
   "articles_note_upload_label": "Televerser une remarque",
   "articles_note_upload_hint": "Formats autorises : .txt, .pdf, .doc, .docx, .odt, .ods, .odp, .odg, .odf, .rtf",
   "articles_note_download": "Telecharger la remarque",

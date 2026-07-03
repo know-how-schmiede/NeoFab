@@ -385,6 +385,8 @@
   "articles_link_label": "Link zum Artikel",
   "articles_quantity_label": "Anzahl",
   "articles_price_label": "Preis pro Stück inkl. MwSt",
+  "articles_position_count_label": "Artikel-Positionen",
+  "articles_total_price_label": "Gesamtpreis",
   "articles_note_upload_label": "Upload Bemerkung",
   "articles_note_upload_hint": "Erlaubte Formate: .txt, .pdf, .doc, .docx, .odt, .ods, .odp, .odg, .odf, .rtf",
   "articles_note_download": "Bemerkung herunterladen",

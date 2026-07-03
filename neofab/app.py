@@ -5389,12 +5389,19 @@ def order_detail(order_id):
             db.session.commit()
 
     procurement_articles = []
+    procurement_article_position_count = 0
+    procurement_article_total_price = 0.0
     if is_procurement_order(order):
         procurement_articles = (
             OrderProcurementArticle.query
             .filter_by(order_id=order.id)
             .order_by(OrderProcurementArticle.created_at.desc())
             .all()
+        )
+        procurement_article_position_count = len(procurement_articles)
+        procurement_article_total_price = sum(
+            (article.price_per_unit_incl_vat or 0.0) * (article.quantity or 1)
+            for article in procurement_articles
         )
     settings = load_app_settings(app)
     procurement_article_description_preview_chars = coerce_positive_int(
@@ -5421,6 +5428,8 @@ def order_detail(order_id):
         print_jobs=print_jobs,
         poster_files=poster_files,
         procurement_articles=procurement_articles,
+        procurement_article_position_count=procurement_article_position_count,
+        procurement_article_total_price=procurement_article_total_price,
         procurement_article_description_preview_chars=procurement_article_description_preview_chars,
         print_job_statuses=status_context["print_job_statuses"],
         print_job_status_labels=status_context["print_job_status_labels"],

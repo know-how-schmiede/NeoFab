@@ -420,6 +420,8 @@
   "articles_link_label": "Article Link",
   "articles_quantity_label": "Quantity",
   "articles_price_label": "Price per unit incl. VAT",
+  "articles_position_count_label": "Article positions",
+  "articles_total_price_label": "Total price",
   "articles_note_upload_label": "Upload Note",
   "articles_note_upload_hint": "Allowed formats: .txt, .pdf, .doc, .docx, .odt, .ods, .odp, .odg, .odf, .rtf",
   "articles_note_download": "Download note",

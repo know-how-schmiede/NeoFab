@@ -1065,6 +1065,14 @@
       </div>
       <div class="card-body">
         {% if procurement_articles %}
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <span class="badge text-bg-light border">
+              {{ t("articles_position_count_label") }}: {{ procurement_article_position_count }}
+            </span>
+            <span class="badge text-bg-light border">
+              {{ t("articles_total_price_label") }}: {{ "%.2f"|format(procurement_article_total_price or 0) }} EUR
+            </span>
+          </div>
           <div class="row g-2 align-items-end mb-3"
                data-article-filters
                data-article-filter-storage-key="neofab.procurementArticleFilters.{{ order.id }}">
@@ -1117,6 +1125,8 @@
           <ul class="list-group mb-3">
             {% for article in procurement_articles %}
               {% set article_status = (article.status or 'open') %}
+              {% set article_quantity = article.quantity or 1 %}
+              {% set article_total_price = (article.price_per_unit_incl_vat or 0) * article_quantity %}
               <li class="list-group-item"
                   data-procurement-article-row
                   data-article-supplier="{{ (article.supplier or '')|lower }}"
@@ -1124,11 +1134,12 @@
                   data-article-ordered="{{ '1' if article_status in ['ordered', 'delivered'] else '0' }}"
                   data-article-delivered="{{ '1' if article_status == 'delivered' else '0' }}"
                   data-article-price="{{ article.price_per_unit_incl_vat if article.price_per_unit_incl_vat is not none else '' }}"
-                  data-article-search="{{ (article.article_name ~ ' ' ~ (article.supplier or '') ~ ' ' ~ (article.article_description or '') ~ ' ' ~ (article.article_url or ''))|lower }}">
+                  data-article-search="{{ ('#' ~ loop.index ~ ' ' ~ article.article_name ~ ' ' ~ (article.supplier or '') ~ ' ' ~ (article.article_description or '') ~ ' ' ~ (article.article_url or ''))|lower }}">
                 <div>
                   <div>
+                    <span class="badge text-bg-light border me-1">#{{ loop.index }}</span>
                     <strong>{{ article.article_name }}</strong>
-                    <span class="badge bg-secondary ms-1">&times;{{ article.quantity or 1 }}</span>
+                    <span class="badge bg-secondary ms-1">&times;{{ article_quantity }}</span>
                     {% if article_status == 'delivered' %}
                       <span class="badge bg-success ms-1">{{ t("articles_status_delivered") }}</span>
                     {% elif article_status == 'ordered' %}
@@ -1141,6 +1152,7 @@
                     {% set parts = [] %}
                     {% if article.supplier %}{% set _ = parts.append(t("articles_supplier_label") ~ ": " ~ article.supplier) %}{% endif %}
                     {% if article.price_per_unit_incl_vat is not none %}{% set _ = parts.append(t("articles_price_label") ~ ": " ~ ("%.2f"|format(article.price_per_unit_incl_vat)) ~ " EUR") %}{% endif %}
+                    {% if article.price_per_unit_incl_vat is not none %}{% set _ = parts.append(t("articles_total_price_label") ~ ": " ~ ("%.2f"|format(article_total_price)) ~ " EUR") %}{% endif %}
                     {% if article.created_at %}{% set _ = parts.append("uploaded " ~ fmt_datetime(article.created_at)) %}{% endif %}
                     {{ " | ".join(parts) }}
                   </small>

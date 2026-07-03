@@ -1,5 +1,12 @@
 # Timeline NeoFab
 
+## Version 0.9.45
+
+Beschaffungsartikel zeigen fortlaufende Positionsnummern direkt vor dem Artikeltitel
+Auftragsansicht zeigt die Anzahl der enthaltenen Artikel-Positionen und den Gesamtpreis der Beschaffungsartikel
+Gesamtpreis wird aus Artikelpreis pro Stueck mal Anzahl je Artikel berechnet
+Version in Anwendung und README auf 0.9.45 angehoben
+
 ## Version 0.9.44
 
 Beschaffungsartikel-Liste um Filter fuer Lieferanten, Freitextsuche, Bestellt/Nicht bestellt, Geliefert/Nicht geliefert und Preisspanne erweitert
