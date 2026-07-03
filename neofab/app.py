@@ -11,6 +11,7 @@
 
 from version import APP_VERSION
 from datetime import datetime, timedelta
+from email.utils import getaddresses
 from pathlib import Path
 import base64
 import binascii
@@ -113,6 +114,7 @@ from models import (
     OrderWorkJob,
     UserOrderCategoryPermission,
     UserOrderAreaPreference,
+    UserEmailFavorite,
     OrderPosterFile,
     OrderProcurementArticle,
     OrderMessage,
@@ -1802,6 +1804,88 @@ def ensure_user_preference_columns():
         app.logger.exception("Failed to ensure user preference columns exist")
 
 
+def ensure_user_email_favorites_table():
+    """
+    Ensures per-user email favorites for reusable address suggestions exist.
+    """
+    try:
+        exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='user_email_favorites'")
+        ).scalar()
+        if not exists:
+            db.session.execute(
+                text(
+                    """
+                    CREATE TABLE user_email_favorites (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        email VARCHAR(255) NOT NULL,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE(user_id, email)
+                    )
+                    """
+                )
+            )
+            db.session.commit()
+            return
+
+        cols = {
+            row[1]
+            for row in db.session.execute(text("PRAGMA table_info(user_email_favorites)"))
+        }
+        statements = []
+        if "user_id" not in cols:
+            statements.append("ALTER TABLE user_email_favorites ADD COLUMN user_id INTEGER NOT NULL DEFAULT 0")
+        if "email" not in cols:
+            statements.append("ALTER TABLE user_email_favorites ADD COLUMN email VARCHAR(255) NOT NULL DEFAULT ''")
+        if "created_at" not in cols:
+            statements.append(
+                "ALTER TABLE user_email_favorites ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            )
+
+        for stmt in statements:
+            db.session.execute(text(stmt))
+        if statements:
+            db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure user_email_favorites table exists")
+
+
+def split_email_recipients(raw: str | None) -> list[str]:
+    if not raw:
+        return []
+    normalized = raw.replace(";", ",").replace("\n", ",").replace("\r", ",")
+    recipients: list[str] = []
+    seen: set[str] = set()
+    for _, email in getaddresses([normalized]):
+        email = (email or "").strip()
+        if not email or "@" not in email:
+            continue
+        key = email.lower()
+        if key in seen:
+            continue
+        recipients.append(email)
+        seen.add(key)
+    return recipients
+
+
+def save_user_email_favorites(user_id: int, raw_recipients: str | None) -> None:
+    for email in split_email_recipients(raw_recipients):
+        normalized_email = email.strip().lower()
+        exists = UserEmailFavorite.query.filter_by(
+            user_id=user_id,
+            email=normalized_email,
+        ).first()
+        if exists:
+            continue
+        db.session.add(
+            UserEmailFavorite(
+                user_id=user_id,
+                email=normalized_email,
+            )
+        )
+
+
 def ensure_user_activation_tokens_table():
     """
     Ensures the account activation token table exists.
@@ -1907,6 +1991,7 @@ def ensure_user_password_reset_tokens_table():
 
 with app.app_context():
     ensure_user_preference_columns()
+    ensure_user_email_favorites_table()
     ensure_user_status_columns()
     ensure_user_activation_tokens_table()
     ensure_user_password_reset_tokens_table()
@@ -3165,6 +3250,24 @@ def profile():
 
     if request.method == "POST":
         trans = inject_globals().get("t")
+        action = request.form.get("action", "update_profile")
+        if action == "delete_email_favorite":
+            try:
+                favorite_id = int(request.form.get("favorite_id", "0"))
+            except ValueError:
+                favorite_id = 0
+            favorite = UserEmailFavorite.query.filter_by(
+                id=favorite_id,
+                user_id=user.id,
+            ).first()
+            if favorite:
+                db.session.delete(favorite)
+                db.session.commit()
+                flash(trans("flash_profile_email_favorite_deleted"), "info")
+            else:
+                flash(trans("flash_profile_email_favorite_not_found"), "warning")
+            return redirect(url_for("profile"))
+
         email = request.form.get("email", "").strip().lower()
 
         salutation = request.form.get("salutation") or None
@@ -3288,6 +3391,12 @@ def profile():
         preference.area_id
         for preference in UserOrderAreaPreference.query.filter_by(user_id=user.id).all()
     }
+    email_favorites = (
+        UserEmailFavorite.query
+        .filter_by(user_id=user.id)
+        .order_by(UserEmailFavorite.email.asc())
+        .all()
+    )
 
     return render_template(
         "profile.html",
@@ -3296,6 +3405,7 @@ def profile():
         selected_worker_category_ids=selected_worker_category_ids,
         dashboard_areas=dashboard_areas,
         selected_dashboard_area_ids=selected_dashboard_area_ids,
+        email_favorites=email_favorites,
         announcements_read=announcements_read,
         announcement_priority_meta=ANNOUNCEMENT_PRIORITY_META,
         announcement_form_token=_new_announcement_form_token() if current_user.role == "admin" else "",
@@ -4565,6 +4675,8 @@ def order_detail(order_id):
                 total_price,
             )
             if sent:
+                save_user_email_favorites(current_user.id, recipient)
+                db.session.commit()
                 flash(trans("flash_procurement_article_list_email_sent"), "success")
             else:
                 flash(trans("flash_procurement_article_list_email_failed"), "danger")
@@ -5473,6 +5585,12 @@ def order_detail(order_id):
     procurement_articles = []
     procurement_article_position_count = 0
     procurement_article_total_price = 0.0
+    email_favorites = (
+        UserEmailFavorite.query
+        .filter_by(user_id=current_user.id)
+        .order_by(UserEmailFavorite.email.asc())
+        .all()
+    )
     if is_procurement_order(order):
         procurement_articles = (
             OrderProcurementArticle.query
@@ -5520,6 +5638,7 @@ def order_detail(order_id):
         procurement_articles=procurement_articles,
         procurement_article_position_count=procurement_article_position_count,
         procurement_article_total_price=procurement_article_total_price,
+        email_favorites=email_favorites,
         procurement_article_description_preview_chars=procurement_article_description_preview_chars,
         print_job_statuses=status_context["print_job_statuses"],
         print_job_status_labels=status_context["print_job_status_labels"],

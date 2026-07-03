@@ -137,9 +137,9 @@ The main scripts are:
 
 ## Current Version
 
-Current application version: **0.9.46**
+Current application version: **0.9.47**
 
-Recent changes include sending procurement article list snapshots by email with timestamp and order statistics.
+Recent changes include per-user favorite email address suggestions for reusable recipient fields.
 
 The update script installs Python dependencies from `neofab/requirements.txt`, including PyMuPDF for rendering the first page of uploaded poster PDFs as thumbnails.
 

@@ -14,6 +14,7 @@
 
   <div class="card-body">
     <form method="post" novalidate autocomplete="off">
+      <input type="hidden" name="action" value="update_profile">
       <div class="row g-3">
 
         <!-- Email -->
@@ -276,6 +277,36 @@
         </a>
       </div>
     </form>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header">
+    <h3 class="h6 mb-0 d-flex align-items-center">
+      <i class="bi bi-envelope-heart me-2"></i>
+      {{ t("profile_email_favorites_title") }}
+    </h3>
+  </div>
+  <div class="card-body">
+    {% if email_favorites %}
+      <div class="list-group">
+        {% for favorite in email_favorites %}
+          <div class="list-group-item d-flex justify-content-between align-items-center gap-2">
+            <span>{{ favorite.email }}</span>
+            <form method="post" onsubmit="return confirm('{{ t('confirm_delete_email_favorite') }}');">
+              <input type="hidden" name="action" value="delete_email_favorite">
+              <input type="hidden" name="favorite_id" value="{{ favorite.id }}">
+              <button type="submit" class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-trash me-1"></i>{{ t("btn_delete") }}
+              </button>
+            </form>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="mb-0 text-muted">{{ t("profile_email_favorites_empty") }}</p>
+    {% endif %}
+    <div class="form-text mt-2">{{ t("profile_email_favorites_help") }}</div>
   </div>
 </div>
 

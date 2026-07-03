@@ -1081,8 +1081,16 @@
                      class="form-control form-control-sm"
                      type="email"
                      name="article_list_email_recipient"
+                     list="user_email_favorites"
                      placeholder="{{ t('articles_email_recipient_placeholder') }}"
                      required>
+              {% if email_favorites %}
+                <datalist id="user_email_favorites">
+                  {% for favorite in email_favorites %}
+                    <option value="{{ favorite.email }}">
+                  {% endfor %}
+                </datalist>
+              {% endif %}
             </div>
             <div class="col-md-auto">
               <button type="submit" class="btn btn-sm btn-outline-primary">

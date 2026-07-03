@@ -1,5 +1,13 @@
 # Timeline NeoFab
 
+## Version 0.9.47
+
+Profilseite zeigt die vom angemeldeten User verwendeten Favoriten-E-Mail-Adressen
+Favoriten-E-Mail-Adressen koennen im Profil geloescht werden und bleiben pro User getrennt
+Beim Versand der Beschaffungs-Artikelliste verwendete Empfaenger werden als persoenliche Vorschlaege gespeichert
+E-Mail-Felder wie die Beschaffungs-Artikelliste bieten die persoenlichen Favoriten als Auswahl an
+Version in Anwendung und README auf 0.9.47 angehoben
+
 ## Version 0.9.46
 
 Beschaffungsartikelliste kann aus dem Artikel-Tab an eine frei eingegebene E-Mail-Adresse versendet werden

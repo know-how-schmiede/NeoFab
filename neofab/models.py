@@ -236,6 +236,21 @@ class UserOrderAreaPreference(db.Model):
     )
 
 
+class UserEmailFavorite(db.Model):
+    __tablename__ = "user_email_favorites"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    email = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    user = db.relationship("User")
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "email", name="uq_user_email_favorite"),
+    )
+
+
 class OrderPosterFile(db.Model):
     __tablename__ = "order_poster_files"
 
@@ -602,6 +617,7 @@ __all__ = [
     "OrderWorkJob",
     "UserOrderCategoryPermission",
     "UserOrderAreaPreference",
+    "UserEmailFavorite",
     "OrderPosterFile",
     "OrderProcurementArticle",
     "OrderMessage",
