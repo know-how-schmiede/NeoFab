@@ -10,7 +10,7 @@ from flask import url_for
 from flask_login import current_user
 
 from audit_logs import write_audit_log
-from config import is_email_action_enabled, load_app_settings
+from config import DEFAULT_SETTINGS, coerce_positive_int, is_email_action_enabled, load_app_settings
 from i18n_utils import DEFAULT_LANG, SUPPORTED_LANGS
 from models import Announcement, Order, User
 from time_utils import format_app_datetime
@@ -1159,9 +1159,15 @@ def send_procurement_article_list_email(
             "",
             "Artikelliste:",
         ]
+        description_limit = coerce_positive_int(
+            settings.get("procurement_article_description_preview_chars"),
+            DEFAULT_SETTINGS["procurement_article_description_preview_chars"],
+        )
 
         if articles:
-            for article in articles:
+            for index, article in enumerate(articles):
+                if index > 0:
+                    body_lines.extend(["", "-" * 60])
                 position_number = getattr(article, "position_number", None) or getattr(article, "id", "")
                 quantity = getattr(article, "quantity", None) or 1
                 price = getattr(article, "price_per_unit_incl_vat", None)
@@ -1180,7 +1186,10 @@ def send_procurement_article_list_email(
                 )
                 description = (getattr(article, "article_description", None) or "").strip()
                 if description:
-                    body_lines.append(f"  Beschreibung: {description}")
+                    preview = description[:description_limit]
+                    if len(description) > description_limit:
+                        preview += "..."
+                    body_lines.append(f"  Beschreibung: {preview}")
                 article_url = (getattr(article, "article_url", None) or "").strip()
                 if article_url:
                     body_lines.append(f"  Link: {article_url}")
