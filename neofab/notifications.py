@@ -1108,6 +1108,128 @@ def send_poster_printed_notification(
         return False
 
 
+def send_procurement_article_list_email(
+    app,
+    order: Order,
+    recipient_raw: str,
+    articles: list,
+    position_count: int,
+    total_price: float,
+) -> bool:
+    """Send a procurement article list snapshot to arbitrary recipients."""
+    try:
+        settings = load_app_settings(app, force_reload=True)
+        smtp_host = settings.get("smtp_host")
+        smtp_port = settings.get("smtp_port")
+        smtp_from = settings.get("smtp_from_address")
+
+        if not smtp_host or not smtp_port or not smtp_from:
+            app.logger.info("SMTP not configured, skipping procurement article list email.")
+            return False
+
+        recipients = _split_email_recipients(recipient_raw)
+        if not recipients:
+            app.logger.info("No valid recipients found, skipping procurement article list email.")
+            return False
+
+        try:
+            order_url = url_for("order_detail", order_id=order.id, tab="articles", _external=True)
+        except Exception:
+            order_url = url_for("order_detail", order_id=order.id, tab="articles")
+
+        snapshot_at = _format_app_datetime(datetime.utcnow(), settings)
+        sent_by = current_user.email if current_user.is_authenticated else ""
+        msg = EmailMessage()
+        msg["Subject"] = f"NeoFab: Artikelliste Auftrag #{order.id}"
+        msg["From"] = smtp_from
+        msg["To"] = ", ".join(recipients)
+        if sent_by:
+            msg["Reply-To"] = sent_by
+
+        body_lines = [
+            "Hallo,",
+            "",
+            "anbei die aktuelle Artikelliste aus NeoFab.",
+            "",
+            "Auftrag:",
+            f"- ID: {order.id}",
+            f"- Titel: {order.title}",
+            f"- Zeitpunkt: {snapshot_at}",
+            f"- Versendet von: {sent_by or '-'}",
+            "",
+            "Artikelliste:",
+        ]
+
+        if articles:
+            for article in articles:
+                position_number = getattr(article, "position_number", None) or getattr(article, "id", "")
+                quantity = getattr(article, "quantity", None) or 1
+                price = getattr(article, "price_per_unit_incl_vat", None)
+                total = (price or 0.0) * quantity
+                supplier = getattr(article, "supplier", None) or "-"
+                status = getattr(article, "status", None) or "-"
+                price_text = f"{price:.2f} EUR" if price is not None else "-"
+                total_text = f"{total:.2f} EUR" if price is not None else "-"
+                body_lines.append(
+                    f"#{position_number} {getattr(article, 'article_name', '')}"
+                    f" | Lieferant: {supplier}"
+                    f" | Anzahl: {quantity}"
+                    f" | Status: {status}"
+                    f" | Preis pro Stueck: {price_text}"
+                    f" | Gesamt: {total_text}"
+                )
+                description = (getattr(article, "article_description", None) or "").strip()
+                if description:
+                    body_lines.append(f"  Beschreibung: {description}")
+                article_url = (getattr(article, "article_url", None) or "").strip()
+                if article_url:
+                    body_lines.append(f"  Link: {article_url}")
+        else:
+            body_lines.append("- Keine Artikel vorhanden.")
+
+        body_lines.extend(
+            [
+                "",
+                "Statistik:",
+                f"- Artikel-Positionen: {position_count}",
+                f"- Gesamtpreis: {total_price:.2f} EUR",
+                "",
+                f"Auftrag oeffnen: {order_url}",
+            ]
+        )
+        body_lines.extend(_notification_footer(settings, order_url, "de"))
+        msg.set_content("\n".join(body_lines))
+
+        _send_message(settings, msg)
+        write_audit_log(
+            app,
+            "email_sent",
+            user=current_user if current_user.is_authenticated else None,
+            details={
+                "kind": "procurement_article_list",
+                "order_id": order.id,
+                "subject": msg["Subject"],
+                "recipient_count": len(recipients),
+                "recipients": recipients,
+                "position_count": position_count,
+                "total_price": total_price,
+                "snapshot_at": snapshot_at,
+            },
+        )
+        app.logger.info(
+            "Sent procurement article list for order %s to %s",
+            order.id,
+            ", ".join(recipients),
+        )
+        return True
+    except Exception:
+        app.logger.exception(
+            "Failed to send procurement article list for order %s",
+            getattr(order, "id", "?"),
+        )
+        return False
+
+
 def send_announcement_attention_notification(app, announcement: Announcement) -> bool:
     """
     Notify all active users about an announcement with priority "Achtung eMail".

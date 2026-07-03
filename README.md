@@ -137,9 +137,9 @@ The main scripts are:
 
 ## Current Version
 
-Current application version: **0.9.45**
+Current application version: **0.9.46**
 
-Recent changes include persistent procurement article position numbers plus order-level article count and total price display.
+Recent changes include sending procurement article list snapshots by email with timestamp and order statistics.
 
 The update script installs Python dependencies from `neofab/requirements.txt`, including PyMuPDF for rendering the first page of uploaded poster PDFs as thumbnails.
 

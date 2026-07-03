@@ -1,5 +1,12 @@
 # Timeline NeoFab
 
+## Version 0.9.46
+
+Beschaffungsartikelliste kann aus dem Artikel-Tab an eine frei eingegebene E-Mail-Adresse versendet werden
+E-Mail enthaelt den aktuellen Zeitpunkt, alle Artikelpositionen mit Nummer, Menge, Stueckpreis und Positionsgesamtpreis
+Statistik mit Anzahl der Artikel-Positionen und Gesamtpreis wird am Ende der versendeten Liste ausgegeben
+Version in Anwendung und README auf 0.9.46 angehoben
+
 ## Version 0.9.45
 
 Beschaffungsartikel zeigen fortlaufende Positionsnummern direkt vor dem Artikeltitel

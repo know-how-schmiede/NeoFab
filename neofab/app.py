@@ -79,6 +79,7 @@ from notifications import (
     send_order_status_change_notification,
     send_password_reset_notification,
     send_poster_printed_notification,
+    send_procurement_article_list_email,
     send_user_activation_notification,
     send_user_welcome_notification,
 )
@@ -4533,6 +4534,41 @@ def order_detail(order_id):
 
             flash(trans("flash_poster_deleted"), "info")
             return order_detail_redirect("posters")
+
+        elif action == "send_procurement_article_list":
+            if not is_procurement_order(order):
+                abort(403)
+
+            recipient = (request.form.get("article_list_email_recipient") or "").strip()
+            if not recipient:
+                flash(trans("flash_procurement_article_list_email_recipient_required"), "warning")
+                return order_detail_redirect("articles")
+
+            ensure_procurement_article_position_numbers(order.id)
+            db.session.commit()
+            articles = _procurement_articles_for_order(order)
+            position_count = len(articles)
+            total_price = sum(
+                (article.price_per_unit_incl_vat or 0.0) * (article.quantity or 1)
+                for article in articles
+            )
+            if not articles:
+                flash(trans("flash_procurement_article_list_email_no_articles"), "warning")
+                return order_detail_redirect("articles")
+
+            sent = send_procurement_article_list_email(
+                app,
+                order,
+                recipient,
+                articles,
+                position_count,
+                total_price,
+            )
+            if sent:
+                flash(trans("flash_procurement_article_list_email_sent"), "success")
+            else:
+                flash(trans("flash_procurement_article_list_email_failed"), "danger")
+            return order_detail_redirect("articles")
 
         elif action == "create_procurement_article":
             if not is_procurement_order(order):
