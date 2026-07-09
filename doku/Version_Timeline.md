@@ -1,5 +1,12 @@
 # Timeline NeoFab
 
+## Version 0.9.51
+
+Plakatgroessen werden in der Plakatliste als DIN-Badge direkt neben dem Dateityp angezeigt
+Plotter-Typen um Tintenkosten pro Quadratmeter erweitert und die Plakatkostenformel entsprechend getrennt nach Papier- und Tintenanteil
+
+Version in Anwendung und README auf 0.9.51 angehoben
+
 ## Version 0.9.50
 
 Hochgeladene Plakate werden auf ihren Deckungsgrad analysiert und die Kennzahl wird in den Plakat-Infos angezeigt

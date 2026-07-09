@@ -917,6 +917,7 @@
                         {% if poster.file_type %}
                           <span class="badge bg-secondary ms-2">{{ poster.file_type|upper }}</span>
                         {% endif %}
+                        <span class="badge bg-info text-dark ms-1">DIN-{{ poster_costs.size }}</span>
                         <span class="badge bg-secondary ms-1">&times;{{ poster.quantity or 1 }}</span>
                         {% set poster_status = poster.status or 'open' %}
                         {% if poster_status == 'printed' %}
@@ -930,7 +931,6 @@
                         {% if poster.filesize %}{% set _ = parts.append(((poster.filesize / 1024)|round(1)) ~ " KB") %}{% endif %}
                         {% if poster.uploaded_at %}{% set _ = parts.append("uploaded " ~ fmt_datetime(poster.uploaded_at)) %}{% endif %}
                         {% if poster.due_date %}{% set _ = parts.append(t("posters_due_date_label") ~ ": " ~ poster.due_date.strftime("%Y-%m-%d")) %}{% endif %}
-                        {% set _ = parts.append(t("posters_size_label") ~ ": " ~ poster_costs.size) %}
                         {% if poster.coverage_percent is not none %}{% set _ = parts.append(t("posters_coverage_label") ~ ": " ~ "%.1f"|format(poster.coverage_percent) ~ " %") %}{% endif %}
                         {% if plotter_type %}{% set _ = parts.append(t("posters_plotter_type_label") ~ ": " ~ plotter_type.name) %}{% endif %}
                         {% if plotter_paper %}

@@ -142,9 +142,9 @@ The main scripts are:
 
 ## Current Version
 
-Current application version: **0.9.50**
+Current application version: **0.9.51**
 
-Recent changes include plotter master data, default paper per plotter type, poster coverage analysis, and poster cost calculation for plotter orders.
+Recent changes include plotter master data, default paper per plotter type, ink cost per square meter, poster coverage analysis, and clearer poster size badges for plotter orders.
 
 The update script installs Python dependencies from `neofab/requirements.txt`, including PyMuPDF for rendering the first page of uploaded poster PDFs as thumbnails.
 
