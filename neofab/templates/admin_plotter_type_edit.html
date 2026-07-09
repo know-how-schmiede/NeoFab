@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {{ plotter_type and t("admin_plotter_type_form_title_edit") or t("admin_plotter_type_form_title_new") }} - NeoFab
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">{{ plotter_type and t("admin_plotter_type_form_title_edit") or t("admin_plotter_type_form_title_new") }}</h1>
+
+<div class="card">
+  <div class="card-body">
+    <form method="post">
+      <div class="mb-3">
+        <label for="name" class="form-label">{{ t("admin_plotter_type_label_name") }}</label>
+        <input type="text" class="form-control" id="name" name="name" required value="{{ plotter_type.name if plotter_type else '' }}">
+      </div>
+
+      <div class="mb-3">
+        <label for="description" class="form-label">{{ t("admin_plotter_type_label_description") }}</label>
+        <input type="text" class="form-control" id="description" name="description" value="{{ plotter_type.description if plotter_type else '' }}">
+      </div>
+
+      <div class="mb-3">
+        <label for="machine_cost_per_poster" class="form-label">{{ t("admin_plotter_type_label_machine_cost_per_poster") }}</label>
+        <input type="number" class="form-control" id="machine_cost_per_poster" name="machine_cost_per_poster" min="0" step="0.01" value="{{ plotter_type.machine_cost_per_poster if plotter_type else '0' }}">
+      </div>
+
+      <div class="mb-3">
+        <label for="maintenance_cost_per_poster" class="form-label">{{ t("admin_plotter_type_label_maintenance_cost_per_poster") }}</label>
+        <input type="number" class="form-control" id="maintenance_cost_per_poster" name="maintenance_cost_per_poster" min="0" step="0.01" value="{{ plotter_type.maintenance_cost_per_poster if plotter_type else '0' }}">
+      </div>
+
+      <div class="mb-3">
+        <label for="setup_fee" class="form-label">{{ t("admin_plotter_type_label_setup_fee") }}</label>
+        <input type="number" class="form-control" id="setup_fee" name="setup_fee" min="0" step="0.01" value="{{ plotter_type.setup_fee if plotter_type else '0' }}">
+        <div class="form-text">{{ t("admin_plotter_type_help_setup_fee") }}</div>
+      </div>
+
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="is_active" name="is_active" {% if plotter_type is none or plotter_type.active %}checked{% endif %}>
+        <label class="form-check-label" for="is_active">{{ t("label_active") }}</label>
+      </div>
+
+      <button type="submit" class="btn btn-primary">{{ t("btn_save") }}</button>
+      <a href="{{ url_for('admin.admin_plotter_type_list') }}" class="btn btn-secondary">{{ t("btn_cancel") }}</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

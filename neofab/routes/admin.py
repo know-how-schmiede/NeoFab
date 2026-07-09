@@ -77,6 +77,8 @@ from models import (
     AnnouncementRead,
     PrinterProfile,
     FilamentMaterial,
+    PlotterPaper,
+    PlotterType,
     Order,
     OrderArea,
     OrderFile,
@@ -601,6 +603,12 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
     def admin_3d_print_master_data():
         """Grouped master data area for 3D printing."""
         return render_template("admin_3d_print_master_data.html")
+
+    @bp.route("/plotter-master-data", endpoint="admin_plotter_master_data")
+    @roles_required("admin")
+    def admin_plotter_master_data():
+        """Grouped master data area for plotter poster workflows."""
+        return render_template("admin_plotter_master_data.html")
 
     @bp.route("/orders", endpoint="admin_orders")
     @roles_required("admin")
@@ -2848,6 +2856,330 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         flash(trans("flash_filament_material_deleted"), "info")
         return redirect(url_for(".admin_filament_material_list"))
 
+    # Plotter Papers -------------------------------------------------------
+
+    @bp.route("/plotter-papers", endpoint="admin_plotter_paper_list")
+    @roles_required("admin")
+    def admin_plotter_paper_list():
+        papers = PlotterPaper.query.order_by(PlotterPaper.name.asc()).all()
+        return render_template("admin_plotter_papers.html", papers=papers)
+
+    @bp.route("/plotter-papers/export", endpoint="admin_plotter_paper_export")
+    @roles_required("admin")
+    def admin_plotter_paper_export():
+        """Exportiert alle Plotter-Papiere als JSON mit Versionsinfo."""
+        papers = PlotterPaper.query.order_by(PlotterPaper.name.asc()).all()
+        payload = {
+            "version": APP_VERSION,
+            "plotter_papers": [
+                {
+                    "name": paper.name,
+                    "description": paper.description or "",
+                    "price_per_poster": paper.price_per_poster,
+                    "active": bool(paper.active),
+                }
+                for paper in papers
+            ],
+        }
+        output = json.dumps(payload, ensure_ascii=False, indent=2)
+        return current_app.response_class(
+            output,
+            mimetype="application/json",
+            headers={"Content-Disposition": "attachment; filename=NeoFab_plotter_papers.json"},
+        )
+
+    @bp.route("/plotter-papers/import", methods=["POST"], endpoint="admin_plotter_paper_import")
+    @roles_required("admin")
+    def admin_plotter_paper_import():
+        trans = t
+        file = request.files.get("file")
+        if not file or not file.filename:
+            flash(trans("flash_json_choose_file"), "warning")
+            return redirect(url_for(".admin_plotter_paper_list"))
+
+        try:
+            content = file.read().decode("utf-8-sig")
+            data = json.loads(content)
+        except Exception:
+            flash(trans("flash_invalid_json"), "danger")
+            return redirect(url_for(".admin_plotter_paper_list"))
+
+        rows = data.get("plotter_papers", []) if isinstance(data, dict) else []
+        PlotterPaper.query.delete()
+        created = skipped = 0
+        for entry in rows:
+            if not isinstance(entry, dict):
+                skipped += 1
+                continue
+            name = (entry.get("name") or "").strip()
+            description = (entry.get("description") or "").strip() or None
+            price_per_poster = _parse_nonnegative_float(entry.get("price_per_poster"), 0.0)
+            if not name or price_per_poster is None:
+                skipped += 1
+                continue
+            db.session.add(
+                PlotterPaper(
+                    name=name,
+                    description=description,
+                    price_per_poster=price_per_poster,
+                    active=_parse_bool(entry.get("active"), True),
+                )
+            )
+            created += 1
+
+        db.session.commit()
+        flash(trans("flash_import_result_simple").format(created=created, skipped=skipped), "success")
+        return redirect(url_for(".admin_plotter_paper_list"))
+
+    @bp.route("/plotter-papers/new", methods=["GET", "POST"], endpoint="admin_plotter_paper_new")
+    @roles_required("admin")
+    def admin_plotter_paper_new():
+        trans = t
+        if request.method == "POST":
+            name = request.form.get("name", "").strip()
+            description = request.form.get("description", "").strip() or None
+            price_per_poster = _parse_nonnegative_float(request.form.get("price_per_poster"), 0.0)
+            is_active = bool(request.form.get("is_active"))
+            has_errors = False
+
+            if not name:
+                flash(trans("flash_plotter_paper_required"), "danger")
+                has_errors = True
+            elif PlotterPaper.query.filter(func.lower(PlotterPaper.name) == name.lower()).first():
+                flash(trans("flash_plotter_paper_exists"), "danger")
+                has_errors = True
+            if price_per_poster is None:
+                flash(trans("flash_plotter_paper_costs_invalid"), "danger")
+                has_errors = True
+
+            if not has_errors:
+                paper = PlotterPaper(
+                    name=name,
+                    description=description,
+                    price_per_poster=price_per_poster,
+                    active=is_active,
+                )
+                db.session.add(paper)
+                db.session.commit()
+                flash(trans("flash_plotter_paper_created"), "success")
+                return redirect(url_for(".admin_plotter_paper_list"))
+
+        return render_template("admin_plotter_paper_edit.html", paper=None)
+
+    @bp.route("/plotter-papers/<int:paper_id>/edit", methods=["GET", "POST"], endpoint="admin_plotter_paper_edit")
+    @roles_required("admin")
+    def admin_plotter_paper_edit(paper_id):
+        trans = t
+        paper = PlotterPaper.query.get_or_404(paper_id)
+        if request.method == "POST":
+            name = request.form.get("name", "").strip()
+            description = request.form.get("description", "").strip() or None
+            price_per_poster = _parse_nonnegative_float(request.form.get("price_per_poster"), 0.0)
+            is_active = bool(request.form.get("is_active"))
+            has_errors = False
+
+            if not name:
+                flash(trans("flash_plotter_paper_required"), "danger")
+                has_errors = True
+            else:
+                existing = PlotterPaper.query.filter(func.lower(PlotterPaper.name) == name.lower()).first()
+                if existing and existing.id != paper.id:
+                    flash(trans("flash_plotter_paper_exists"), "danger")
+                    has_errors = True
+            if price_per_poster is None:
+                flash(trans("flash_plotter_paper_costs_invalid"), "danger")
+                has_errors = True
+
+            if not has_errors:
+                paper.name = name
+                paper.description = description
+                paper.price_per_poster = price_per_poster
+                paper.active = is_active
+                db.session.commit()
+                flash(trans("flash_plotter_paper_updated"), "success")
+                return redirect(url_for(".admin_plotter_paper_list"))
+
+        return render_template("admin_plotter_paper_edit.html", paper=paper)
+
+    @bp.route("/plotter-papers/<int:paper_id>/delete", methods=["POST"], endpoint="admin_plotter_paper_delete")
+    @roles_required("admin")
+    def admin_plotter_paper_delete(paper_id):
+        trans = t
+        paper = PlotterPaper.query.get_or_404(paper_id)
+        db.session.delete(paper)
+        db.session.commit()
+        flash(trans("flash_plotter_paper_deleted"), "info")
+        return redirect(url_for(".admin_plotter_paper_list"))
+
+    # Plotter Types --------------------------------------------------------
+
+    @bp.route("/plotter-types", endpoint="admin_plotter_type_list")
+    @roles_required("admin")
+    def admin_plotter_type_list():
+        plotter_types = PlotterType.query.order_by(PlotterType.name.asc()).all()
+        return render_template("admin_plotter_types.html", plotter_types=plotter_types)
+
+    @bp.route("/plotter-types/export", endpoint="admin_plotter_type_export")
+    @roles_required("admin")
+    def admin_plotter_type_export():
+        """Exportiert alle Plotter-Typen als JSON mit Versionsinfo."""
+        plotter_types = PlotterType.query.order_by(PlotterType.name.asc()).all()
+        payload = {
+            "version": APP_VERSION,
+            "plotter_types": [
+                {
+                    "name": plotter_type.name,
+                    "description": plotter_type.description or "",
+                    "machine_cost_per_poster": plotter_type.machine_cost_per_poster,
+                    "maintenance_cost_per_poster": plotter_type.maintenance_cost_per_poster,
+                    "setup_fee": plotter_type.setup_fee,
+                    "active": bool(plotter_type.active),
+                }
+                for plotter_type in plotter_types
+            ],
+        }
+        output = json.dumps(payload, ensure_ascii=False, indent=2)
+        return current_app.response_class(
+            output,
+            mimetype="application/json",
+            headers={"Content-Disposition": "attachment; filename=NeoFab_plotter_types.json"},
+        )
+
+    @bp.route("/plotter-types/import", methods=["POST"], endpoint="admin_plotter_type_import")
+    @roles_required("admin")
+    def admin_plotter_type_import():
+        trans = t
+        file = request.files.get("file")
+        if not file or not file.filename:
+            flash(trans("flash_json_choose_file"), "warning")
+            return redirect(url_for(".admin_plotter_type_list"))
+
+        try:
+            content = file.read().decode("utf-8-sig")
+            data = json.loads(content)
+        except Exception:
+            flash(trans("flash_invalid_json"), "danger")
+            return redirect(url_for(".admin_plotter_type_list"))
+
+        rows = data.get("plotter_types", []) if isinstance(data, dict) else []
+        PlotterType.query.delete()
+        created = skipped = 0
+        for entry in rows:
+            if not isinstance(entry, dict):
+                skipped += 1
+                continue
+            name = (entry.get("name") or "").strip()
+            description = (entry.get("description") or "").strip() or None
+            machine_cost = _parse_nonnegative_float(entry.get("machine_cost_per_poster"), 0.0)
+            maintenance_cost = _parse_nonnegative_float(entry.get("maintenance_cost_per_poster"), 0.0)
+            setup_fee = _parse_nonnegative_float(entry.get("setup_fee"), 0.0)
+            if not name or machine_cost is None or maintenance_cost is None or setup_fee is None:
+                skipped += 1
+                continue
+            db.session.add(
+                PlotterType(
+                    name=name,
+                    description=description,
+                    machine_cost_per_poster=machine_cost,
+                    maintenance_cost_per_poster=maintenance_cost,
+                    setup_fee=setup_fee,
+                    active=_parse_bool(entry.get("active"), True),
+                )
+            )
+            created += 1
+
+        db.session.commit()
+        flash(trans("flash_import_result_simple").format(created=created, skipped=skipped), "success")
+        return redirect(url_for(".admin_plotter_type_list"))
+
+    @bp.route("/plotter-types/new", methods=["GET", "POST"], endpoint="admin_plotter_type_new")
+    @roles_required("admin")
+    def admin_plotter_type_new():
+        trans = t
+        if request.method == "POST":
+            name = request.form.get("name", "").strip()
+            description = request.form.get("description", "").strip() or None
+            machine_cost = _parse_nonnegative_float(request.form.get("machine_cost_per_poster"), 0.0)
+            maintenance_cost = _parse_nonnegative_float(request.form.get("maintenance_cost_per_poster"), 0.0)
+            setup_fee = _parse_nonnegative_float(request.form.get("setup_fee"), 0.0)
+            is_active = bool(request.form.get("is_active"))
+            has_errors = False
+
+            if not name:
+                flash(trans("flash_plotter_type_required"), "danger")
+                has_errors = True
+            elif PlotterType.query.filter(func.lower(PlotterType.name) == name.lower()).first():
+                flash(trans("flash_plotter_type_exists"), "danger")
+                has_errors = True
+            if None in (machine_cost, maintenance_cost, setup_fee):
+                flash(trans("flash_plotter_type_costs_invalid"), "danger")
+                has_errors = True
+
+            if not has_errors:
+                plotter_type = PlotterType(
+                    name=name,
+                    description=description,
+                    machine_cost_per_poster=machine_cost,
+                    maintenance_cost_per_poster=maintenance_cost,
+                    setup_fee=setup_fee,
+                    active=is_active,
+                )
+                db.session.add(plotter_type)
+                db.session.commit()
+                flash(trans("flash_plotter_type_created"), "success")
+                return redirect(url_for(".admin_plotter_type_list"))
+
+        return render_template("admin_plotter_type_edit.html", plotter_type=None)
+
+    @bp.route("/plotter-types/<int:plotter_type_id>/edit", methods=["GET", "POST"], endpoint="admin_plotter_type_edit")
+    @roles_required("admin")
+    def admin_plotter_type_edit(plotter_type_id):
+        trans = t
+        plotter_type = PlotterType.query.get_or_404(plotter_type_id)
+        if request.method == "POST":
+            name = request.form.get("name", "").strip()
+            description = request.form.get("description", "").strip() or None
+            machine_cost = _parse_nonnegative_float(request.form.get("machine_cost_per_poster"), 0.0)
+            maintenance_cost = _parse_nonnegative_float(request.form.get("maintenance_cost_per_poster"), 0.0)
+            setup_fee = _parse_nonnegative_float(request.form.get("setup_fee"), 0.0)
+            is_active = bool(request.form.get("is_active"))
+            has_errors = False
+
+            if not name:
+                flash(trans("flash_plotter_type_required"), "danger")
+                has_errors = True
+            else:
+                existing = PlotterType.query.filter(func.lower(PlotterType.name) == name.lower()).first()
+                if existing and existing.id != plotter_type.id:
+                    flash(trans("flash_plotter_type_exists"), "danger")
+                    has_errors = True
+            if None in (machine_cost, maintenance_cost, setup_fee):
+                flash(trans("flash_plotter_type_costs_invalid"), "danger")
+                has_errors = True
+
+            if not has_errors:
+                plotter_type.name = name
+                plotter_type.description = description
+                plotter_type.machine_cost_per_poster = machine_cost
+                plotter_type.maintenance_cost_per_poster = maintenance_cost
+                plotter_type.setup_fee = setup_fee
+                plotter_type.active = is_active
+                db.session.commit()
+                flash(trans("flash_plotter_type_updated"), "success")
+                return redirect(url_for(".admin_plotter_type_list"))
+
+        return render_template("admin_plotter_type_edit.html", plotter_type=plotter_type)
+
+    @bp.route("/plotter-types/<int:plotter_type_id>/delete", methods=["POST"], endpoint="admin_plotter_type_delete")
+    @roles_required("admin")
+    def admin_plotter_type_delete(plotter_type_id):
+        trans = t
+        plotter_type = PlotterType.query.get_or_404(plotter_type_id)
+        db.session.delete(plotter_type)
+        db.session.commit()
+        flash(trans("flash_plotter_type_deleted"), "info")
+        return redirect(url_for(".admin_plotter_type_list"))
+
     # Color Master Data -----------------------------------------------------
 
     @bp.route("/colors", endpoint="admin_color_list")
@@ -3402,6 +3734,15 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     filament_base_cost * (1 + ((markup_percent or 0) / 100))
                 ) + (drying_fee or 0) + (handling_fee or 0)
                 order_total_cost += ((machine_time_cost + material_cost) * quantity) + (setup_fee or 0)
+            for poster in order.poster_files:
+                plotter_type = poster.plotter_type
+                plotter_paper = poster.plotter_paper
+                quantity = max(1, int(poster.quantity or 1))
+                machine_cost = plotter_type.machine_cost_per_poster if plotter_type else 0
+                maintenance_cost = plotter_type.maintenance_cost_per_poster if plotter_type else 0
+                setup_fee = plotter_type.setup_fee if plotter_type else 0
+                paper_cost = plotter_paper.price_per_poster if plotter_paper else 0
+                order_total_cost += (((machine_cost or 0) + (maintenance_cost or 0) + (paper_cost or 0)) * quantity) + (setup_fee or 0)
             cost_center_order_costs[order.id] = order_total_cost
         return cost_center_orders, cost_center_order_costs, sum(cost_center_order_costs.values())
 

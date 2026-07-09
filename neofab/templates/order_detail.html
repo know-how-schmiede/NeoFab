@@ -889,6 +889,15 @@
         {% if poster_files %}
           <ul class="list-group mb-3">
             {% for poster in poster_files %}
+              {% set plotter_type = poster.plotter_type %}
+              {% set plotter_paper = poster.plotter_paper %}
+              {% set poster_quantity = poster.quantity or 1 %}
+              {% set machine_cost = plotter_type.machine_cost_per_poster if plotter_type else 0 %}
+              {% set maintenance_cost = plotter_type.maintenance_cost_per_poster if plotter_type else 0 %}
+              {% set setup_fee = plotter_type.setup_fee if plotter_type else 0 %}
+              {% set paper_cost = plotter_paper.price_per_poster if plotter_paper else 0 %}
+              {% set cost_per_poster = (machine_cost or 0) + (maintenance_cost or 0) + (paper_cost or 0) %}
+              {% set total_cost = (cost_per_poster * poster_quantity) + (setup_fee or 0) %}
               <li class="list-group-item">
                 <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
                   <div class="d-flex gap-3 align-items-start">
@@ -925,9 +934,17 @@
                         {% if poster.filesize %}{% set _ = parts.append(((poster.filesize / 1024)|round(1)) ~ " KB") %}{% endif %}
                         {% if poster.uploaded_at %}{% set _ = parts.append("uploaded " ~ fmt_datetime(poster.uploaded_at)) %}{% endif %}
                         {% if poster.due_date %}{% set _ = parts.append(t("posters_due_date_label") ~ ": " ~ poster.due_date.strftime("%Y-%m-%d")) %}{% endif %}
+                        {% if plotter_type %}{% set _ = parts.append(t("posters_plotter_type_label") ~ ": " ~ plotter_type.name) %}{% endif %}
+                        {% if plotter_paper %}{% set _ = parts.append(t("posters_plotter_paper_label") ~ ": " ~ plotter_paper.name) %}{% endif %}
                         {% if poster.note %}{% set _ = parts.append(poster.note) %}{% endif %}
                         {{ " | ".join(parts) }}
                       </small>
+                      <div class="small mt-1">
+                        <span class="fw-semibold">{{ t("posters_total_cost_label") }}: {{ "%.2f"|format(total_cost) }} EUR</span>
+                        <span class="text-muted">
+                          ({{ "%.2f"|format(cost_per_poster) }} EUR / {{ t("posters_unit_poster") }}{% if setup_fee %}, {{ t("table_setup_fee") }} {{ "%.2f"|format(setup_fee) }} EUR{% endif %})
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <div class="d-flex gap-2">
@@ -954,7 +971,9 @@
                             data-poster-name="{{ poster.original_name }}"
                             data-poster-note="{{ poster.note or '' }}"
                             data-poster-quantity="{{ poster.quantity or 1 }}"
-                            data-poster-due-date="{{ poster.due_date.strftime('%Y-%m-%d') if poster.due_date else '' }}">
+                            data-poster-due-date="{{ poster.due_date.strftime('%Y-%m-%d') if poster.due_date else '' }}"
+                            data-plotter-type-id="{{ poster.plotter_type_id or '' }}"
+                            data-plotter-paper-id="{{ poster.plotter_paper_id or '' }}">
                       <i class="bi bi-pencil me-1"></i>{{ t("btn_edit") }}
                     </button>
                     <a class="btn btn-sm btn-outline-primary"
@@ -1035,6 +1054,28 @@
                 id="poster_due_date"
                 name="poster_due_date"
               >
+            </div>
+            <div class="col-md-6">
+              <label for="plotter_type_id" class="form-label">{{ t("posters_plotter_type_label") }}</label>
+              <select id="plotter_type_id" name="plotter_type_id" class="form-select">
+                <option value="">{{ t("select_placeholder") }}</option>
+                {% for plotter_type in plotter_types %}
+                  <option value="{{ plotter_type.id }}">
+                    {{ plotter_type.name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label for="plotter_paper_id" class="form-label">{{ t("posters_plotter_paper_label") }}</label>
+              <select id="plotter_paper_id" name="plotter_paper_id" class="form-select">
+                <option value="">{{ t("select_placeholder") }}</option>
+                {% for paper in plotter_papers %}
+                  <option value="{{ paper.id }}">
+                    {{ paper.name }}
+                  </option>
+                {% endfor %}
+              </select>
             </div>
           </div>
 
@@ -1776,6 +1817,24 @@
                      id="edit_poster_due_date"
                      name="poster_due_date">
             </div>
+            <div class="col-md-6">
+              <label for="edit_plotter_type_id" class="form-label">{{ t("posters_plotter_type_label") }}</label>
+              <select id="edit_plotter_type_id" name="plotter_type_id" class="form-select">
+                <option value="">{{ t("select_placeholder") }}</option>
+                {% for plotter_type in plotter_types %}
+                  <option value="{{ plotter_type.id }}">{{ plotter_type.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label for="edit_plotter_paper_id" class="form-label">{{ t("posters_plotter_paper_label") }}</label>
+              <select id="edit_plotter_paper_id" name="plotter_paper_id" class="form-select">
+                <option value="">{{ t("select_placeholder") }}</option>
+                {% for paper in plotter_papers %}
+                  <option value="{{ paper.id }}">{{ paper.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
           </div>
           <div class="d-flex justify-content-end gap-2 mt-3">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
@@ -2412,18 +2471,24 @@
     const posterNote = button.getAttribute("data-poster-note") || "";
     const posterQuantity = button.getAttribute("data-poster-quantity") || "1";
     const posterDueDate = button.getAttribute("data-poster-due-date") || "";
+    const plotterTypeId = button.getAttribute("data-plotter-type-id") || "";
+    const plotterPaperId = button.getAttribute("data-plotter-paper-id") || "";
 
     const idInput = posterEditModal.querySelector("#edit_poster_id");
     const nameInput = posterEditModal.querySelector("#edit_poster_name");
     const noteInput = posterEditModal.querySelector("#edit_poster_note");
     const quantityInput = posterEditModal.querySelector("#edit_poster_quantity");
     const dueDateInput = posterEditModal.querySelector("#edit_poster_due_date");
+    const plotterTypeInput = posterEditModal.querySelector("#edit_plotter_type_id");
+    const plotterPaperInput = posterEditModal.querySelector("#edit_plotter_paper_id");
 
     if (idInput) idInput.value = posterId;
     if (nameInput) nameInput.value = posterName;
     if (noteInput) noteInput.value = posterNote;
     if (quantityInput) quantityInput.value = posterQuantity;
     if (dueDateInput) dueDateInput.value = posterDueDate;
+    if (plotterTypeInput) plotterTypeInput.value = plotterTypeId;
+    if (plotterPaperInput) plotterPaperInput.value = plotterPaperId;
   });
 })();
 

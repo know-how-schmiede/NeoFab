@@ -131,6 +131,8 @@ from models import (
     CostCenter,
     PrinterProfile,
     FilamentMaterial,
+    PlotterPaper,
+    PlotterType,
     TrainingPlaylist,
     TrainingVideo,
 )
@@ -996,6 +998,126 @@ def ensure_filament_materials_table():
         app.logger.exception("Failed to ensure filament_materials table exists")
 
 
+def ensure_plotter_papers_table():
+    """
+    Ensures the plotter_papers table and required columns exist.
+    """
+    try:
+        exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='plotter_papers'")
+        ).scalar()
+        if not exists:
+            db.session.execute(
+                text(
+                    """
+                    CREATE TABLE plotter_papers (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name VARCHAR(100) NOT NULL UNIQUE,
+                        description TEXT,
+                        price_per_poster FLOAT NOT NULL DEFAULT 0.0,
+                        active BOOLEAN NOT NULL DEFAULT 1,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+            )
+            db.session.commit()
+            return
+
+        cols = {
+            row[1]
+            for row in db.session.execute(text("PRAGMA table_info(plotter_papers)"))
+        }
+        statements = []
+        if "description" not in cols:
+            statements.append("ALTER TABLE plotter_papers ADD COLUMN description TEXT")
+        if "price_per_poster" not in cols:
+            statements.append("ALTER TABLE plotter_papers ADD COLUMN price_per_poster FLOAT NOT NULL DEFAULT 0.0")
+        if "active" not in cols:
+            statements.append("ALTER TABLE plotter_papers ADD COLUMN active BOOLEAN NOT NULL DEFAULT 1")
+        if "created_at" not in cols:
+            statements.append(
+                "ALTER TABLE plotter_papers ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            )
+        if "updated_at" not in cols:
+            statements.append(
+                "ALTER TABLE plotter_papers ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            )
+
+        for stmt in statements:
+            db.session.execute(text(stmt))
+        if statements:
+            db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure plotter_papers table exists")
+
+
+def ensure_plotter_types_table():
+    """
+    Ensures the plotter_types table and required columns exist.
+    """
+    try:
+        exists = db.session.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='plotter_types'")
+        ).scalar()
+        if not exists:
+            db.session.execute(
+                text(
+                    """
+                    CREATE TABLE plotter_types (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name VARCHAR(100) NOT NULL UNIQUE,
+                        description TEXT,
+                        machine_cost_per_poster FLOAT NOT NULL DEFAULT 0.0,
+                        maintenance_cost_per_poster FLOAT NOT NULL DEFAULT 0.0,
+                        setup_fee FLOAT NOT NULL DEFAULT 0.0,
+                        active BOOLEAN NOT NULL DEFAULT 1,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+            )
+            db.session.commit()
+            return
+
+        cols = {
+            row[1]
+            for row in db.session.execute(text("PRAGMA table_info(plotter_types)"))
+        }
+        statements = []
+        if "description" not in cols:
+            statements.append("ALTER TABLE plotter_types ADD COLUMN description TEXT")
+        if "machine_cost_per_poster" not in cols:
+            statements.append(
+                "ALTER TABLE plotter_types ADD COLUMN machine_cost_per_poster FLOAT NOT NULL DEFAULT 0.0"
+            )
+        if "maintenance_cost_per_poster" not in cols:
+            statements.append(
+                "ALTER TABLE plotter_types ADD COLUMN maintenance_cost_per_poster FLOAT NOT NULL DEFAULT 0.0"
+            )
+        if "setup_fee" not in cols:
+            statements.append("ALTER TABLE plotter_types ADD COLUMN setup_fee FLOAT NOT NULL DEFAULT 0.0")
+        if "active" not in cols:
+            statements.append("ALTER TABLE plotter_types ADD COLUMN active BOOLEAN NOT NULL DEFAULT 1")
+        if "created_at" not in cols:
+            statements.append(
+                "ALTER TABLE plotter_types ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            )
+        if "updated_at" not in cols:
+            statements.append(
+                "ALTER TABLE plotter_types ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            )
+
+        for stmt in statements:
+            db.session.execute(text(stmt))
+        if statements:
+            db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure plotter_types table exists")
+
+
 def ensure_order_estimation_columns():
     """
     Adds missing estimation-related columns on orders (lightweight migration).
@@ -1284,6 +1406,8 @@ def ensure_order_category_schema():
                         stored_name VARCHAR(255) NOT NULL,
                         file_type VARCHAR(20),
                         filesize INTEGER,
+                        plotter_type_id INTEGER,
+                        plotter_paper_id INTEGER,
                         note VARCHAR(255),
                         status VARCHAR(50) NOT NULL DEFAULT 'open',
                         quantity INTEGER NOT NULL DEFAULT 1,
@@ -1300,13 +1424,18 @@ def ensure_order_category_schema():
                 row[1]
                 for row in db.session.execute(text("PRAGMA table_info(order_poster_files)"))
             }
+            poster_statements = []
+            if "plotter_type_id" not in poster_cols:
+                poster_statements.append("ALTER TABLE order_poster_files ADD COLUMN plotter_type_id INTEGER")
+            if "plotter_paper_id" not in poster_cols:
+                poster_statements.append("ALTER TABLE order_poster_files ADD COLUMN plotter_paper_id INTEGER")
             if "thumb_path" not in poster_cols:
-                db.session.execute(text("ALTER TABLE order_poster_files ADD COLUMN thumb_path VARCHAR(255)"))
-                db.session.commit()
+                poster_statements.append("ALTER TABLE order_poster_files ADD COLUMN thumb_path VARCHAR(255)")
             if "status" not in poster_cols:
-                db.session.execute(
-                    text("ALTER TABLE order_poster_files ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'open'")
-                )
+                poster_statements.append("ALTER TABLE order_poster_files ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'open'")
+            for stmt in poster_statements:
+                db.session.execute(text(stmt))
+            if poster_statements:
                 db.session.commit()
 
         procurement_articles_exists = db.session.execute(
@@ -2001,6 +2130,8 @@ with app.app_context():
     ensure_training_videos_table()
     ensure_printer_profiles_table()
     ensure_filament_materials_table()
+    ensure_plotter_papers_table()
+    ensure_plotter_types_table()
     ensure_order_project_columns()
     ensure_order_estimation_columns()
     ensure_order_archive_columns()
@@ -4426,6 +4557,8 @@ def order_detail(order_id):
                 note = note[:255]
             quantity_raw = (request.form.get("poster_quantity") or "").strip()
             due_date_raw = (request.form.get("poster_due_date") or "").strip()
+            plotter_type_raw = (request.form.get("plotter_type_id") or "").strip()
+            plotter_paper_raw = (request.form.get("plotter_paper_id") or "").strip()
 
             try:
                 quantity = max(1, int(quantity_raw or "1"))
@@ -4439,6 +4572,34 @@ def order_detail(order_id):
                 except ValueError:
                     flash(trans("flash_poster_invalid_due_date"), "danger")
                     return order_detail_redirect("posters")
+
+            plotter_type_id = None
+            if plotter_type_raw:
+                try:
+                    selected_plotter_type_id = int(plotter_type_raw)
+                except ValueError:
+                    selected_plotter_type_id = None
+                if selected_plotter_type_id:
+                    selected_plotter_type = PlotterType.query.filter_by(
+                        id=selected_plotter_type_id,
+                        active=True,
+                    ).first()
+                    if selected_plotter_type:
+                        plotter_type_id = selected_plotter_type.id
+
+            plotter_paper_id = None
+            if plotter_paper_raw:
+                try:
+                    selected_plotter_paper_id = int(plotter_paper_raw)
+                except ValueError:
+                    selected_plotter_paper_id = None
+                if selected_plotter_paper_id:
+                    selected_plotter_paper = PlotterPaper.query.filter_by(
+                        id=selected_plotter_paper_id,
+                        active=True,
+                    ).first()
+                    if selected_plotter_paper:
+                        plotter_paper_id = selected_plotter_paper.id
 
             if not file or not file.filename:
                 flash(trans("flash_poster_select_file"), "warning")
@@ -4462,6 +4623,8 @@ def order_detail(order_id):
                 status="open",
                 quantity=quantity,
                 due_date=due_date,
+                plotter_type_id=plotter_type_id,
+                plotter_paper_id=plotter_paper_id,
             )
             db.session.add(poster_file)
             db.session.flush()
@@ -4502,6 +4665,8 @@ def order_detail(order_id):
                     "filesize": poster_file.filesize,
                     "quantity": poster_file.quantity,
                     "due_date": poster_file.due_date.isoformat() if poster_file.due_date else None,
+                    "plotter_type_id": poster_file.plotter_type_id,
+                    "plotter_paper_id": poster_file.plotter_paper_id,
                 },
             )
             flash(trans("flash_poster_uploaded"), "success")
@@ -4531,6 +4696,8 @@ def order_detail(order_id):
             note = (request.form.get("poster_note") or "").strip()
             quantity_raw = (request.form.get("poster_quantity") or "").strip()
             due_date_raw = (request.form.get("poster_due_date") or "").strip()
+            plotter_type_raw = (request.form.get("plotter_type_id") or "").strip()
+            plotter_paper_raw = (request.form.get("plotter_paper_id") or "").strip()
 
             try:
                 quantity = max(1, int(quantity_raw or "1"))
@@ -4545,9 +4712,37 @@ def order_detail(order_id):
                     flash(trans("flash_poster_invalid_due_date"), "danger")
                     return order_detail_redirect("posters")
 
+            plotter_type_id = None
+            if plotter_type_raw:
+                try:
+                    selected_plotter_type_id = int(plotter_type_raw)
+                except ValueError:
+                    selected_plotter_type_id = None
+                if selected_plotter_type_id:
+                    selected_plotter_type = PlotterType.query.get(selected_plotter_type_id)
+                    if selected_plotter_type and (
+                        selected_plotter_type.active or selected_plotter_type.id == poster_file.plotter_type_id
+                    ):
+                        plotter_type_id = selected_plotter_type.id
+
+            plotter_paper_id = None
+            if plotter_paper_raw:
+                try:
+                    selected_plotter_paper_id = int(plotter_paper_raw)
+                except ValueError:
+                    selected_plotter_paper_id = None
+                if selected_plotter_paper_id:
+                    selected_plotter_paper = PlotterPaper.query.get(selected_plotter_paper_id)
+                    if selected_plotter_paper and (
+                        selected_plotter_paper.active or selected_plotter_paper.id == poster_file.plotter_paper_id
+                    ):
+                        plotter_paper_id = selected_plotter_paper.id
+
             poster_file.note = note[:255] if note else None
             poster_file.quantity = quantity
             poster_file.due_date = due_date
+            poster_file.plotter_type_id = plotter_type_id
+            poster_file.plotter_paper_id = plotter_paper_id
             previous_status = order.status
             sync_plotter_order_status_from_posters(order)
             db.session.commit()
@@ -5513,6 +5708,8 @@ def order_detail(order_id):
     cost_centers = CostCenter.query.filter_by(is_active=True).order_by(CostCenter.name.asc()).all()
     printer_profiles = PrinterProfile.query.filter_by(active=True).order_by(PrinterProfile.name.asc()).all()
     filament_materials = FilamentMaterial.query.filter_by(active=True).order_by(FilamentMaterial.name.asc()).all()
+    plotter_types = PlotterType.query.filter_by(active=True).order_by(PlotterType.name.asc()).all()
+    plotter_papers = PlotterPaper.query.filter_by(active=True).order_by(PlotterPaper.name.asc()).all()
 
     if order.printer_profile_id and not any(
         profile.id == order.printer_profile_id for profile in printer_profiles
@@ -5579,8 +5776,22 @@ def order_detail(order_id):
             before = poster.thumb_path
             if ensure_poster_thumbnail_file(order, poster) and poster.thumb_path != before:
                 poster_thumbnail_changed = True
+            if poster.plotter_type_id and not any(
+                plotter_type.id == poster.plotter_type_id for plotter_type in plotter_types
+            ):
+                selected_plotter_type = PlotterType.query.get(poster.plotter_type_id)
+                if selected_plotter_type:
+                    plotter_types.append(selected_plotter_type)
+            if poster.plotter_paper_id and not any(
+                paper.id == poster.plotter_paper_id for paper in plotter_papers
+            ):
+                selected_paper = PlotterPaper.query.get(poster.plotter_paper_id)
+                if selected_paper:
+                    plotter_papers.append(selected_paper)
         if poster_thumbnail_changed:
             db.session.commit()
+        plotter_types.sort(key=lambda item: (item.name or "").lower())
+        plotter_papers.sort(key=lambda item: (item.name or "").lower())
 
     procurement_articles = []
     procurement_article_position_count = 0
@@ -5633,6 +5844,8 @@ def order_detail(order_id):
         cost_centers=cost_centers,
         printer_profiles=printer_profiles,
         filament_materials=filament_materials,
+        plotter_types=plotter_types,
+        plotter_papers=plotter_papers,
         print_jobs=print_jobs,
         poster_files=poster_files,
         procurement_articles=procurement_articles,
@@ -6884,6 +7097,22 @@ def build_order_context(order, translator) -> dict:
                 "note": poster.note or "",
                 "quantity": poster.quantity or 1,
                 "due_date": poster.due_date.strftime("%Y-%m-%d") if poster.due_date else "",
+                "plotter_type": poster.plotter_type.name if poster.plotter_type else "",
+                "plotter_paper": poster.plotter_paper.name if poster.plotter_paper else "",
+                "cost_per_poster": (
+                    ((poster.plotter_type.machine_cost_per_poster if poster.plotter_type else 0) or 0)
+                    + ((poster.plotter_type.maintenance_cost_per_poster if poster.plotter_type else 0) or 0)
+                    + ((poster.plotter_paper.price_per_poster if poster.plotter_paper else 0) or 0)
+                ),
+                "setup_fee": (poster.plotter_type.setup_fee if poster.plotter_type else 0) or 0,
+                "total_cost": (
+                    (
+                        ((poster.plotter_type.machine_cost_per_poster if poster.plotter_type else 0) or 0)
+                        + ((poster.plotter_type.maintenance_cost_per_poster if poster.plotter_type else 0) or 0)
+                        + ((poster.plotter_paper.price_per_poster if poster.plotter_paper else 0) or 0)
+                    )
+                    * (poster.quantity or 1)
+                ) + ((poster.plotter_type.setup_fee if poster.plotter_type else 0) or 0),
                 "thumb_data_uri": poster_thumb_data_uri(poster),
             }
             for poster in poster_files

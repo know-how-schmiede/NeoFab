@@ -256,6 +256,8 @@ class OrderPosterFile(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
+    plotter_type_id = db.Column(db.Integer, db.ForeignKey("plotter_types.id"), nullable=True)
+    plotter_paper_id = db.Column(db.Integer, db.ForeignKey("plotter_papers.id"), nullable=True)
     original_name = db.Column(db.String(255), nullable=False)
     stored_name = db.Column(db.String(255), nullable=False)
     file_type = db.Column(db.String(20))
@@ -268,6 +270,8 @@ class OrderPosterFile(db.Model):
     uploaded_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     order = db.relationship("Order", back_populates="poster_files")
+    plotter_type = db.relationship("PlotterType")
+    plotter_paper = db.relationship("PlotterPaper")
 
 
 class OrderProcurementArticle(db.Model):
@@ -568,6 +572,44 @@ class FilamentMaterial(db.Model):
         return f"<FilamentMaterial {self.name}>"
 
 
+# --- Stammdaten: Plotter Papier ---------------------------------------------
+
+
+class PlotterPaper(db.Model):
+    __tablename__ = "plotter_papers"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    description = db.Column(db.Text)
+    price_per_poster = db.Column(db.Float, nullable=False, default=0.0)
+    active = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<PlotterPaper {self.name}>"
+
+
+# --- Stammdaten: Plotter Typ -------------------------------------------------
+
+
+class PlotterType(db.Model):
+    __tablename__ = "plotter_types"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    description = db.Column(db.Text)
+    machine_cost_per_poster = db.Column(db.Float, nullable=False, default=0.0)
+    maintenance_cost_per_poster = db.Column(db.Float, nullable=False, default=0.0)
+    setup_fee = db.Column(db.Float, nullable=False, default=0.0)
+    active = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<PlotterType {self.name}>"
+
+
 # --- Training Videos (Tutorials) ---------------------------------------------
 
 
@@ -633,6 +675,8 @@ __all__ = [
     "CostCenter",
     "PrinterProfile",
     "FilamentMaterial",
+    "PlotterPaper",
+    "PlotterType",
     "TrainingVideo",
     "TrainingPlaylist",
 ]

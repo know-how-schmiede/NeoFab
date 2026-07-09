@@ -28,6 +28,9 @@ Die Anwendung ist fuer mehrsprachige Nutzung ausgelegt. Englisch ist die Standar
 - **Plotter- und Plakatverwaltung**
   Plotter-Auftraege verwenden einen eigenen Plakate-Reiter statt des 3D-Modell-/Bild-Reiters. Benutzer koennen mehrere JPG-, PNG- oder PDF-Plakatdateien mit Bemerkung, Anzahl und gewuenschtem Druckdatum hochladen.
 
+- **Plotter-Plakatkosten**
+  Plakate koennen einem Papier und einem Plotter-Typ zugeordnet werden. NeoFab berechnet Positionskosten aus Papierkosten pro Plakat, Maschinenkosten pro Plakat, Wartungskosten pro Plakat, Anzahl und Ruestkosten.
+
 - **Beschaffungsworkflow fuer Artikel**
   Beschaffungsauftraege verwenden einen eigenen Artikel-Reiter. Benutzer koennen Artikelname, Beschreibung, Lieferant, Artikellink, Anzahl und Stueckpreis inklusive MwSt. pflegen.
 
@@ -71,7 +74,7 @@ Die Anwendung ist fuer mehrsprachige Nutzung ausgelegt. Englisch ist die Standar
   Oberflaeche, Logfile-Ansicht, Dashboard-Uhr, E-Mail-Benachrichtigungen, PDF-Exporte und Startzeiten von Druckauftraegen verwenden die konfigurierte NeoFab-Lokalzeit und eine UTC-sichere Speicherlogik.
 
 - **Admin-Bereich**
-  Verwaltung von Benutzern, Materialien, Farben, Druckerprofilen, Kostenstellen, Mitteilungen, Trainings-Playlists, Trainingsvideos, Logs und Auftraegen.
+  Verwaltung von Benutzern, Materialien, Farben, 3D-Druckerprofilen, Filament-Materialien, Plotter-Papieren, Plotter-Typen, Kostenstellen, Mitteilungen, Trainings-Playlists, Trainingsvideos, Logs und Auftraegen.
 
 - **Archivierung und Bereinigung**
   Admins koennen Auftraege archivieren und dauerhaft inklusive Datenbankeintraegen und zugehoerigen Dateien loeschen.
@@ -137,9 +140,9 @@ Die wichtigsten Skripte sind:
 
 ## Aktuelle Version
 
-Aktuelle Anwendungsversion: **0.9.38**
+Aktuelle Anwendungsversion: **0.9.48**
 
-Zu den letzten Aenderungen gehoeren eine einheitliche lokale Zeitformatierung fuer Oberflaeche, Logfile-Ansicht, Dashboard-Uhr, Benachrichtigungs-E-Mails und PDF-Exporte sowie eine UTC-sichere Verarbeitung von Startzeiten fuer Druckauftraege.
+Zu den letzten Aenderungen gehoeren Plotter-Stammdaten und eine Plakatkostenberechnung fuer Plotter-Auftraege.
 
 Das Update-Skript installiert Python-Abhaengigkeiten aus `neofab/requirements.txt`, einschliesslich PyMuPDF zum Rendern der ersten Seite hochgeladener Plakat-PDFs als Thumbnail.
 

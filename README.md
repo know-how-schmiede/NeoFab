@@ -28,6 +28,9 @@ The application is built for multilingual use with English as the default langua
 - **Plotter poster handling**
   Plotter orders use a dedicated poster tab instead of the 3D model/image tab. Users can upload multiple JPG, PNG, or PDF poster files with notes, quantity, and required print-ready date.
 
+- **Plotter poster cost calculation**
+  Plotter poster files can be assigned a paper and plotter type. NeoFab calculates poster line-item costs from paper cost per poster, machine cost per poster, maintenance cost per poster, quantity, and setup cost.
+
 - **Procurement article workflow**
   Procurement orders use a dedicated article tab. Users can maintain article name, description, supplier, article link, quantity, and unit price including VAT.
 
@@ -71,7 +74,7 @@ The application is built for multilingual use with English as the default langua
   UI views, the log viewer, dashboard clock, notification emails, PDF exports, and print job start times use the configured NeoFab local time and UTC-safe storage logic.
 
 - **Admin area**
-  Manage users, materials, colors, printer profiles, cost centers, announcements, training playlists, training videos, logs, and orders.
+  Manage users, materials, colors, 3D printer profiles, filament materials, plotter papers, plotter types, cost centers, announcements, training playlists, training videos, logs, and orders.
 
 - **Archiving and cleanup**
   Admins can archive orders and permanently delete orders including database records and related files.
@@ -137,9 +140,9 @@ The main scripts are:
 
 ## Current Version
 
-Current application version: **0.9.47**
+Current application version: **0.9.48**
 
-Recent changes include per-user favorite email address suggestions for reusable recipient fields.
+Recent changes include plotter master data and poster cost calculation for plotter orders.
 
 The update script installs Python dependencies from `neofab/requirements.txt`, including PyMuPDF for rendering the first page of uploaded poster PDFs as thumbnails.
 
