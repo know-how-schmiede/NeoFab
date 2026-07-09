@@ -584,6 +584,7 @@ class PlotterPaper(db.Model):
     description = db.Column(db.Text)
     price_per_poster = db.Column(db.Float, nullable=False, default=0.0)
     price_per_cm2 = db.Column(db.Float, nullable=False, default=0.0)
+    price_per_m2 = db.Column(db.Float, nullable=False, default=0.0)
     active = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)

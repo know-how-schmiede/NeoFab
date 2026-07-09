@@ -1021,6 +1021,7 @@ def ensure_plotter_papers_table():
                         description TEXT,
                         price_per_poster FLOAT NOT NULL DEFAULT 0.0,
                         price_per_cm2 FLOAT NOT NULL DEFAULT 0.0,
+                        price_per_m2 FLOAT NOT NULL DEFAULT 0.0,
                         active BOOLEAN NOT NULL DEFAULT 1,
                         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -1042,6 +1043,9 @@ def ensure_plotter_papers_table():
             statements.append("ALTER TABLE plotter_papers ADD COLUMN price_per_poster FLOAT NOT NULL DEFAULT 0.0")
         if "price_per_cm2" not in cols:
             statements.append("ALTER TABLE plotter_papers ADD COLUMN price_per_cm2 FLOAT NOT NULL DEFAULT 0.0")
+        add_price_per_m2 = "price_per_m2" not in cols
+        if add_price_per_m2:
+            statements.append("ALTER TABLE plotter_papers ADD COLUMN price_per_m2 FLOAT NOT NULL DEFAULT 0.0")
         if "active" not in cols:
             statements.append("ALTER TABLE plotter_papers ADD COLUMN active BOOLEAN NOT NULL DEFAULT 1")
         if "created_at" not in cols:
@@ -1056,6 +1060,17 @@ def ensure_plotter_papers_table():
         for stmt in statements:
             db.session.execute(text(stmt))
         if statements:
+            if add_price_per_m2 and "price_per_cm2" in cols:
+                db.session.execute(
+                    text(
+                        """
+                        UPDATE plotter_papers
+                        SET price_per_m2 = COALESCE(price_per_cm2, 0) * 10000
+                        WHERE COALESCE(price_per_m2, 0) = 0
+                          AND COALESCE(price_per_cm2, 0) > 0
+                        """
+                    )
+                )
             db.session.commit()
     except Exception:
         app.logger.exception("Failed to ensure plotter_papers table exists")
@@ -7118,7 +7133,7 @@ def build_order_context(order, translator) -> dict:
                 "poster_size": normalize_poster_size(poster.poster_size),
                 "plotter_type": poster.plotter_type.name if poster.plotter_type else "",
                 "plotter_paper": poster.plotter_paper.name if poster.plotter_paper else "",
-                "area_cm2": plotter_poster_costs(poster)["area_cm2"],
+                "area_m2": plotter_poster_costs(poster)["area_m2"],
                 "paper_cost": plotter_poster_costs(poster)["paper_cost"],
                 "cost_per_poster": plotter_poster_costs(poster)["cost_per_poster"],
                 "setup_fee": plotter_poster_costs(poster)["setup_fee"],

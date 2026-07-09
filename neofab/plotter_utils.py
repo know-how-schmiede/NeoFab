@@ -6,7 +6,7 @@ POSTER_SIZE_DEFS = {
 }
 
 POSTER_SIZE_OPTIONS = [
-    (key, f"{value['label']} ({value['width_cm']:.1f} x {value['height_cm']:.1f} cm)")
+    (key, f"{value['label']} ({value['width_cm'] / 100:.3f} x {value['height_cm'] / 100:.3f} m)")
     for key, value in POSTER_SIZE_DEFS.items()
 ]
 
@@ -23,23 +23,27 @@ def poster_size_area_cm2(raw_value: str | None) -> float:
     return float(size["width_cm"]) * float(size["height_cm"])
 
 
+def poster_size_area_m2(raw_value: str | None) -> float:
+    return poster_size_area_cm2(raw_value) / 10000.0
+
+
 def plotter_poster_costs(poster) -> dict[str, float | str]:
     plotter_type = getattr(poster, "plotter_type", None)
     plotter_paper = getattr(poster, "plotter_paper", None)
     quantity = max(1, int(getattr(poster, "quantity", None) or 1))
     size_key = normalize_poster_size(getattr(poster, "poster_size", None))
-    area_cm2 = poster_size_area_cm2(size_key)
+    area_m2 = poster_size_area_m2(size_key)
 
     machine_cost = (getattr(plotter_type, "machine_cost_per_poster", 0.0) if plotter_type else 0.0) or 0.0
     maintenance_cost = (getattr(plotter_type, "maintenance_cost_per_poster", 0.0) if plotter_type else 0.0) or 0.0
     setup_fee = (getattr(plotter_type, "setup_fee", 0.0) if plotter_type else 0.0) or 0.0
-    paper_price_per_cm2 = (getattr(plotter_paper, "price_per_cm2", 0.0) if plotter_paper else 0.0) or 0.0
-    paper_cost = area_cm2 * paper_price_per_cm2
+    paper_price_per_m2 = (getattr(plotter_paper, "price_per_m2", 0.0) if plotter_paper else 0.0) or 0.0
+    paper_cost = area_m2 * paper_price_per_m2
     cost_per_poster = machine_cost + maintenance_cost + paper_cost
 
     return {
         "size": size_key,
-        "area_cm2": area_cm2,
+        "area_m2": area_m2,
         "paper_cost": paper_cost,
         "cost_per_poster": cost_per_poster,
         "setup_fee": setup_fee,
