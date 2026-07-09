@@ -268,6 +268,7 @@ class OrderPosterFile(db.Model):
     quantity = db.Column(db.Integer, nullable=False, default=1)
     due_date = db.Column(db.Date)
     thumb_path = db.Column(db.String(255))
+    coverage_percent = db.Column(db.Float)
     uploaded_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     order = db.relationship("Order", back_populates="poster_files")

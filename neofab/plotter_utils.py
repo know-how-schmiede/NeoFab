@@ -38,12 +38,20 @@ def plotter_poster_costs(poster) -> dict[str, float | str]:
     maintenance_cost = (getattr(plotter_type, "maintenance_cost_per_poster", 0.0) if plotter_type else 0.0) or 0.0
     setup_fee = (getattr(plotter_type, "setup_fee", 0.0) if plotter_type else 0.0) or 0.0
     paper_price_per_m2 = (getattr(plotter_paper, "price_per_m2", 0.0) if plotter_paper else 0.0) or 0.0
-    paper_cost = area_m2 * paper_price_per_m2
+    coverage_percent = getattr(poster, "coverage_percent", None)
+    try:
+        coverage_percent = float(coverage_percent)
+    except (TypeError, ValueError):
+        coverage_percent = 100.0
+    coverage_percent = min(100.0, max(0.0, coverage_percent))
+    coverage_factor = coverage_percent / 100.0
+    paper_cost = area_m2 * paper_price_per_m2 * coverage_factor
     cost_per_poster = machine_cost + maintenance_cost + paper_cost
 
     return {
         "size": size_key,
         "area_m2": area_m2,
+        "coverage_percent": coverage_percent,
         "paper_cost": paper_cost,
         "cost_per_poster": cost_per_poster,
         "setup_fee": setup_fee,

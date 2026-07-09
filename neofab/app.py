@@ -1440,6 +1440,7 @@ def ensure_order_category_schema():
                         quantity INTEGER NOT NULL DEFAULT 1,
                         due_date DATE,
                         thumb_path VARCHAR(255),
+                        coverage_percent FLOAT,
                         uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
                     """
@@ -1460,6 +1461,8 @@ def ensure_order_category_schema():
                 poster_statements.append("ALTER TABLE order_poster_files ADD COLUMN poster_size VARCHAR(5) NOT NULL DEFAULT 'A1'")
             if "thumb_path" not in poster_cols:
                 poster_statements.append("ALTER TABLE order_poster_files ADD COLUMN thumb_path VARCHAR(255)")
+            if "coverage_percent" not in poster_cols:
+                poster_statements.append("ALTER TABLE order_poster_files ADD COLUMN coverage_percent FLOAT")
             if "status" not in poster_cols:
                 poster_statements.append("ALTER TABLE order_poster_files ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'open'")
             for stmt in poster_statements:
@@ -2245,6 +2248,64 @@ def save_poster_thumbnail(source_path: Path, target_path: Path, file_type: str |
     return False
 
 
+def _poster_image_coverage_percent(image: Image.Image, max_dimension: int = 900) -> float | None:
+    """
+    Estimate printed coverage by counting non-white, non-transparent pixels.
+    White paper/background is treated as empty area.
+    """
+    width, height = image.size
+    if width <= 0 or height <= 0:
+        return None
+
+    working = image.copy()
+    if max(width, height) > max_dimension:
+        working.thumbnail((max_dimension, max_dimension), Image.LANCZOS)
+
+    rgba = working.convert("RGBA")
+    total_pixels = rgba.width * rgba.height
+    if total_pixels <= 0:
+        return None
+
+    filled_pixels = 0
+    for red, green, blue, alpha in rgba.getdata():
+        if alpha <= 10:
+            continue
+        if red >= 248 and green >= 248 and blue >= 248:
+            continue
+        filled_pixels += 1
+
+    return round((filled_pixels / total_pixels) * 100.0, 2)
+
+
+def analyze_poster_coverage(source_path: Path, file_type: str | None) -> float | None:
+    """
+    Analyze a poster file and return estimated fill/coverage in percent.
+    JPG/PNG are opened directly; PDFs use the first page via PyMuPDF.
+    """
+    ext = (file_type or "").lower()
+    try:
+        if ext in {"jpg", "jpeg", "png"}:
+            with Image.open(source_path) as img:
+                return _poster_image_coverage_percent(img)
+
+        if ext == "pdf":
+            import fitz  # type: ignore
+
+            doc = fitz.open(str(source_path))
+            try:
+                if len(doc) <= 0:
+                    return None
+                page = doc.load_page(0)
+                pix = page.get_pixmap(matrix=fitz.Matrix(0.5, 0.5), alpha=False)
+                img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                return _poster_image_coverage_percent(img)
+            finally:
+                doc.close()
+    except Exception as exc:  # noqa: BLE001 - cost calculation falls back to 100% when unavailable
+        app.logger.info("Could not analyze poster coverage for %s: %s", source_path, exc)
+    return None
+
+
 def ensure_poster_thumbnail_file(order: Order, poster: OrderPosterFile) -> bool:
     if not poster.stored_name:
         return False
@@ -2269,6 +2330,22 @@ def ensure_poster_thumbnail_file(order: Order, poster: OrderPosterFile) -> bool:
         poster.thumb_path = thumb_name
         return True
     return False
+
+
+def ensure_poster_coverage(order: Order, poster: OrderPosterFile) -> bool:
+    if poster.coverage_percent is not None or not poster.stored_name:
+        return False
+
+    source_path = Path(app.config["POSTER_UPLOAD_FOLDER"]) / f"order_{order.id}" / poster.stored_name
+    if not source_path.exists():
+        return False
+
+    coverage_percent = analyze_poster_coverage(source_path, poster.file_type)
+    if coverage_percent is None:
+        return False
+
+    poster.coverage_percent = coverage_percent
+    return True
 
 
 def _normalize_vec(vec):
@@ -4683,6 +4760,7 @@ def order_detail(order_id):
             thumb_path = order_folder / "thumbnails" / thumb_name
             if save_poster_thumbnail(full_path, thumb_path, ext):
                 poster_file.thumb_path = thumb_name
+            poster_file.coverage_percent = analyze_poster_coverage(full_path, ext)
             poster_file.uploaded_at = datetime.utcnow()
 
             previous_status = order.status
@@ -4707,6 +4785,7 @@ def order_detail(order_id):
                     "plotter_type_id": poster_file.plotter_type_id,
                     "plotter_paper_id": poster_file.plotter_paper_id,
                     "poster_size": poster_file.poster_size,
+                    "coverage_percent": poster_file.coverage_percent,
                 },
             )
             flash(trans("flash_poster_uploaded"), "success")
@@ -5819,10 +5898,13 @@ def order_detail(order_id):
             .all()
         )
         poster_thumbnail_changed = False
+        poster_coverage_changed = False
         for poster in poster_files:
             before = poster.thumb_path
             if ensure_poster_thumbnail_file(order, poster) and poster.thumb_path != before:
                 poster_thumbnail_changed = True
+            if ensure_poster_coverage(order, poster):
+                poster_coverage_changed = True
             if poster.plotter_type_id and not any(
                 plotter_type.id == poster.plotter_type_id for plotter_type in plotter_types
             ):
@@ -5835,7 +5917,7 @@ def order_detail(order_id):
                 selected_paper = PlotterPaper.query.get(poster.plotter_paper_id)
                 if selected_paper:
                     plotter_papers.append(selected_paper)
-        if poster_thumbnail_changed:
+        if poster_thumbnail_changed or poster_coverage_changed:
             db.session.commit()
         plotter_types.sort(key=lambda item: (item.name or "").lower())
         plotter_papers.sort(key=lambda item: (item.name or "").lower())
@@ -7054,6 +7136,12 @@ def build_order_context(order, translator) -> dict:
         if order_is_plotter
         else []
     )
+    poster_coverage_changed = False
+    for poster in poster_files:
+        if ensure_poster_coverage(order, poster):
+            poster_coverage_changed = True
+    if poster_coverage_changed:
+        db.session.commit()
 
     return {
         "app_name": "NeoFab",
@@ -7147,6 +7235,7 @@ def build_order_context(order, translator) -> dict:
                 "quantity": poster.quantity or 1,
                 "due_date": poster.due_date.strftime("%Y-%m-%d") if poster.due_date else "",
                 "poster_size": normalize_poster_size(poster.poster_size),
+                "coverage_percent": poster.coverage_percent,
                 "plotter_type": poster.plotter_type.name if poster.plotter_type else "",
                 "plotter_paper": poster.plotter_paper.name if poster.plotter_paper else "",
                 "area_m2": plotter_poster_costs(poster)["area_m2"],
@@ -7308,6 +7397,10 @@ def _build_order_pdf(order, translator) -> bytes:
             if poster.file_type:
                 parts.append(poster.file_type.upper())
             parts.append(f"{translator('posters_quantity_label')} {poster.quantity or 1}")
+            if ensure_poster_coverage(order, poster):
+                db.session.commit()
+            if poster.coverage_percent is not None:
+                parts.append(f"{translator('posters_coverage_label')} {poster.coverage_percent:.1f} %")
             if poster.due_date:
                 parts.append(f"{translator('posters_due_date_label')} {poster.due_date.strftime('%Y-%m-%d')}")
             if poster.note:

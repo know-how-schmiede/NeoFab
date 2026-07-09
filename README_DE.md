@@ -29,7 +29,7 @@ Die Anwendung ist fuer mehrsprachige Nutzung ausgelegt. Englisch ist die Standar
   Plotter-Auftraege verwenden einen eigenen Plakate-Reiter statt des 3D-Modell-/Bild-Reiters. Benutzer koennen mehrere JPG-, PNG- oder PDF-Plakatdateien mit Bemerkung, Anzahl und gewuenschtem Druckdatum hochladen.
 
 - **Plotter-Plakatkosten**
-  Plakate koennen einem Papier, einem Plotter-Typ und einer Plakatgroesse zugeordnet werden. NeoFab berechnet Positionskosten aus Papierkosten pro m2, ausgewaehlter Plakatflaeche, Maschinenkosten pro Plakat, Wartungskosten pro Plakat, Anzahl und Ruestkosten.
+  Plakate koennen einem Papier, einem Plotter-Typ und einer Plakatgroesse zugeordnet werden. NeoFab analysiert den Deckungsgrad und berechnet Positionskosten aus Papierkosten pro m2, ausgewaehlter Plakatflaeche, Deckungsgrad, Maschinenkosten pro Plakat, Wartungskosten pro Plakat, Anzahl und Ruestkosten.
 
 - **Beschaffungsworkflow fuer Artikel**
   Beschaffungsauftraege verwenden einen eigenen Artikel-Reiter. Benutzer koennen Artikelname, Beschreibung, Lieferant, Artikellink, Anzahl und Stueckpreis inklusive MwSt. pflegen.
@@ -140,9 +140,9 @@ Die wichtigsten Skripte sind:
 
 ## Aktuelle Version
 
-Aktuelle Anwendungsversion: **0.9.49**
+Aktuelle Anwendungsversion: **0.9.50**
 
-Zu den letzten Aenderungen gehoeren Plotter-Stammdaten, Standardpapier je Plotter-Typ und eine Plakatkostenberechnung fuer Plotter-Auftraege.
+Zu den letzten Aenderungen gehoeren Plotter-Stammdaten, Standardpapier je Plotter-Typ, Deckungsgradanalyse und eine Plakatkostenberechnung fuer Plotter-Auftraege.
 
 Das Update-Skript installiert Python-Abhaengigkeiten aus `neofab/requirements.txt`, einschliesslich PyMuPDF zum Rendern der ersten Seite hochgeladener Plakat-PDFs als Thumbnail.
 

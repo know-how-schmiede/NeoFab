@@ -232,6 +232,7 @@
               <br> {{ t("posters_quantity_label") }}: {{ poster.quantity }}
               {% if poster.due_date %} <br> {{ t("posters_due_date_label") }}: {{ poster.due_date }}{% endif %}
               <br> {{ t("posters_size_label") }}: {{ poster.poster_size }}
+              {% if poster.coverage_percent is not none %} <br> {{ t("posters_coverage_label") }}: {{ "%.1f"|format(poster.coverage_percent) }} %{% endif %}
               {% if poster.plotter_type %} <br> {{ t("posters_plotter_type_label") }}: {{ poster.plotter_type }}{% endif %}
               {% if poster.plotter_paper %} <br> {{ t("posters_plotter_paper_label") }}: {{ poster.plotter_paper }}{% endif %}
               <br> {{ t("posters_total_cost_label") }}: {{ "%.2f"|format(poster.total_cost) }} EUR

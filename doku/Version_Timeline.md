@@ -1,5 +1,12 @@
 # Timeline NeoFab
 
+## Version 0.9.50
+
+Hochgeladene Plakate werden auf ihren Deckungsgrad analysiert und die Kennzahl wird in den Plakat-Infos angezeigt
+Die Plakatkosten beruecksichtigen den Deckungsgrad beim variablen Papier-/Flaechenkostenanteil
+
+Version in Anwendung und README auf 0.9.50 angehoben
+
 ## Version 0.9.49
 
 Plotter-Typen koennen ein Standardpapier hinterlegen, das beim Plakat-Upload automatisch uebernommen wird

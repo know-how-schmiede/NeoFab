@@ -862,6 +862,7 @@
   "posters_mark_printed": "Marquer comme imprime",
   "posters_status_open": "Ouvert",
   "posters_status_printed": "Imprime",
+  "posters_coverage_label": "Taux de couverture",
   "posters_default_paper_marker": "Defaut",
   "posters_plotter_paper_label": "Papier",
   "posters_plotter_type_label": "Type de traceur",
