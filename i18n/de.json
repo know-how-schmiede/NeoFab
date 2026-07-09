@@ -860,6 +860,7 @@
   "posters_mark_printed": "Gedruckt setzen",
   "posters_status_open": "Offen",
   "posters_status_printed": "Gedruckt",
+  "posters_default_paper_marker": "Standard",
   "posters_plotter_paper_label": "Papier",
   "posters_plotter_type_label": "Plotter-Typ",
   "posters_size_label": "Plakatgroesse",

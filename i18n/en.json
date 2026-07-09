@@ -903,6 +903,7 @@
   "posters_mark_printed": "Mark as printed",
   "posters_status_open": "Open",
   "posters_status_printed": "Printed",
+  "posters_default_paper_marker": "Default",
   "posters_plotter_paper_label": "Paper",
   "posters_plotter_type_label": "Plotter Type",
   "posters_size_label": "Poster size",

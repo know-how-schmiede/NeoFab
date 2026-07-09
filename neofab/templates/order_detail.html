@@ -932,7 +932,13 @@
                         {% if poster.due_date %}{% set _ = parts.append(t("posters_due_date_label") ~ ": " ~ poster.due_date.strftime("%Y-%m-%d")) %}{% endif %}
                         {% set _ = parts.append(t("posters_size_label") ~ ": " ~ poster_costs.size) %}
                         {% if plotter_type %}{% set _ = parts.append(t("posters_plotter_type_label") ~ ": " ~ plotter_type.name) %}{% endif %}
-                        {% if plotter_paper %}{% set _ = parts.append(t("posters_plotter_paper_label") ~ ": " ~ plotter_paper.name) %}{% endif %}
+                        {% if plotter_paper %}
+                          {% set paper_label = plotter_paper.name %}
+                          {% if plotter_type and plotter_type.default_paper_id == plotter_paper.id %}
+                            {% set paper_label = paper_label ~ " (" ~ t("posters_default_paper_marker") ~ ")" %}
+                          {% endif %}
+                          {% set _ = parts.append(t("posters_plotter_paper_label") ~ ": " ~ paper_label) %}
+                        {% endif %}
                         {% if poster.note %}{% set _ = parts.append(poster.note) %}{% endif %}
                         {{ " | ".join(parts) }}
                       </small>
@@ -1077,7 +1083,7 @@
               <select id="plotter_paper_id" name="plotter_paper_id" class="form-select">
                 <option value="">{{ t("select_placeholder") }}</option>
                 {% for paper in plotter_papers %}
-                  <option value="{{ paper.id }}">
+                  <option value="{{ paper.id }}" data-base-label="{{ paper.name }}">
                     {{ paper.name }}
                   </option>
                 {% endfor %}
@@ -1845,7 +1851,7 @@
               <select id="edit_plotter_paper_id" name="plotter_paper_id" class="form-select">
                 <option value="">{{ t("select_placeholder") }}</option>
                 {% for paper in plotter_papers %}
-                  <option value="{{ paper.id }}">{{ paper.name }}</option>
+                  <option value="{{ paper.id }}" data-base-label="{{ paper.name }}">{{ paper.name }}</option>
                 {% endfor %}
               </select>
             </div>
@@ -2510,6 +2516,21 @@
 })();
 
 (function() {
+  const defaultMarker = {{ t("posters_default_paper_marker")|tojson }};
+
+  function updateDefaultPaperMarker(typeSelect, paperSelect) {
+    if (!typeSelect || !paperSelect) return;
+    const selectedOption = typeSelect.options[typeSelect.selectedIndex];
+    const defaultPaperId = selectedOption ? selectedOption.getAttribute("data-default-paper-id") : "";
+    Array.from(paperSelect.options).forEach((option) => {
+      const baseLabel = option.getAttribute("data-base-label");
+      if (!baseLabel) return;
+      option.textContent = option.value === defaultPaperId
+        ? `${baseLabel} (${defaultMarker})`
+        : baseLabel;
+    });
+  }
+
   function applyDefaultPaper(typeSelect, paperSelect) {
     if (!typeSelect || !paperSelect) return;
     const selectedOption = typeSelect.options[typeSelect.selectedIndex];
@@ -2517,14 +2538,30 @@
     if (defaultPaperId && paperSelect.querySelector(`option[value="${defaultPaperId}"]`)) {
       paperSelect.value = defaultPaperId;
     }
+    updateDefaultPaperMarker(typeSelect, paperSelect);
   }
 
   const uploadTypeSelect = document.querySelector("#plotter_type_id");
   const uploadPaperSelect = document.querySelector("#plotter_paper_id");
   if (uploadTypeSelect && uploadPaperSelect) {
+    updateDefaultPaperMarker(uploadTypeSelect, uploadPaperSelect);
     uploadTypeSelect.addEventListener("change", function() {
       applyDefaultPaper(uploadTypeSelect, uploadPaperSelect);
     });
+  }
+
+  const editTypeSelect = document.querySelector("#edit_plotter_type_id");
+  const editPaperSelect = document.querySelector("#edit_plotter_paper_id");
+  if (editTypeSelect && editPaperSelect) {
+    editTypeSelect.addEventListener("change", function() {
+      applyDefaultPaper(editTypeSelect, editPaperSelect);
+    });
+    const posterEditModal = document.getElementById("posterEditModal");
+    if (posterEditModal) {
+      posterEditModal.addEventListener("shown.bs.modal", function() {
+        updateDefaultPaperMarker(editTypeSelect, editPaperSelect);
+      });
+    }
   }
 })();
 
