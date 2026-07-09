@@ -50,6 +50,15 @@
       </div>
 
       <div class="mb-3">
+        <label for="ink_cost_per_m2" class="form-label">{{ t("admin_plotter_type_label_ink_cost_per_m2") }}</label>
+        <div class="input-group">
+          <input type="number" class="form-control" id="ink_cost_per_m2" name="ink_cost_per_m2" min="0" step="0.01" value="{{ plotter_type.ink_cost_per_m2 if plotter_type else '0' }}">
+          <span class="input-group-text">EUR/m2</span>
+        </div>
+        <div class="form-text">{{ t("admin_plotter_type_help_ink_cost_per_m2") }}</div>
+      </div>
+
+      <div class="mb-3">
         <label for="setup_fee" class="form-label">{{ t("admin_plotter_type_label_setup_fee") }}</label>
         <div class="input-group">
           <input type="number" class="form-control" id="setup_fee" name="setup_fee" min="0" step="0.01" value="{{ plotter_type.setup_fee if plotter_type else '0' }}">

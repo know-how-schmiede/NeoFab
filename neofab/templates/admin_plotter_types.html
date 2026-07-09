@@ -24,6 +24,7 @@
           <th style="width: 14%;">{{ t("table_default_paper") }}</th>
           <th style="width: 12%;">{{ t("table_machine_cost_per_poster") }}</th>
           <th style="width: 12%;">{{ t("table_maintenance_cost_per_poster") }}</th>
+          <th style="width: 10%;">{{ t("table_ink_cost_per_m2") }}</th>
           <th style="width: 10%;">{{ t("table_setup_fee") }}</th>
           <th style="width: 8%;">{{ t("table_active") }}</th>
           <th class="text-end" style="width: 14%;">{{ t("table_actions") }}</th>
@@ -37,6 +38,7 @@
           <td data-label="{{ t('table_default_paper') }}">{{ plotter_type.default_paper.name if plotter_type.default_paper else '' }}</td>
           <td data-label="{{ t('table_machine_cost_per_poster') }}">{{ "%.2f"|format(plotter_type.machine_cost_per_poster or 0) }}</td>
           <td data-label="{{ t('table_maintenance_cost_per_poster') }}">{{ "%.2f"|format(plotter_type.maintenance_cost_per_poster or 0) }}</td>
+          <td data-label="{{ t('table_ink_cost_per_m2') }}">{{ "%.2f"|format(plotter_type.ink_cost_per_m2 or 0) }}</td>
           <td data-label="{{ t('table_setup_fee') }}">{{ "%.2f"|format(plotter_type.setup_fee or 0) }}</td>
           <td data-label="{{ t('table_active') }}">
             <span class="badge {% if plotter_type.active %}bg-success{% else %}bg-secondary{% endif %}">

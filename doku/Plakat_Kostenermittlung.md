@@ -8,14 +8,13 @@ Die Berechnung verwendet Stammdaten aus dem Bereich `Admin > Plotter-Stammdaten`
 
 ## Papierliste
 
-In der Papierliste wird je Papier der Preis in `EUR/m2` gepflegt. Dieser Wert beschreibt die variablen Papier- beziehungsweise Flaechenkosten fuer einen voll gedeckten Quadratmeter.
+In der Papierliste wird je Papier der Preis in `EUR/m2` gepflegt. Dieser Wert beschreibt die Papierkosten je Quadratmeter. Papierkosten gelten fuer die komplette ausgewaehlte Plakatflaeche.
 
 Beispiel:
 
 - Papierpreis: `12,00 EUR/m2`
 - Plakatflaeche: `0,4996 m2`
-- Deckungsgrad: `50 %`
-- Papierkosten: `12,00 * 0,4996 * 0,50 = 3,00 EUR`
+- Papierkosten: `12,00 * 0,4996 = 6,00 EUR`
 
 ## Plotter-Typen
 
@@ -23,8 +22,11 @@ Beim Plotter-Typ werden die maschinenbezogenen Kosten gepflegt:
 
 - `Maschinenkosten EUR/Plakat`
 - `Wartung EUR/Plakat`
+- `Tintenkosten EUR/m2`
 - `Ruestkosten EUR`
 - optionales `Standardpapier`
+
+Die Tintenkosten beschreiben den Preis fuer einen voll gedeckten Quadratmeter. Der Deckungsgrad des Plakats reduziert nur diesen Tintenanteil.
 
 Das Standardpapier wird beim Plakat-Upload automatisch ausgewaehlt, sobald der Plotter-Typ gewaehlt wird. Im Papierfeld wird dieses Papier als `Standard` gekennzeichnet.
 
@@ -60,9 +62,12 @@ Wenn fuer ein altes Plakat noch kein Deckungsgrad gespeichert ist oder die Analy
 Die Plakatkosten werden pro Plakatposition berechnet.
 
 ```text
-Flaechenkosten = Plakatflaeche m2 * Papierpreis EUR/m2 * (Deckungsgrad / 100)
+Papierkosten = Plakatflaeche m2 * Papierpreis EUR/m2
 
-Kosten pro Plakat = Flaechenkosten
+Tintenkosten = Plakatflaeche m2 * Tintenkosten EUR/m2 * (Deckungsgrad / 100)
+
+Kosten pro Plakat = Papierkosten
+                  + Tintenkosten
                   + Maschinenkosten EUR/Plakat
                   + Wartung EUR/Plakat
 
@@ -80,6 +85,7 @@ Ausgangswerte:
 - Flaeche: `0,4996 m2`
 - Deckungsgrad: `50 %`
 - Papier: `12,00 EUR/m2`
+- Tinte: `8,00 EUR/m2`
 - Maschinenkosten: `2,00 EUR/Plakat`
 - Wartung: `0,50 EUR/Plakat`
 - Anzahl: `3`
@@ -88,9 +94,10 @@ Ausgangswerte:
 Berechnung:
 
 ```text
-Flaechenkosten = 0,4996 * 12,00 * 0,50 = 3,00 EUR
-Kosten pro Plakat = 3,00 + 2,00 + 0,50 = 5,50 EUR
-Gesamtkosten = 5,50 * 3 + 5,00 = 21,50 EUR
+Papierkosten = 0,4996 * 12,00 = 6,00 EUR
+Tintenkosten = 0,4996 * 8,00 * 0,50 = 2,00 EUR
+Kosten pro Plakat = 6,00 + 2,00 + 2,00 + 0,50 = 10,50 EUR
+Gesamtkosten = 10,50 * 3 + 5,00 = 36,50 EUR
 ```
 
 ## Anzeige in NeoFab

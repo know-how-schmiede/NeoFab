@@ -3046,6 +3046,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     "default_paper": plotter_type.default_paper.name if plotter_type.default_paper else "",
                     "machine_cost_per_poster": plotter_type.machine_cost_per_poster,
                     "maintenance_cost_per_poster": plotter_type.maintenance_cost_per_poster,
+                    "ink_cost_per_m2": plotter_type.ink_cost_per_m2,
                     "setup_fee": plotter_type.setup_fee,
                     "active": bool(plotter_type.active),
                 }
@@ -3092,8 +3093,9 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 ).first()
             machine_cost = _parse_nonnegative_float(entry.get("machine_cost_per_poster"), 0.0)
             maintenance_cost = _parse_nonnegative_float(entry.get("maintenance_cost_per_poster"), 0.0)
+            ink_cost = _parse_nonnegative_float(entry.get("ink_cost_per_m2"), 0.0)
             setup_fee = _parse_nonnegative_float(entry.get("setup_fee"), 0.0)
-            if not name or machine_cost is None or maintenance_cost is None or setup_fee is None:
+            if not name or machine_cost is None or maintenance_cost is None or ink_cost is None or setup_fee is None:
                 skipped += 1
                 continue
             db.session.add(
@@ -3103,6 +3105,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     default_paper_id=default_paper.id if default_paper else None,
                     machine_cost_per_poster=machine_cost,
                     maintenance_cost_per_poster=maintenance_cost,
+                    ink_cost_per_m2=ink_cost,
                     setup_fee=setup_fee,
                     active=_parse_bool(entry.get("active"), True),
                 )
@@ -3124,6 +3127,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             default_paper_id = _parse_optional_int(request.form.get("default_paper_id"))
             machine_cost = _parse_nonnegative_float(request.form.get("machine_cost_per_poster"), 0.0)
             maintenance_cost = _parse_nonnegative_float(request.form.get("maintenance_cost_per_poster"), 0.0)
+            ink_cost = _parse_nonnegative_float(request.form.get("ink_cost_per_m2"), 0.0)
             setup_fee = _parse_nonnegative_float(request.form.get("setup_fee"), 0.0)
             is_active = bool(request.form.get("is_active"))
             has_errors = False
@@ -3135,7 +3139,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             elif PlotterType.query.filter(func.lower(PlotterType.name) == name.lower()).first():
                 flash(trans("flash_plotter_type_exists"), "danger")
                 has_errors = True
-            if None in (machine_cost, maintenance_cost, setup_fee):
+            if None in (machine_cost, maintenance_cost, ink_cost, setup_fee):
                 flash(trans("flash_plotter_type_costs_invalid"), "danger")
                 has_errors = True
             if default_paper_id:
@@ -3151,6 +3155,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     default_paper_id=default_paper.id if default_paper else None,
                     machine_cost_per_poster=machine_cost,
                     maintenance_cost_per_poster=maintenance_cost,
+                    ink_cost_per_m2=ink_cost,
                     setup_fee=setup_fee,
                     active=is_active,
                 )
@@ -3178,6 +3183,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             default_paper_id = _parse_optional_int(request.form.get("default_paper_id"))
             machine_cost = _parse_nonnegative_float(request.form.get("machine_cost_per_poster"), 0.0)
             maintenance_cost = _parse_nonnegative_float(request.form.get("maintenance_cost_per_poster"), 0.0)
+            ink_cost = _parse_nonnegative_float(request.form.get("ink_cost_per_m2"), 0.0)
             setup_fee = _parse_nonnegative_float(request.form.get("setup_fee"), 0.0)
             is_active = bool(request.form.get("is_active"))
             has_errors = False
@@ -3191,7 +3197,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 if existing and existing.id != plotter_type.id:
                     flash(trans("flash_plotter_type_exists"), "danger")
                     has_errors = True
-            if None in (machine_cost, maintenance_cost, setup_fee):
+            if None in (machine_cost, maintenance_cost, ink_cost, setup_fee):
                 flash(trans("flash_plotter_type_costs_invalid"), "danger")
                 has_errors = True
             if default_paper_id:
@@ -3206,6 +3212,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 plotter_type.default_paper_id = default_paper.id if default_paper else None
                 plotter_type.machine_cost_per_poster = machine_cost
                 plotter_type.maintenance_cost_per_poster = maintenance_cost
+                plotter_type.ink_cost_per_m2 = ink_cost
                 plotter_type.setup_fee = setup_fee
                 plotter_type.active = is_active
                 db.session.commit()

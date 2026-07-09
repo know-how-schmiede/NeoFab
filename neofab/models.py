@@ -606,6 +606,7 @@ class PlotterType(db.Model):
     default_paper_id = db.Column(db.Integer, db.ForeignKey("plotter_papers.id"), nullable=True)
     machine_cost_per_poster = db.Column(db.Float, nullable=False, default=0.0)
     maintenance_cost_per_poster = db.Column(db.Float, nullable=False, default=0.0)
+    ink_cost_per_m2 = db.Column(db.Float, nullable=False, default=0.0)
     setup_fee = db.Column(db.Float, nullable=False, default=0.0)
     active = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)

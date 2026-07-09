@@ -1095,6 +1095,7 @@ def ensure_plotter_types_table():
                         default_paper_id INTEGER,
                         machine_cost_per_poster FLOAT NOT NULL DEFAULT 0.0,
                         maintenance_cost_per_poster FLOAT NOT NULL DEFAULT 0.0,
+                        ink_cost_per_m2 FLOAT NOT NULL DEFAULT 0.0,
                         setup_fee FLOAT NOT NULL DEFAULT 0.0,
                         active BOOLEAN NOT NULL DEFAULT 1,
                         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1123,6 +1124,8 @@ def ensure_plotter_types_table():
             statements.append(
                 "ALTER TABLE plotter_types ADD COLUMN maintenance_cost_per_poster FLOAT NOT NULL DEFAULT 0.0"
             )
+        if "ink_cost_per_m2" not in cols:
+            statements.append("ALTER TABLE plotter_types ADD COLUMN ink_cost_per_m2 FLOAT NOT NULL DEFAULT 0.0")
         if "setup_fee" not in cols:
             statements.append("ALTER TABLE plotter_types ADD COLUMN setup_fee FLOAT NOT NULL DEFAULT 0.0")
         if "active" not in cols:
