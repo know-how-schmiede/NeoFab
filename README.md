@@ -111,6 +111,7 @@ i18n/
   fr.json
 doku/
   SETUP.md
+  Plakat_Kostenermittlung.md
   Version_Timeline.md
 script/
   setupNeoFab
@@ -130,6 +131,7 @@ Start with the setup documentation:
 
 - [Script setup guide](script/README.md)
 - [General setup notes](doku/SETUP.md)
+- [Poster cost calculation](doku/Plakat_Kostenermittlung.md)
 
 The main scripts are:
 
