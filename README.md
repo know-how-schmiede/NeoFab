@@ -29,7 +29,7 @@ The application is built for multilingual use with English as the default langua
   Plotter orders use a dedicated poster tab instead of the 3D model/image tab. Users can upload multiple JPG, PNG, or PDF poster files with notes, quantity, and required print-ready date.
 
 - **Plotter poster cost calculation**
-  Plotter poster files can be assigned a paper and plotter type. NeoFab calculates poster line-item costs from paper cost per poster, machine cost per poster, maintenance cost per poster, quantity, and setup cost.
+  Plotter poster files can be assigned a paper, plotter type, and poster size. NeoFab calculates poster line-item costs from paper cost per cm2, selected poster area, machine cost per poster, maintenance cost per poster, quantity, and setup cost.
 
 - **Procurement article workflow**
   Procurement orders use a dedicated article tab. Users can maintain article name, description, supplier, article link, quantity, and unit price including VAT.

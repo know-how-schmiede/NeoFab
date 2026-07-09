@@ -21,7 +21,7 @@
         <tr>
           <th style="width: 20%;">{{ t("table_name") }}</th>
           <th>{{ t("table_description") }}</th>
-          <th style="width: 14%;">{{ t("table_price_per_poster") }}</th>
+          <th style="width: 14%;">{{ t("table_price_per_cm2") }}</th>
           <th style="width: 10%;">{{ t("table_active") }}</th>
           <th class="text-end" style="width: 14%;">{{ t("table_actions") }}</th>
         </tr>
@@ -31,7 +31,7 @@
         <tr>
           <td data-label="{{ t('table_name') }}">{{ paper.name }}</td>
           <td data-label="{{ t('table_description') }}">{{ paper.description or '' }}</td>
-          <td data-label="{{ t('table_price_per_poster') }}">{{ "%.2f"|format(paper.price_per_poster or 0) }}</td>
+          <td data-label="{{ t('table_price_per_cm2') }}">{{ "%.4f"|format(paper.price_per_cm2 or 0) }}</td>
           <td data-label="{{ t('table_active') }}">
             <span class="badge {% if paper.active %}bg-success{% else %}bg-secondary{% endif %}">
               {{ paper.active and t("badge_yes") or t("badge_no") }}

@@ -65,6 +65,7 @@ from status_messages import (
     resolve_status_messages,
 )
 from time_utils import format_app_datetime
+from plotter_utils import plotter_poster_costs
 from models import (
     Color,
     CostCenter,
@@ -2875,7 +2876,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 {
                     "name": paper.name,
                     "description": paper.description or "",
-                    "price_per_poster": paper.price_per_poster,
+                    "price_per_cm2": paper.price_per_cm2,
                     "active": bool(paper.active),
                 }
                 for paper in papers
@@ -2913,15 +2914,15 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 continue
             name = (entry.get("name") or "").strip()
             description = (entry.get("description") or "").strip() or None
-            price_per_poster = _parse_nonnegative_float(entry.get("price_per_poster"), 0.0)
-            if not name or price_per_poster is None:
+            price_per_cm2 = _parse_nonnegative_float(entry.get("price_per_cm2"), 0.0)
+            if not name or price_per_cm2 is None:
                 skipped += 1
                 continue
             db.session.add(
                 PlotterPaper(
                     name=name,
                     description=description,
-                    price_per_poster=price_per_poster,
+                    price_per_cm2=price_per_cm2,
                     active=_parse_bool(entry.get("active"), True),
                 )
             )
@@ -2938,7 +2939,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         if request.method == "POST":
             name = request.form.get("name", "").strip()
             description = request.form.get("description", "").strip() or None
-            price_per_poster = _parse_nonnegative_float(request.form.get("price_per_poster"), 0.0)
+            price_per_cm2 = _parse_nonnegative_float(request.form.get("price_per_cm2"), 0.0)
             is_active = bool(request.form.get("is_active"))
             has_errors = False
 
@@ -2948,7 +2949,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             elif PlotterPaper.query.filter(func.lower(PlotterPaper.name) == name.lower()).first():
                 flash(trans("flash_plotter_paper_exists"), "danger")
                 has_errors = True
-            if price_per_poster is None:
+            if price_per_cm2 is None:
                 flash(trans("flash_plotter_paper_costs_invalid"), "danger")
                 has_errors = True
 
@@ -2956,7 +2957,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 paper = PlotterPaper(
                     name=name,
                     description=description,
-                    price_per_poster=price_per_poster,
+                    price_per_cm2=price_per_cm2,
                     active=is_active,
                 )
                 db.session.add(paper)
@@ -2974,7 +2975,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
         if request.method == "POST":
             name = request.form.get("name", "").strip()
             description = request.form.get("description", "").strip() or None
-            price_per_poster = _parse_nonnegative_float(request.form.get("price_per_poster"), 0.0)
+            price_per_cm2 = _parse_nonnegative_float(request.form.get("price_per_cm2"), 0.0)
             is_active = bool(request.form.get("is_active"))
             has_errors = False
 
@@ -2986,14 +2987,14 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 if existing and existing.id != paper.id:
                     flash(trans("flash_plotter_paper_exists"), "danger")
                     has_errors = True
-            if price_per_poster is None:
+            if price_per_cm2 is None:
                 flash(trans("flash_plotter_paper_costs_invalid"), "danger")
                 has_errors = True
 
             if not has_errors:
                 paper.name = name
                 paper.description = description
-                paper.price_per_poster = price_per_poster
+                paper.price_per_cm2 = price_per_cm2
                 paper.active = is_active
                 db.session.commit()
                 flash(trans("flash_plotter_paper_updated"), "success")
@@ -3735,14 +3736,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 ) + (drying_fee or 0) + (handling_fee or 0)
                 order_total_cost += ((machine_time_cost + material_cost) * quantity) + (setup_fee or 0)
             for poster in order.poster_files:
-                plotter_type = poster.plotter_type
-                plotter_paper = poster.plotter_paper
-                quantity = max(1, int(poster.quantity or 1))
-                machine_cost = plotter_type.machine_cost_per_poster if plotter_type else 0
-                maintenance_cost = plotter_type.maintenance_cost_per_poster if plotter_type else 0
-                setup_fee = plotter_type.setup_fee if plotter_type else 0
-                paper_cost = plotter_paper.price_per_poster if plotter_paper else 0
-                order_total_cost += (((machine_cost or 0) + (maintenance_cost or 0) + (paper_cost or 0)) * quantity) + (setup_fee or 0)
+                order_total_cost += float(plotter_poster_costs(poster)["total_cost"] or 0)
             cost_center_order_costs[order.id] = order_total_cost
         return cost_center_orders, cost_center_order_costs, sum(cost_center_order_costs.values())
 

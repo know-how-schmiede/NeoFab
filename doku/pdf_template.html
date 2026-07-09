@@ -231,10 +231,11 @@
             {% endif %}
               <br> {{ t("posters_quantity_label") }}: {{ poster.quantity }}
               {% if poster.due_date %} <br> {{ t("posters_due_date_label") }}: {{ poster.due_date }}{% endif %}
+              <br> {{ t("posters_size_label") }}: {{ poster.poster_size }}
               {% if poster.plotter_type %} <br> {{ t("posters_plotter_type_label") }}: {{ poster.plotter_type }}{% endif %}
               {% if poster.plotter_paper %} <br> {{ t("posters_plotter_paper_label") }}: {{ poster.plotter_paper }}{% endif %}
               <br> {{ t("posters_total_cost_label") }}: {{ "%.2f"|format(poster.total_cost) }} EUR
-              <span class="meta">({{ "%.2f"|format(poster.cost_per_poster) }} EUR / {{ t("posters_unit_poster") }}{% if poster.setup_fee %}, {{ t("table_setup_fee") }} {{ "%.2f"|format(poster.setup_fee) }} EUR{% endif %})</span>
+              <span class="meta">({{ "%.2f"|format(poster.cost_per_poster) }} EUR / {{ t("posters_unit_poster") }})</span>
               {% if poster.note %} <br> {{ t("posters_note_label") }}: {{ poster.note }}{% endif %}
             {% if poster.uploaded_at %} - {{ poster.uploaded_at }}{% endif %}
           </li>

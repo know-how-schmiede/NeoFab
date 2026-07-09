@@ -29,7 +29,7 @@ Die Anwendung ist fuer mehrsprachige Nutzung ausgelegt. Englisch ist die Standar
   Plotter-Auftraege verwenden einen eigenen Plakate-Reiter statt des 3D-Modell-/Bild-Reiters. Benutzer koennen mehrere JPG-, PNG- oder PDF-Plakatdateien mit Bemerkung, Anzahl und gewuenschtem Druckdatum hochladen.
 
 - **Plotter-Plakatkosten**
-  Plakate koennen einem Papier und einem Plotter-Typ zugeordnet werden. NeoFab berechnet Positionskosten aus Papierkosten pro Plakat, Maschinenkosten pro Plakat, Wartungskosten pro Plakat, Anzahl und Ruestkosten.
+  Plakate koennen einem Papier, einem Plotter-Typ und einer Plakatgroesse zugeordnet werden. NeoFab berechnet Positionskosten aus Papierkosten pro cm2, ausgewaehlter Plakatflaeche, Maschinenkosten pro Plakat, Wartungskosten pro Plakat, Anzahl und Ruestkosten.
 
 - **Beschaffungsworkflow fuer Artikel**
   Beschaffungsauftraege verwenden einen eigenen Artikel-Reiter. Benutzer koennen Artikelname, Beschreibung, Lieferant, Artikellink, Anzahl und Stueckpreis inklusive MwSt. pflegen.

@@ -3,9 +3,9 @@
 ## Version 0.9.48
 
 Plotter-Stammdatenbereich fuer Plakatkosten ergaenzt
-Papierliste mit Kosten pro Plakat, Aktiv-Status sowie JSON-Import und -Export hinzugefuegt
+Papierliste mit Kosten pro cm2, Aktiv-Status sowie JSON-Import und -Export hinzugefuegt
 Plotter-Typen mit Name, Beschreibung, Maschinenkosten pro Plakat, Wartung pro Plakat und Ruestkosten hinzugefuegt
-Plakate koennen Papier und Plotter-Typ speichern und zeigen berechnete Positionskosten im Plakate-Reiter an
+Plakate koennen Papier, Plotter-Typ und Format A3/A2/A1/A0 speichern und zeigen berechnete Positionskosten im Plakate-Reiter an
 Version in Anwendung und README auf 0.9.48 angehoben
 
 ## Version 0.9.47
