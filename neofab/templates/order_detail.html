@@ -1066,7 +1066,7 @@
               <select id="plotter_type_id" name="plotter_type_id" class="form-select">
                 <option value="">{{ t("select_placeholder") }}</option>
                 {% for plotter_type in plotter_types %}
-                  <option value="{{ plotter_type.id }}">
+                  <option value="{{ plotter_type.id }}" data-default-paper-id="{{ plotter_type.default_paper_id or '' }}">
                     {{ plotter_type.name }}
                   </option>
                 {% endfor %}
@@ -1836,7 +1836,7 @@
               <select id="edit_plotter_type_id" name="plotter_type_id" class="form-select">
                 <option value="">{{ t("select_placeholder") }}</option>
                 {% for plotter_type in plotter_types %}
-                  <option value="{{ plotter_type.id }}">{{ plotter_type.name }}</option>
+                  <option value="{{ plotter_type.id }}" data-default-paper-id="{{ plotter_type.default_paper_id or '' }}">{{ plotter_type.name }}</option>
                 {% endfor %}
               </select>
             </div>
@@ -2507,6 +2507,25 @@
     if (plotterTypeInput) plotterTypeInput.value = plotterTypeId;
     if (plotterPaperInput) plotterPaperInput.value = plotterPaperId;
   });
+})();
+
+(function() {
+  function applyDefaultPaper(typeSelect, paperSelect) {
+    if (!typeSelect || !paperSelect) return;
+    const selectedOption = typeSelect.options[typeSelect.selectedIndex];
+    const defaultPaperId = selectedOption ? selectedOption.getAttribute("data-default-paper-id") : "";
+    if (defaultPaperId && paperSelect.querySelector(`option[value="${defaultPaperId}"]`)) {
+      paperSelect.value = defaultPaperId;
+    }
+  }
+
+  const uploadTypeSelect = document.querySelector("#plotter_type_id");
+  const uploadPaperSelect = document.querySelector("#plotter_paper_id");
+  if (uploadTypeSelect && uploadPaperSelect) {
+    uploadTypeSelect.addEventListener("change", function() {
+      applyDefaultPaper(uploadTypeSelect, uploadPaperSelect);
+    });
+  }
 })();
 
 (function() {

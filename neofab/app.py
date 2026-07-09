@@ -1092,6 +1092,7 @@ def ensure_plotter_types_table():
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         name VARCHAR(100) NOT NULL UNIQUE,
                         description TEXT,
+                        default_paper_id INTEGER,
                         machine_cost_per_poster FLOAT NOT NULL DEFAULT 0.0,
                         maintenance_cost_per_poster FLOAT NOT NULL DEFAULT 0.0,
                         setup_fee FLOAT NOT NULL DEFAULT 0.0,
@@ -1112,6 +1113,8 @@ def ensure_plotter_types_table():
         statements = []
         if "description" not in cols:
             statements.append("ALTER TABLE plotter_types ADD COLUMN description TEXT")
+        if "default_paper_id" not in cols:
+            statements.append("ALTER TABLE plotter_types ADD COLUMN default_paper_id INTEGER")
         if "machine_cost_per_poster" not in cols:
             statements.append(
                 "ALTER TABLE plotter_types ADD COLUMN machine_cost_per_poster FLOAT NOT NULL DEFAULT 0.0"
@@ -4601,6 +4604,7 @@ def order_detail(order_id):
                     return order_detail_redirect("posters")
 
             plotter_type_id = None
+            selected_plotter_type = None
             if plotter_type_raw:
                 try:
                     selected_plotter_type_id = int(plotter_type_raw)
@@ -4627,6 +4631,13 @@ def order_detail(order_id):
                     ).first()
                     if selected_plotter_paper:
                         plotter_paper_id = selected_plotter_paper.id
+            if not plotter_paper_id and selected_plotter_type and selected_plotter_type.default_paper_id:
+                default_paper = PlotterPaper.query.filter_by(
+                    id=selected_plotter_type.default_paper_id,
+                    active=True,
+                ).first()
+                if default_paper:
+                    plotter_paper_id = default_paper.id
 
             if not file or not file.filename:
                 flash(trans("flash_poster_select_file"), "warning")
@@ -4743,6 +4754,7 @@ def order_detail(order_id):
                     return order_detail_redirect("posters")
 
             plotter_type_id = None
+            selected_plotter_type = None
             if plotter_type_raw:
                 try:
                     selected_plotter_type_id = int(plotter_type_raw)
@@ -4767,6 +4779,10 @@ def order_detail(order_id):
                         selected_plotter_paper.active or selected_plotter_paper.id == poster_file.plotter_paper_id
                     ):
                         plotter_paper_id = selected_plotter_paper.id
+            if not plotter_paper_id and selected_plotter_type and selected_plotter_type.default_paper_id:
+                default_paper = PlotterPaper.query.get(selected_plotter_type.default_paper_id)
+                if default_paper and (default_paper.active or default_paper.id == poster_file.plotter_paper_id):
+                    plotter_paper_id = default_paper.id
 
             poster_file.note = note[:255] if note else None
             poster_file.quantity = quantity

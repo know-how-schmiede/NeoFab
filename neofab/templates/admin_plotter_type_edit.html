@@ -21,6 +21,19 @@
       </div>
 
       <div class="mb-3">
+        <label for="default_paper_id" class="form-label">{{ t("admin_plotter_type_label_default_paper") }}</label>
+        <select class="form-select" id="default_paper_id" name="default_paper_id">
+          <option value="">{{ t("select_placeholder") }}</option>
+          {% for paper in plotter_papers %}
+            <option value="{{ paper.id }}" {% if plotter_type and plotter_type.default_paper_id == paper.id %}selected{% endif %}>
+              {{ paper.name }}
+            </option>
+          {% endfor %}
+        </select>
+        <div class="form-text">{{ t("admin_plotter_type_help_default_paper") }}</div>
+      </div>
+
+      <div class="mb-3">
         <label for="machine_cost_per_poster" class="form-label">{{ t("admin_plotter_type_label_machine_cost_per_poster") }}</label>
         <input type="number" class="form-control" id="machine_cost_per_poster" name="machine_cost_per_poster" min="0" step="0.01" value="{{ plotter_type.machine_cost_per_poster if plotter_type else '0' }}">
       </div>

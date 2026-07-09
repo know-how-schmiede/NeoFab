@@ -602,12 +602,15 @@ class PlotterType(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
     description = db.Column(db.Text)
+    default_paper_id = db.Column(db.Integer, db.ForeignKey("plotter_papers.id"), nullable=True)
     machine_cost_per_poster = db.Column(db.Float, nullable=False, default=0.0)
     maintenance_cost_per_poster = db.Column(db.Float, nullable=False, default=0.0)
     setup_fee = db.Column(db.Float, nullable=False, default=0.0)
     active = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    default_paper = db.relationship("PlotterPaper", foreign_keys=[default_paper_id])
 
     def __repr__(self):
         return f"<PlotterType {self.name}>"

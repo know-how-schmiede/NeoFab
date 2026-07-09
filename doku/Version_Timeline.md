@@ -1,5 +1,11 @@
 # Timeline NeoFab
 
+## Version 0.9.49
+
+Plotter-Typen koennen ein Standardpapier hinterlegen, das beim Plakat-Upload automatisch uebernommen wird
+
+Version in Anwendung und README auf 0.9.49 angehoben
+
 ## Version 0.9.48
 
 Plotter-Stammdatenbereich fuer Plakatkosten ergaenzt

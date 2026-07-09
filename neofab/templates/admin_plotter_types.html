@@ -21,6 +21,7 @@
         <tr>
           <th style="width: 18%;">{{ t("table_name") }}</th>
           <th>{{ t("table_description") }}</th>
+          <th style="width: 14%;">{{ t("table_default_paper") }}</th>
           <th style="width: 12%;">{{ t("table_machine_cost_per_poster") }}</th>
           <th style="width: 12%;">{{ t("table_maintenance_cost_per_poster") }}</th>
           <th style="width: 10%;">{{ t("table_setup_fee") }}</th>
@@ -33,6 +34,7 @@
         <tr>
           <td data-label="{{ t('table_name') }}">{{ plotter_type.name }}</td>
           <td data-label="{{ t('table_description') }}">{{ plotter_type.description or '' }}</td>
+          <td data-label="{{ t('table_default_paper') }}">{{ plotter_type.default_paper.name if plotter_type.default_paper else '' }}</td>
           <td data-label="{{ t('table_machine_cost_per_poster') }}">{{ "%.2f"|format(plotter_type.machine_cost_per_poster or 0) }}</td>
           <td data-label="{{ t('table_maintenance_cost_per_poster') }}">{{ "%.2f"|format(plotter_type.maintenance_cost_per_poster or 0) }}</td>
           <td data-label="{{ t('table_setup_fee') }}">{{ "%.2f"|format(plotter_type.setup_fee or 0) }}</td>

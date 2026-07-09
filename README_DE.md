@@ -140,9 +140,9 @@ Die wichtigsten Skripte sind:
 
 ## Aktuelle Version
 
-Aktuelle Anwendungsversion: **0.9.48**
+Aktuelle Anwendungsversion: **0.9.49**
 
-Zu den letzten Aenderungen gehoeren Plotter-Stammdaten und eine Plakatkostenberechnung fuer Plotter-Auftraege.
+Zu den letzten Aenderungen gehoeren Plotter-Stammdaten, Standardpapier je Plotter-Typ und eine Plakatkostenberechnung fuer Plotter-Auftraege.
 
 Das Update-Skript installiert Python-Abhaengigkeiten aus `neofab/requirements.txt`, einschliesslich PyMuPDF zum Rendern der ersten Seite hochgeladener Plakat-PDFs als Thumbnail.
 

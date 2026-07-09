@@ -141,6 +141,15 @@ def _parse_bool(value, default=True):
     return default
 
 
+def _parse_optional_int(value):
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _pdf_escape(text_value: str) -> str:
     text_value = (text_value or "").replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
     return text_value.encode("latin-1", "replace").decode("latin-1")
@@ -3034,6 +3043,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 {
                     "name": plotter_type.name,
                     "description": plotter_type.description or "",
+                    "default_paper": plotter_type.default_paper.name if plotter_type.default_paper else "",
                     "machine_cost_per_poster": plotter_type.machine_cost_per_poster,
                     "maintenance_cost_per_poster": plotter_type.maintenance_cost_per_poster,
                     "setup_fee": plotter_type.setup_fee,
@@ -3074,6 +3084,12 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 continue
             name = (entry.get("name") or "").strip()
             description = (entry.get("description") or "").strip() or None
+            default_paper_name = (entry.get("default_paper") or entry.get("default_paper_name") or "").strip()
+            default_paper = None
+            if default_paper_name:
+                default_paper = PlotterPaper.query.filter(
+                    func.lower(PlotterPaper.name) == default_paper_name.lower()
+                ).first()
             machine_cost = _parse_nonnegative_float(entry.get("machine_cost_per_poster"), 0.0)
             maintenance_cost = _parse_nonnegative_float(entry.get("maintenance_cost_per_poster"), 0.0)
             setup_fee = _parse_nonnegative_float(entry.get("setup_fee"), 0.0)
@@ -3084,6 +3100,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 PlotterType(
                     name=name,
                     description=description,
+                    default_paper_id=default_paper.id if default_paper else None,
                     machine_cost_per_poster=machine_cost,
                     maintenance_cost_per_poster=maintenance_cost,
                     setup_fee=setup_fee,
@@ -3100,14 +3117,17 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
     @roles_required("admin")
     def admin_plotter_type_new():
         trans = t
+        plotter_papers = PlotterPaper.query.filter_by(active=True).order_by(PlotterPaper.name.asc()).all()
         if request.method == "POST":
             name = request.form.get("name", "").strip()
             description = request.form.get("description", "").strip() or None
+            default_paper_id = _parse_optional_int(request.form.get("default_paper_id"))
             machine_cost = _parse_nonnegative_float(request.form.get("machine_cost_per_poster"), 0.0)
             maintenance_cost = _parse_nonnegative_float(request.form.get("maintenance_cost_per_poster"), 0.0)
             setup_fee = _parse_nonnegative_float(request.form.get("setup_fee"), 0.0)
             is_active = bool(request.form.get("is_active"))
             has_errors = False
+            default_paper = None
 
             if not name:
                 flash(trans("flash_plotter_type_required"), "danger")
@@ -3118,11 +3138,17 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             if None in (machine_cost, maintenance_cost, setup_fee):
                 flash(trans("flash_plotter_type_costs_invalid"), "danger")
                 has_errors = True
+            if default_paper_id:
+                default_paper = PlotterPaper.query.filter_by(id=default_paper_id, active=True).first()
+                if not default_paper:
+                    flash(trans("flash_plotter_type_default_paper_invalid"), "danger")
+                    has_errors = True
 
             if not has_errors:
                 plotter_type = PlotterType(
                     name=name,
                     description=description,
+                    default_paper_id=default_paper.id if default_paper else None,
                     machine_cost_per_poster=machine_cost,
                     maintenance_cost_per_poster=maintenance_cost,
                     setup_fee=setup_fee,
@@ -3133,21 +3159,29 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 flash(trans("flash_plotter_type_created"), "success")
                 return redirect(url_for(".admin_plotter_type_list"))
 
-        return render_template("admin_plotter_type_edit.html", plotter_type=None)
+        return render_template("admin_plotter_type_edit.html", plotter_type=None, plotter_papers=plotter_papers)
 
     @bp.route("/plotter-types/<int:plotter_type_id>/edit", methods=["GET", "POST"], endpoint="admin_plotter_type_edit")
     @roles_required("admin")
     def admin_plotter_type_edit(plotter_type_id):
         trans = t
         plotter_type = PlotterType.query.get_or_404(plotter_type_id)
+        plotter_papers = PlotterPaper.query.filter_by(active=True).order_by(PlotterPaper.name.asc()).all()
+        if plotter_type.default_paper_id and not any(paper.id == plotter_type.default_paper_id for paper in plotter_papers):
+            selected_paper = PlotterPaper.query.get(plotter_type.default_paper_id)
+            if selected_paper:
+                plotter_papers.append(selected_paper)
+                plotter_papers.sort(key=lambda item: (item.name or "").lower())
         if request.method == "POST":
             name = request.form.get("name", "").strip()
             description = request.form.get("description", "").strip() or None
+            default_paper_id = _parse_optional_int(request.form.get("default_paper_id"))
             machine_cost = _parse_nonnegative_float(request.form.get("machine_cost_per_poster"), 0.0)
             maintenance_cost = _parse_nonnegative_float(request.form.get("maintenance_cost_per_poster"), 0.0)
             setup_fee = _parse_nonnegative_float(request.form.get("setup_fee"), 0.0)
             is_active = bool(request.form.get("is_active"))
             has_errors = False
+            default_paper = None
 
             if not name:
                 flash(trans("flash_plotter_type_required"), "danger")
@@ -3160,10 +3194,16 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             if None in (machine_cost, maintenance_cost, setup_fee):
                 flash(trans("flash_plotter_type_costs_invalid"), "danger")
                 has_errors = True
+            if default_paper_id:
+                default_paper = PlotterPaper.query.get(default_paper_id)
+                if not default_paper or (not default_paper.active and default_paper.id != plotter_type.default_paper_id):
+                    flash(trans("flash_plotter_type_default_paper_invalid"), "danger")
+                    has_errors = True
 
             if not has_errors:
                 plotter_type.name = name
                 plotter_type.description = description
+                plotter_type.default_paper_id = default_paper.id if default_paper else None
                 plotter_type.machine_cost_per_poster = machine_cost
                 plotter_type.maintenance_cost_per_poster = maintenance_cost
                 plotter_type.setup_fee = setup_fee
@@ -3172,7 +3212,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 flash(trans("flash_plotter_type_updated"), "success")
                 return redirect(url_for(".admin_plotter_type_list"))
 
-        return render_template("admin_plotter_type_edit.html", plotter_type=plotter_type)
+        return render_template("admin_plotter_type_edit.html", plotter_type=plotter_type, plotter_papers=plotter_papers)
 
     @bp.route("/plotter-types/<int:plotter_type_id>/delete", methods=["POST"], endpoint="admin_plotter_type_delete")
     @roles_required("admin")
