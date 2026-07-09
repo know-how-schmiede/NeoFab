@@ -4696,6 +4696,7 @@ def order_detail(order_id):
                         plotter_type_id = selected_plotter_type.id
 
             plotter_paper_id = None
+            selected_plotter_paper = None
             if plotter_paper_raw:
                 try:
                     selected_plotter_paper_id = int(plotter_paper_raw)
@@ -4862,12 +4863,15 @@ def order_detail(order_id):
                 default_paper = PlotterPaper.query.get(selected_plotter_type.default_paper_id)
                 if default_paper and (default_paper.active or default_paper.id == poster_file.plotter_paper_id):
                     plotter_paper_id = default_paper.id
+                    selected_plotter_paper = default_paper
 
             poster_file.note = note[:255] if note else None
             poster_file.quantity = quantity
             poster_file.due_date = due_date
             poster_file.plotter_type_id = plotter_type_id
             poster_file.plotter_paper_id = plotter_paper_id
+            poster_file.plotter_type = selected_plotter_type if plotter_type_id else None
+            poster_file.plotter_paper = selected_plotter_paper if plotter_paper_id else None
             poster_file.poster_size = poster_size
             previous_status = order.status
             sync_plotter_order_status_from_posters(order)

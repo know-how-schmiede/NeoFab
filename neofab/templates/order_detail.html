@@ -976,7 +976,7 @@
                             data-poster-note="{{ poster.note or '' }}"
                             data-poster-quantity="{{ poster.quantity or 1 }}"
                             data-poster-due-date="{{ poster.due_date.strftime('%Y-%m-%d') if poster.due_date else '' }}"
-                            data-poster-size="{{ poster_costs.size }}"
+                            data-poster-size="{{ poster.poster_size or poster_costs.size }}"
                             data-plotter-type-id="{{ poster.plotter_type_id or '' }}"
                             data-plotter-paper-id="{{ poster.plotter_paper_id or '' }}">
                       <i class="bi bi-pencil me-1"></i>{{ t("btn_edit") }}
