@@ -1959,6 +1959,14 @@ def ensure_user_preference_columns():
             statements.append("ALTER TABLE user ADD COLUMN theme_mode VARCHAR(10) NOT NULL DEFAULT 'light'")
         if "status_email_enabled" not in cols:
             statements.append("ALTER TABLE user ADD COLUMN status_email_enabled BOOLEAN NOT NULL DEFAULT 1")
+        if "pickup_hours_enabled" not in cols:
+            statements.append("ALTER TABLE user ADD COLUMN pickup_hours_enabled BOOLEAN NOT NULL DEFAULT 0")
+        if "pickup_hours_text" not in cols:
+            statements.append("ALTER TABLE user ADD COLUMN pickup_hours_text TEXT")
+        if "pickup_contact_enabled" not in cols:
+            statements.append("ALTER TABLE user ADD COLUMN pickup_contact_enabled BOOLEAN NOT NULL DEFAULT 0")
+        if "pickup_contact_text" not in cols:
+            statements.append("ALTER TABLE user ADD COLUMN pickup_contact_text TEXT")
 
         for stmt in statements:
             db.session.execute(text(stmt))
@@ -3528,6 +3536,10 @@ def profile():
         if theme_mode not in {"light", "dark"}:
             theme_mode = "light"
         status_email_enabled = bool(request.form.get("status_email_enabled"))
+        pickup_hours_enabled = bool(request.form.get("pickup_hours_enabled"))
+        pickup_hours_text = (request.form.get("pickup_hours_text") or "").strip() or None
+        pickup_contact_enabled = bool(request.form.get("pickup_contact_enabled"))
+        pickup_contact_text = (request.form.get("pickup_contact_text") or "").strip() or None
 
         # Basisvalidierungen
         if not email:
@@ -3551,6 +3563,16 @@ def profile():
                 user.language = language
                 user.theme_mode = theme_mode
                 user.status_email_enabled = status_email_enabled
+                if user.role in {"admin", "worker"}:
+                    user.pickup_hours_enabled = pickup_hours_enabled
+                    user.pickup_hours_text = pickup_hours_text
+                    user.pickup_contact_enabled = pickup_contact_enabled
+                    user.pickup_contact_text = pickup_contact_text
+                else:
+                    user.pickup_hours_enabled = False
+                    user.pickup_hours_text = None
+                    user.pickup_contact_enabled = False
+                    user.pickup_contact_text = None
 
                 if new_password:
                     user.set_password(new_password)

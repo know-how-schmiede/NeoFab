@@ -1747,6 +1747,10 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     "last_login_at": u.last_login_at.isoformat() if u.last_login_at else "",
                     "is_active": bool(u.is_active),
                     "status_email_enabled": bool(getattr(u, "status_email_enabled", True)),
+                    "pickup_hours_enabled": bool(getattr(u, "pickup_hours_enabled", False)),
+                    "pickup_hours_text": getattr(u, "pickup_hours_text", "") or "",
+                    "pickup_contact_enabled": bool(getattr(u, "pickup_contact_enabled", False)),
+                    "pickup_contact_text": getattr(u, "pickup_contact_text", "") or "",
                     "deleted_at": u.deleted_at.isoformat() if u.deleted_at else "",
                     "password_hash": u.password_hash,
                 }
@@ -1820,6 +1824,16 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 entry.get("status_email_enabled", getattr(user, "status_email_enabled", True)),
                 True,
             )
+            user.pickup_hours_enabled = coerce_bool(
+                entry.get("pickup_hours_enabled", getattr(user, "pickup_hours_enabled", False)),
+                False,
+            )
+            user.pickup_hours_text = (entry.get("pickup_hours_text") or "").strip() or None
+            user.pickup_contact_enabled = coerce_bool(
+                entry.get("pickup_contact_enabled", getattr(user, "pickup_contact_enabled", False)),
+                False,
+            )
+            user.pickup_contact_text = (entry.get("pickup_contact_text") or "").strip() or None
 
             user.salutation = (entry.get("salutation") or "").strip() or None
             user.first_name = (entry.get("first_name") or "").strip() or None

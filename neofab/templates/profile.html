@@ -103,6 +103,72 @@
           </div>
         </div>
 
+        {% if user.role in ['worker', 'admin'] %}
+          <div class="col-12">
+            <hr class="my-1">
+            <div class="fw-semibold">{{ t("profile_pickup_info_section_title") }}</div>
+            <div class="form-text">{{ t("profile_pickup_info_section_help") }}</div>
+          </div>
+
+          <div class="col-12">
+            <div class="form-check">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="pickup_hours_enabled"
+                name="pickup_hours_enabled"
+                {% if user.pickup_hours_enabled %}checked{% endif %}
+              >
+              <label class="form-check-label" for="pickup_hours_enabled">
+                {{ t("profile_pickup_hours_enabled_label") }}
+              </label>
+            </div>
+            <div class="form-text">{{ t("profile_pickup_hours_enabled_help") }}</div>
+          </div>
+
+          <div class="col-12">
+            <label for="pickup_hours_text" class="form-label">
+              {{ t("profile_pickup_hours_text_label") }}
+            </label>
+            <textarea
+              class="form-control"
+              id="pickup_hours_text"
+              name="pickup_hours_text"
+              rows="3"
+              placeholder="{{ t('profile_pickup_hours_text_placeholder') }}"
+            >{{ user.pickup_hours_text or '' }}</textarea>
+          </div>
+
+          <div class="col-12">
+            <div class="form-check">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="pickup_contact_enabled"
+                name="pickup_contact_enabled"
+                {% if user.pickup_contact_enabled %}checked{% endif %}
+              >
+              <label class="form-check-label" for="pickup_contact_enabled">
+                {{ t("profile_pickup_contact_enabled_label") }}
+              </label>
+            </div>
+            <div class="form-text">{{ t("profile_pickup_contact_enabled_help") }}</div>
+          </div>
+
+          <div class="col-12">
+            <label for="pickup_contact_text" class="form-label">
+              {{ t("profile_pickup_contact_text_label") }}
+            </label>
+            <textarea
+              class="form-control"
+              id="pickup_contact_text"
+              name="pickup_contact_text"
+              rows="4"
+              placeholder="{{ t('profile_pickup_contact_text_placeholder') }}"
+            >{{ user.pickup_contact_text or '' }}</textarea>
+          </div>
+        {% endif %}
+
         <!-- Salutation -->
         <div class="col-md-4">
           <label for="salutation" class="form-label">

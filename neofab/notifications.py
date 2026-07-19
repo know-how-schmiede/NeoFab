@@ -196,6 +196,36 @@ def _notification_footer(settings: Mapping[str, object], entry_url: str, languag
     ]
 
 
+def _status_completion_pickup_sections(language: str) -> tuple[str, str]:
+    if language == "de":
+        return ("Abholung und Oeffnungszeiten", "Kontakt und Hinweise")
+    if language == "fr":
+        return ("Retrait et horaires", "Contact et remarques")
+    return ("Pickup and opening hours", "Contact details and notes")
+
+
+def _append_completion_pickup_info(body_lines: list[str], language: str) -> None:
+    if not current_user.is_authenticated:
+        return
+    if getattr(current_user, "role", None) not in {"admin", "worker"}:
+        return
+
+    hours_enabled = bool(getattr(current_user, "pickup_hours_enabled", False))
+    hours_text = (getattr(current_user, "pickup_hours_text", "") or "").strip()
+    contact_enabled = bool(getattr(current_user, "pickup_contact_enabled", False))
+    contact_text = (getattr(current_user, "pickup_contact_text", "") or "").strip()
+
+    if not ((hours_enabled and hours_text) or (contact_enabled and contact_text)):
+        return
+
+    hours_label, contact_label = _status_completion_pickup_sections(language)
+    body_lines.extend(["", "---"])
+    if hours_enabled and hours_text:
+        body_lines.extend([hours_label + ":", hours_text])
+    if contact_enabled and contact_text:
+        body_lines.extend(["", contact_label + ":", contact_text])
+
+
 def _user_display_name(user: User) -> str:
     name = " ".join(
         part.strip()
@@ -916,6 +946,9 @@ def send_order_status_change_notification(
                 ]
                 if order.summary_short:
                     body_lines.extend(["", "Summary:", order.summary_short])
+
+            if new_status == "completed":
+                _append_completion_pickup_info(body_lines, language)
 
             if procurement_articles:
                 if language == "de":

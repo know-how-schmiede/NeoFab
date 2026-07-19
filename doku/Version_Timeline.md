@@ -1,5 +1,13 @@
 # Timeline NeoFab
 
+## Version 0.9.52
+
+Profilseite fuer Admin- und Mitarbeiter-User um zwei schaltbare Textbloecke erweitert: Oeffnungszeiten sowie Kontaktdaten/Hinweise zur Abholung
+Beide Textbloecke koennen einzeln aktiviert werden und werden bei Abschluss-E-Mails zu Auftraegen gut sichtbar eingefuegt
+User-Import und -Export um die neuen Abhol-/Kontaktfelder erweitert
+
+Version in Anwendung auf 0.9.52 angehoben
+
 ## Version 0.9.51
 
 Plakatgroessen werden in der Plakatliste als DIN-Badge direkt neben dem Dateityp angezeigt

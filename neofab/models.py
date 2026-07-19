@@ -20,6 +20,10 @@ class User(UserMixin, db.Model):
     language = db.Column(db.String(5), nullable=False, default="en")
     theme_mode = db.Column(db.String(10), nullable=False, default="light")
     status_email_enabled = db.Column(db.Boolean, nullable=False, default=True)
+    pickup_hours_enabled = db.Column(db.Boolean, nullable=False, default=False)
+    pickup_hours_text = db.Column(db.Text)
+    pickup_contact_enabled = db.Column(db.Boolean, nullable=False, default=False)
+    pickup_contact_text = db.Column(db.Text)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
     deleted_at = db.Column(db.DateTime, nullable=True)
 
