@@ -1681,7 +1681,7 @@
           <div class="col-md-2"><button class="btn btn-primary w-100" type="submit"><i class="bi bi-calendar-plus me-1"></i>{{ t("appointment_submit") }}</button></div>
         </div></form>
       </div></div>
-      {% if appointment_requests %}<div class="card mt-3"><div class="card-header"><h5 class="mb-0">{{ t("appointment_history") }}</h5></div><div class="list-group list-group-flush">{% for item in appointment_requests %}<div class="list-group-item"><div class="d-flex justify-content-between gap-3"><strong>{{ item.requested_at|app_datetime }}</strong><span class="small text-muted">{{ item.user.email }} · {{ item.created_at|app_datetime }}</span></div>{% if item.note %}<div class="mt-1">{{ item.note }}</div>{% endif %}</div>{% endfor %}</div></div>{% endif %}
+      {% if appointment_requests %}<div class="card mt-3"><div class="card-header"><h5 class="mb-0">{{ t("appointment_history") }}</h5></div><div class="list-group list-group-flush">{% for item in appointment_requests %}<div class="list-group-item"><div class="d-flex justify-content-between gap-3"><strong>{{ fmt_datetime(item.requested_at) }}</strong><span class="small text-muted">{{ item.user.email }} · {{ fmt_datetime(item.created_at) }}</span></div>{% if item.note %}<div class="mt-1">{{ item.note }}</div>{% endif %}</div>{% endfor %}</div></div>{% endif %}
     </div>
   {% endif %}
 </div>
