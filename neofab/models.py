@@ -148,6 +148,7 @@ class Order(db.Model):
     poster_files = db.relationship("OrderPosterFile", back_populates="order", lazy=True)
     procurement_articles = db.relationship("OrderProcurementArticle", back_populates="order", lazy=True)
     messages = db.relationship("OrderMessage", back_populates="order", lazy=True)
+    appointment_requests = db.relationship("OrderAppointmentRequest", back_populates="order", lazy=True, order_by="OrderAppointmentRequest.created_at.desc()")
     files = db.relationship("OrderFile", back_populates="order", lazy=True)
     images = db.relationship("OrderImage", back_populates="order", lazy=True)
     videos = db.relationship("OrderVideo", back_populates="order", lazy=True)
@@ -316,6 +317,18 @@ class OrderMessage(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
 
     order = db.relationship("Order", back_populates="messages")
+    user = db.relationship("User")
+
+
+class OrderAppointmentRequest(db.Model):
+    __tablename__ = "order_appointment_requests"
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    requested_at = db.Column(db.DateTime, nullable=False)
+    note = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    order = db.relationship("Order", back_populates="appointment_requests")
     user = db.relationship("User")
 
 

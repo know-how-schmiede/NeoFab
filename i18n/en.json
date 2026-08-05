@@ -974,5 +974,14 @@
   "confirm_delete_article": "Delete this article?",
   "user_status_active": "Active",
   "user_status_deleted": "Deleted",
-  "user_status_inactive": "Inactive"
+  "user_status_inactive": "Inactive",
+  "appointment_tab": "Appointment",
+  "appointment_request_title": "Request an appointment",
+  "appointment_request_hint": "Suggest a preferred appointment for this order.",
+  "appointment_requested_at": "Preferred date and time",
+  "appointment_note": "Message (optional)",
+  "appointment_submit": "Request",
+  "appointment_history": "Previous appointment requests",
+  "flash_appointment_datetime_required": "Please enter a preferred date and time.",
+  "flash_appointment_requested": "The appointment request has been saved."
 }

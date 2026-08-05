@@ -16,7 +16,7 @@
 
 {% block content %}
 {% set active_tab = active_tab|default('general') %}
-{% set visible_tabs = visible_tabs|default(['general', 'project', 'files', 'posters', 'articles', 'print-jobs', 'communication']) %}
+{% set visible_tabs = visible_tabs|default(['general', 'project', 'files', 'posters', 'articles', 'print-jobs', 'communication', 'appointment']) %}
 {% macro communication_panel(container_id, form_action) %}
   <div class="card mt-4">
     <div class="card-header">
@@ -123,6 +123,9 @@
               {{ t("communication_header") }}
             </button>
           </li>
+        {% endif %}
+        {% if 'appointment' in visible_tabs %}
+          <li class="nav-item" role="presentation"><button class="nav-link {% if active_tab == 'appointment' %}active{% endif %}" id="appointment-tab" data-bs-toggle="tab" data-bs-target="#appointment-tab-pane" type="button" role="tab">{{ t("appointment_tab") }}</button></li>
         {% endif %}
       </ul>
 
@@ -1666,6 +1669,19 @@
   {% if 'communication' in visible_tabs %}
     <div class="tab-pane fade {% if active_tab == 'communication' %}show active{% endif %}" id="communication-tab-pane" role="tabpanel" aria-labelledby="communication-tab">
       {{ communication_panel("messagesContainerTab", url_for("order_detail", order_id=order.id, tab="communication")) }}
+    </div>
+  {% endif %}
+  {% if 'appointment' in visible_tabs %}
+    <div class="tab-pane fade {% if active_tab == 'appointment' %}show active{% endif %}" id="appointment-tab-pane" role="tabpanel">
+      <div class="card mt-4"><div class="card-header"><h5 class="mb-0">{{ t("appointment_request_title") }}</h5></div><div class="card-body">
+        <p class="text-muted">{{ t("appointment_request_hint") }}</p>
+        <form method="post" action="{{ url_for('order_detail', order_id=order.id, tab='appointment') }}"><input type="hidden" name="action" value="request_appointment"><div class="row g-3 align-items-end">
+          <div class="col-md-5"><label for="requested_at" class="form-label">{{ t("appointment_requested_at") }}*</label><input class="form-control" type="datetime-local" id="requested_at" name="requested_at" required></div>
+          <div class="col-md-5"><label for="appointment_note" class="form-label">{{ t("appointment_note") }}</label><input class="form-control" id="appointment_note" name="appointment_note" maxlength="1000"></div>
+          <div class="col-md-2"><button class="btn btn-primary w-100" type="submit"><i class="bi bi-calendar-plus me-1"></i>{{ t("appointment_submit") }}</button></div>
+        </div></form>
+      </div></div>
+      {% if appointment_requests %}<div class="card mt-3"><div class="card-header"><h5 class="mb-0">{{ t("appointment_history") }}</h5></div><div class="list-group list-group-flush">{% for item in appointment_requests %}<div class="list-group-item"><div class="d-flex justify-content-between gap-3"><strong>{{ item.requested_at|app_datetime }}</strong><span class="small text-muted">{{ item.user.email }} · {{ item.created_at|app_datetime }}</span></div>{% if item.note %}<div class="mt-1">{{ item.note }}</div>{% endif %}</div>{% endfor %}</div></div>{% endif %}
     </div>
   {% endif %}
 </div>

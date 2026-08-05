@@ -123,6 +123,7 @@ from models import (
     OrderPosterFile,
     OrderProcurementArticle,
     OrderMessage,
+    OrderAppointmentRequest,
     OrderReadStatus,
     Announcement,
     AnnouncementRead,
@@ -669,6 +670,9 @@ def get_visible_order_tabs(order: Order, user: User) -> list[str]:
         tabs = [tab for tab in tabs if tab != "articles"]
     if "general" not in tabs:
         tabs.insert(0, "general")
+    if "appointment" not in tabs:
+        chat_index = tabs.index("communication") + 1 if "communication" in tabs else len(tabs)
+        tabs.insert(chat_index, "appointment")
     return tabs
 
 
@@ -1863,6 +1867,24 @@ def ensure_announcement_reads_table():
         app.logger.exception("Failed to ensure announcement_reads table exists")
 
 
+def ensure_order_appointment_requests_table():
+    """Ensure the persistent appointment-request table exists."""
+    try:
+        db.session.execute(text("""
+            CREATE TABLE IF NOT EXISTS order_appointment_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                requested_at DATETIME NOT NULL,
+                note TEXT,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        db.session.commit()
+    except Exception:
+        app.logger.exception("Failed to ensure order_appointment_requests table exists")
+
+
 def ensure_order_read_status_table():
     """
     Ensures the persistent per-user order read status table exists.
@@ -2182,6 +2204,7 @@ with app.app_context():
     ensure_order_area_schema()
     ensure_order_print_jobs_table()
     ensure_order_read_status_table()
+    ensure_order_appointment_requests_table()
     ensure_announcements_table()
     ensure_announcement_reads_table()
     ensure_order_id_sequence_table()
@@ -4301,6 +4324,23 @@ def order_detail(order_id):
                 flash(trans("flash_message_added"), "success")
                 return redirect(url_for("order_detail", order_id=order.id))
 
+        elif action == "request_appointment":
+            requested_at_raw = request.form.get("requested_at", "").strip()
+            note = request.form.get("appointment_note", "").strip() or None
+            try:
+                requested_at = parse_app_datetime_input(requested_at_raw, load_app_settings(app))
+            except ValueError:
+                requested_at = None
+            if requested_at is None:
+                flash(trans("flash_appointment_datetime_required"), "danger")
+            else:
+                appointment_request = OrderAppointmentRequest(order_id=order.id, user_id=current_user.id, requested_at=requested_at, note=note)
+                db.session.add(appointment_request)
+                db.session.commit()
+                write_audit_log(app, "appointment_requested", user=current_user, details={"order_id": order.id, "requested_at": requested_at.isoformat()})
+                flash(trans("flash_appointment_requested"), "success")
+            return order_detail_redirect("appointment")
+
         # --- 3) Auftrag stornieren -----------------------------------------
         elif action == "cancel_order":
             app.logger.debug(
@@ -5995,6 +6035,7 @@ def order_detail(order_id):
         "order_detail.html",
         order=order,
         messages=messages,
+        appointment_requests=order.appointment_requests,
         order_statuses=status_context["order_statuses"],
         materials=materials,
         colors=colors,

@@ -1,5 +1,13 @@
 # Timeline NeoFab
 
+## Version 0.9.53
+
+Order-Ansicht um den neuen Reiter Termin direkt nach dem Chat erweitert
+User und Mitarbeitende koennen dort eine Terminanfrage mit Wunschdatum, Uhrzeit und optionaler Nachricht starten
+Terminanfragen werden auftragsbezogen gespeichert und im Reiter als Historie angezeigt
+
+Version in Anwendung und README auf 0.9.53 angehoben
+
 ## Version 0.9.52
 
 Profilseite fuer Admin- und Mitarbeiter-User um zwei schaltbare Textbloecke erweitert: Oeffnungszeiten sowie Kontaktdaten/Hinweise zur Abholung
