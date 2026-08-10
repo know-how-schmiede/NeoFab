@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ t("appointment_detail_title") }} - NeoFab{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+  <div>
+    <h1 class="h3 mb-1">{{ t("appointment_detail_title") }}</h1>
+    <a href="{{ url_for('order_detail', order_id=appointment_request.order.id, tab='appointment') }}">#{{ appointment_request.order.id }} · {{ appointment_request.order.title }}</a>
+  </div>
+  <a class="btn btn-outline-secondary" href="{{ url_for('appointments') }}"><i class="bi bi-arrow-left me-1"></i>{{ t("appointments_back") }}</a>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header">{{ t("appointment_request_message") }}</div>
+  <div class="card-body">
+    <div class="small text-muted mb-2">{{ appointment_request.user.email }} · {{ fmt_datetime(appointment_request.created_at) }}</div>
+    <div>{{ appointment_request.note }}</div>
+  </div>
+</div>
+
+<form method="post" class="card">
+  <div class="card-header">{{ t("appointment_response_title") }}</div>
+  <div class="card-body">
+    <div class="mb-3">
+      <label class="form-label" for="response_note">{{ t("appointment_response_note") }}*</label>
+      <textarea class="form-control" id="response_note" name="response_note" rows="3" maxlength="1000" required>{{ appointment_request.response_note or '' }}</textarea>
+    </div>
+    <div class="mb-2 d-flex justify-content-between align-items-center gap-2">
+      <label class="form-label mb-0">{{ t("appointment_proposals") }}*</label>
+      <button class="btn btn-outline-secondary btn-sm" type="button" id="addProposal"><i class="bi bi-plus-circle me-1"></i>{{ t("appointment_add_proposal") }}</button>
+    </div>
+    <p class="small text-muted">{{ t("appointment_proposals_hint") }}</p>
+    <div id="proposalFields" class="vstack gap-2">
+      {% set input_values = proposal_input_values if proposal_input_values else ['', ''] %}
+      {% for value in input_values %}
+        <div class="input-group proposal-row">
+          <input class="form-control" type="datetime-local" name="proposed_times" value="{{ value }}" step="900">
+          <button class="btn btn-outline-danger remove-proposal" type="button" title="{{ t('appointment_remove_proposal') }}"><i class="bi bi-trash"></i></button>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="card-footer text-end"><button class="btn btn-primary" type="submit"><i class="bi bi-check-circle me-1"></i>{{ t("appointment_save_response") }}</button></div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const fields = document.getElementById('proposalFields');
+  document.getElementById('addProposal').addEventListener('click', () => {
+    const row = document.createElement('div');
+    row.className = 'input-group proposal-row';
+    row.innerHTML = '<input class="form-control" type="datetime-local" name="proposed_times" step="900"><button class="btn btn-outline-danger remove-proposal" type="button" title="{{ t("appointment_remove_proposal") }}"><i class="bi bi-trash"></i></button>';
+    fields.appendChild(row);
+  });
+  fields.addEventListener('click', (event) => {
+    const button = event.target.closest('.remove-proposal');
+    if (button && fields.querySelectorAll('.proposal-row').length > 1) button.closest('.proposal-row').remove();
+  });
+})();
+</script>
+{% endblock %}

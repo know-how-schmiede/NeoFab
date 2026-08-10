@@ -1,5 +1,13 @@
 # Timeline NeoFab
 
+## Version 0.9.55
+
+Dashboard zeigt bei Auftraegen mit Terminanfrage einen zusaetzlichen Termin-Badge unter dem Status
+Mitarbeitende und Administratoren koennen Terminanfragen aus der Terminliste beantworten
+Eine Antwort kann eine Nachricht und mehrere Terminvorschlaege im 15-Minuten-Raster enthalten
+
+Version in Anwendung und README auf 0.9.55 angehoben
+
 ## Version 0.9.54
 
 Wunschdatum aus der Terminanfrage entfernt und eine kurze Nachricht als Pflichtfeld eingefuehrt

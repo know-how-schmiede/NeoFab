@@ -1877,9 +1877,19 @@ def ensure_order_appointment_requests_table():
                 user_id INTEGER NOT NULL,
                 requested_at DATETIME NOT NULL,
                 note TEXT,
+                response_note TEXT,
+                proposed_times TEXT,
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
         """))
+        columns = {
+            row[1]
+            for row in db.session.execute(text("PRAGMA table_info(order_appointment_requests)"))
+        }
+        if "response_note" not in columns:
+            db.session.execute(text("ALTER TABLE order_appointment_requests ADD COLUMN response_note TEXT"))
+        if "proposed_times" not in columns:
+            db.session.execute(text("ALTER TABLE order_appointment_requests ADD COLUMN proposed_times TEXT"))
         db.session.commit()
     except Exception:
         app.logger.exception("Failed to ensure order_appointment_requests table exists")
@@ -6527,6 +6537,69 @@ def appointments():
     ]
     return render_template("appointments.html", appointment_requests=appointment_requests)
 
+
+@app.route("/appointments/<int:appointment_id>", methods=["GET", "POST"])
+@login_required
+def appointment_detail(appointment_id):
+    if current_user.role not in {"admin", "worker"}:
+        abort(403)
+
+    appointment_request = OrderAppointmentRequest.query.get_or_404(appointment_id)
+    if not can_view_order(appointment_request.order, current_user):
+        abort(403)
+
+    trans = inject_globals().get("t")
+    settings = load_app_settings(app)
+    if request.method == "POST":
+        response_note = request.form.get("response_note", "").strip()
+        raw_proposals = [
+            value.strip()
+            for value in request.form.getlist("proposed_times")
+            if value.strip()
+        ]
+        proposals = []
+        invalid_proposal = False
+        for raw_value in raw_proposals:
+            try:
+                local_value = datetime.fromisoformat(raw_value)
+                if local_value.minute % 15 or local_value.second or local_value.microsecond:
+                    raise ValueError
+                parsed_value = parse_app_datetime_input(raw_value, settings)
+                if parsed_value and parsed_value not in proposals:
+                    proposals.append(parsed_value)
+            except (TypeError, ValueError):
+                invalid_proposal = True
+
+        if not response_note:
+            flash(trans("flash_appointment_response_message_required"), "danger")
+        elif not proposals:
+            flash(trans("flash_appointment_proposal_required"), "danger")
+        elif invalid_proposal:
+            flash(trans("flash_appointment_proposal_invalid"), "danger")
+        else:
+            proposals.sort()
+            appointment_request.response_note = response_note
+            appointment_request.proposed_times = "\n".join(value.isoformat() for value in proposals)
+            db.session.commit()
+            write_audit_log(
+                app,
+                "appointment_proposed",
+                user=current_user,
+                details={"order_id": appointment_request.order_id, "appointment_id": appointment_request.id},
+            )
+            flash(trans("flash_appointment_response_saved"), "success")
+            return redirect(url_for("appointment_detail", appointment_id=appointment_request.id))
+
+    proposal_input_values = [
+        to_app_datetime(value, settings).strftime("%Y-%m-%dT%H:%M")
+        for value in appointment_request.proposal_datetimes()
+    ]
+    return render_template(
+        "appointment_detail.html",
+        appointment_request=appointment_request,
+        proposal_input_values=proposal_input_values,
+    )
+
 @app.route("/dashboard", methods=["GET", "POST"])
 @login_required
 def dashboard():
@@ -6923,6 +6996,18 @@ def dashboard():
 
     app.logger.debug(f"[dashboard] file_counts: {file_counts}")
 
+    appointment_order_ids = set()
+    if order_ids:
+        appointment_order_ids = {
+            order_id
+            for order_id, in (
+                db.session.query(OrderAppointmentRequest.order_id)
+                .filter(OrderAppointmentRequest.order_id.in_(order_ids))
+                .distinct()
+                .all()
+            )
+        }
+
     print_job_counts = {}
     if print_order_ids:
         print_job_rows = (
@@ -7007,6 +7092,7 @@ def dashboard():
         file_counts=file_counts,
         print_job_counts=print_job_counts,
         plotter_order_ids=set(plotter_order_ids),
+        appointment_order_ids=appointment_order_ids,
         announcements_unread=announcements_unread,
         announcements_read=announcements_read,
         announcement_reads=read_by_announcement,

@@ -989,5 +989,20 @@
   "flash_appointment_requested": "La demande de rendez-vous a été enregistrée.",
   "appointments_title": "Rendez-vous",
   "appointments_hint": "Demandes de rendez-vous pour toutes les commandes auxquelles vous avez accès.",
-  "appointments_empty": "Il n'y a aucune demande de rendez-vous."
+  "appointments_empty": "Il n'y a aucune demande de rendez-vous.",
+  "appointment_badge": "Rendez-vous",
+  "appointment_detail_title": "Modifier la demande de rendez-vous",
+  "appointments_back": "Retour aux rendez-vous",
+  "appointment_request_message": "Message de la demande",
+  "appointment_response_title": "Réponse et propositions de rendez-vous",
+  "appointment_response_note": "Message",
+  "appointment_proposals": "Propositions de rendez-vous",
+  "appointment_proposals_hint": "Les horaires peuvent uniquement être sélectionnés par intervalles de 15 minutes.",
+  "appointment_add_proposal": "Ajouter une proposition",
+  "appointment_remove_proposal": "Supprimer la proposition",
+  "appointment_save_response": "Enregistrer la réponse",
+  "flash_appointment_response_message_required": "Veuillez saisir un message pour la demande de rendez-vous.",
+  "flash_appointment_proposal_required": "Veuillez saisir au moins une proposition de rendez-vous.",
+  "flash_appointment_proposal_invalid": "Les horaires doivent respecter des intervalles de 15 minutes.",
+  "flash_appointment_response_saved": "La réponse et les propositions ont été enregistrées."
 }

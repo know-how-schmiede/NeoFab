@@ -73,6 +73,9 @@
         {% set status_text = t('posters_status_printed') %}
       {% endif %}
       <span class="badge {{ status_style }}">{{ status_text }}</span>
+      {% if o.id in appointment_order_ids %}
+        <div class="mt-1"><span class="badge bg-info text-dark"><i class="bi bi-calendar-event me-1"></i>{{ t("appointment_badge") }}</span></div>
+      {% endif %}
     </td>
   {% elif column.key == 'owner' %}
     <td data-label="{{ column.label }}">

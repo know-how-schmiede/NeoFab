@@ -327,9 +327,20 @@ class OrderAppointmentRequest(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     requested_at = db.Column(db.DateTime, nullable=False)
     note = db.Column(db.Text)
+    response_note = db.Column(db.Text)
+    proposed_times = db.Column(db.Text)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     order = db.relationship("Order", back_populates="appointment_requests")
     user = db.relationship("User")
+
+    def proposal_datetimes(self):
+        values = []
+        for raw_value in (self.proposed_times or "").splitlines():
+            try:
+                values.append(datetime.fromisoformat(raw_value))
+            except (TypeError, ValueError):
+                continue
+        return values
 
 
 # --- OrderReadStatus (wann hat welcher User den Auftrag zuletzt gelesen) -----

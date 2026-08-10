@@ -989,5 +989,20 @@
   "flash_appointment_requested": "The appointment request has been saved.",
   "appointments_title": "Appointments",
   "appointments_hint": "Appointment requests for all orders you can view.",
-  "appointments_empty": "There are no appointment requests."
+  "appointments_empty": "There are no appointment requests.",
+  "appointment_badge": "Appointment",
+  "appointment_detail_title": "Edit appointment request",
+  "appointments_back": "Back to appointments",
+  "appointment_request_message": "Appointment request message",
+  "appointment_response_title": "Response and proposed times",
+  "appointment_response_note": "Message",
+  "appointment_proposals": "Proposed times",
+  "appointment_proposals_hint": "Times can only be selected in 15-minute increments.",
+  "appointment_add_proposal": "Add proposal",
+  "appointment_remove_proposal": "Remove proposal",
+  "appointment_save_response": "Save response",
+  "flash_appointment_response_message_required": "Please enter a message for the appointment request.",
+  "flash_appointment_proposal_required": "Please enter at least one proposed time.",
+  "flash_appointment_proposal_invalid": "Proposed times must use 15-minute increments.",
+  "flash_appointment_response_saved": "The response and proposed times have been saved."
 }

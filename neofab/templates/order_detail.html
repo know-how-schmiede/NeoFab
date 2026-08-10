@@ -1680,7 +1680,7 @@
           <div class="col-md-2"><button class="btn btn-primary w-100" type="submit"><i class="bi bi-calendar-plus me-1"></i>{{ t("appointment_submit") }}</button></div>
         </div></form>
       </div></div>
-      {% if appointment_requests %}<div class="card mt-3"><div class="card-header"><h5 class="mb-0">{{ t("appointment_history") }}</h5></div><div class="list-group list-group-flush">{% for item in appointment_requests %}<div class="list-group-item"><div class="small text-muted">{{ item.user.email }} · {{ fmt_datetime(item.created_at) }}</div>{% if item.note %}<div class="mt-1">{{ item.note }}</div>{% endif %}</div>{% endfor %}</div></div>{% endif %}
+      {% if appointment_requests %}<div class="card mt-3"><div class="card-header"><h5 class="mb-0">{{ t("appointment_history") }}</h5></div><div class="list-group list-group-flush">{% for item in appointment_requests %}<div class="list-group-item"><div class="small text-muted">{{ item.user.email }} · {{ fmt_datetime(item.created_at) }}</div>{% if item.note %}<div class="mt-1">{{ item.note }}</div>{% endif %}{% if item.response_note or item.proposal_datetimes() %}<div class="border-start border-info ps-3 mt-3"><div class="fw-semibold">{{ t("appointment_response_title") }}</div>{% if item.response_note %}<div>{{ item.response_note }}</div>{% endif %}{% if item.proposal_datetimes() %}<div class="d-flex flex-wrap gap-2 mt-2">{% for proposal in item.proposal_datetimes() %}<span class="badge bg-light text-dark border">{{ fmt_datetime(proposal) }}</span>{% endfor %}</div>{% endif %}</div>{% endif %}</div>{% endfor %}</div></div>{% endif %}
     </div>
   {% endif %}
 </div>

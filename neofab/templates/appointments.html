@@ -9,7 +9,7 @@
   {% if appointment_requests %}
     <div class="list-group list-group-flush">
       {% for item in appointment_requests %}
-        <a class="list-group-item list-group-item-action" href="{{ url_for('order_detail', order_id=item.order.id, tab='appointment') }}">
+        <a class="list-group-item list-group-item-action" href="{{ url_for('appointment_detail', appointment_id=item.id) }}">
           <div class="d-flex flex-column flex-md-row justify-content-between gap-2">
             <div><strong>#{{ item.order.id }} · {{ item.order.title }}</strong>{% if item.note %}<div class="mt-1">{{ item.note }}</div>{% endif %}</div>
             <div class="small text-muted text-md-end flex-shrink-0"><div>{{ item.user.email }}</div><div>{{ fmt_datetime(item.created_at) }}</div></div>

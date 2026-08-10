@@ -987,5 +987,20 @@
   "flash_appointment_requested": "Die Terminanfrage wurde gespeichert.",
   "appointments_title": "Termine",
   "appointments_hint": "Terminanfragen zu allen Aufträgen, die du sehen kannst.",
-  "appointments_empty": "Es liegen keine Terminanfragen vor."
+  "appointments_empty": "Es liegen keine Terminanfragen vor.",
+  "appointment_badge": "Termin",
+  "appointment_detail_title": "Terminanfrage bearbeiten",
+  "appointments_back": "Zur Terminliste",
+  "appointment_request_message": "Nachricht der Terminanfrage",
+  "appointment_response_title": "Antwort und Terminvorschläge",
+  "appointment_response_note": "Nachricht",
+  "appointment_proposals": "Terminvorschläge",
+  "appointment_proposals_hint": "Die Uhrzeit kann ausschließlich im 15-Minuten-Raster gewählt werden.",
+  "appointment_add_proposal": "Vorschlag hinzufügen",
+  "appointment_remove_proposal": "Vorschlag entfernen",
+  "appointment_save_response": "Antwort speichern",
+  "flash_appointment_response_message_required": "Bitte gib eine Nachricht zur Terminanfrage ein.",
+  "flash_appointment_proposal_required": "Bitte gib mindestens einen Terminvorschlag an.",
+  "flash_appointment_proposal_invalid": "Terminvorschläge müssen im 15-Minuten-Raster liegen.",
+  "flash_appointment_response_saved": "Antwort und Terminvorschläge wurden gespeichert."
 }
