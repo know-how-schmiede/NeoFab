@@ -4325,19 +4325,21 @@ def order_detail(order_id):
                 return redirect(url_for("order_detail", order_id=order.id))
 
         elif action == "request_appointment":
-            requested_at_raw = request.form.get("requested_at", "").strip()
-            note = request.form.get("appointment_note", "").strip() or None
-            try:
-                requested_at = parse_app_datetime_input(requested_at_raw, load_app_settings(app))
-            except ValueError:
-                requested_at = None
-            if requested_at is None:
-                flash(trans("flash_appointment_datetime_required"), "danger")
+            note = request.form.get("appointment_note", "").strip()
+            if not note:
+                flash(trans("flash_appointment_message_required"), "danger")
             else:
-                appointment_request = OrderAppointmentRequest(order_id=order.id, user_id=current_user.id, requested_at=requested_at, note=note)
+                # Keep requested_at populated for compatibility with databases from
+                # 0.9.53. The request itself no longer contains a preferred date.
+                appointment_request = OrderAppointmentRequest(
+                    order_id=order.id,
+                    user_id=current_user.id,
+                    requested_at=datetime.utcnow(),
+                    note=note,
+                )
                 db.session.add(appointment_request)
                 db.session.commit()
-                write_audit_log(app, "appointment_requested", user=current_user, details={"order_id": order.id, "requested_at": requested_at.isoformat()})
+                write_audit_log(app, "appointment_requested", user=current_user, details={"order_id": order.id})
                 flash(trans("flash_appointment_requested"), "success")
             return order_detail_redirect("appointment")
 
@@ -6505,6 +6507,25 @@ def set_file_color(file_id):
 # ============================================================
 # Dashboard
 # ============================================================
+
+@app.route("/appointments")
+@login_required
+def appointments():
+    """List appointment requests for every order visible to staff."""
+    if current_user.role not in {"admin", "worker"}:
+        abort(403)
+
+    appointment_requests = (
+        OrderAppointmentRequest.query
+        .join(Order)
+        .order_by(OrderAppointmentRequest.created_at.desc())
+        .all()
+    )
+    appointment_requests = [
+        item for item in appointment_requests
+        if can_view_order(item.order, current_user)
+    ]
+    return render_template("appointments.html", appointment_requests=appointment_requests)
 
 @app.route("/dashboard", methods=["GET", "POST"])
 @login_required

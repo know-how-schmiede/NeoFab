@@ -31,6 +31,7 @@
   {% set endpoint = request.endpoint or '' %}
   {% set is_dashboard = endpoint == 'dashboard' %}
   {% set is_new_order = endpoint == 'new_order' %}
+  {% set is_appointments = endpoint == 'appointments' %}
   {% set is_tutorials = endpoint == 'tutorials' %}
   {% set is_admin = endpoint.startswith('admin.') %}
   {% set is_profile = endpoint == 'profile' %}
@@ -78,6 +79,16 @@
                 {{ t("nav_new_order") }}
               </a>
             </li>
+            {% if current_user.role in ['admin', 'worker'] %}
+            <li class="nav-item">
+              <a href="{{ url_for('appointments') }}"
+                 class="nav-link {% if is_appointments %}active{% endif %}"
+                 {% if is_appointments %}aria-current="page"{% endif %}>
+                <i class="bi bi-calendar-event me-1"></i>
+                {{ t("nav_appointments") }}
+              </a>
+            </li>
+            {% endif %}
             <li class="nav-item">
               <a href="{{ url_for('tutorials') }}"
                  class="nav-link {% if is_tutorials %}active{% endif %}"

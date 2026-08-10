@@ -786,6 +786,7 @@
   "nav_login": "Login",
   "nav_logout": "Logout",
   "nav_new_order": "New Order",
+  "nav_appointments": "Appointments",
   "nav_tutorials": "Tutorials",
   "nav_profile": "My Profile",
   "nav_theme": "Theme",
@@ -977,11 +978,16 @@
   "user_status_inactive": "Inactive",
   "appointment_tab": "Appointment",
   "appointment_request_title": "Request an appointment",
-  "appointment_request_hint": "Suggest a preferred appointment for this order.",
+  "appointment_request_hint": "Briefly describe what the appointment for this order should be about.",
   "appointment_requested_at": "Preferred date and time",
-  "appointment_note": "Message (optional)",
+  "appointment_note": "Short message",
+  "appointment_note_placeholder": "e.g. collecting parts, machine training, construction help or material selection",
   "appointment_submit": "Request",
   "appointment_history": "Previous appointment requests",
   "flash_appointment_datetime_required": "Please enter a preferred date and time.",
-  "flash_appointment_requested": "The appointment request has been saved."
+  "flash_appointment_message_required": "Please briefly describe what the appointment should be about.",
+  "flash_appointment_requested": "The appointment request has been saved.",
+  "appointments_title": "Appointments",
+  "appointments_hint": "Appointment requests for all orders you can view.",
+  "appointments_empty": "There are no appointment requests."
 }

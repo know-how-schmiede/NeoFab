@@ -745,6 +745,7 @@
   "nav_login": "Connexion",
   "nav_logout": "Déconnexion",
   "nav_new_order": "Nouvelle commande",
+  "nav_appointments": "Rendez-vous",
   "nav_tutorials": "Tutoriels",
   "nav_profile": "Mon profil",
   "nav_theme": "Thème",
@@ -977,11 +978,16 @@
   "flash_email_test_sent": "Email de test envoy? ? {recipient}.",
   "appointment_tab": "Rendez-vous",
   "appointment_request_title": "Demander un rendez-vous",
-  "appointment_request_hint": "Proposez une date et une heure pour cette commande.",
+  "appointment_request_hint": "Décrivez brièvement l'objet du rendez-vous concernant cette commande.",
   "appointment_requested_at": "Date et heure souhaitées",
-  "appointment_note": "Message (facultatif)",
+  "appointment_note": "Message court",
+  "appointment_note_placeholder": "p. ex. retrait de pièces, initiation à une machine, aide à la conception ou choix du matériau",
   "appointment_submit": "Demander",
   "appointment_history": "Demandes de rendez-vous précédentes",
   "flash_appointment_datetime_required": "Veuillez indiquer une date et une heure.",
-  "flash_appointment_requested": "La demande de rendez-vous a été enregistrée."
+  "flash_appointment_message_required": "Veuillez décrire brièvement l'objet du rendez-vous.",
+  "flash_appointment_requested": "La demande de rendez-vous a été enregistrée.",
+  "appointments_title": "Rendez-vous",
+  "appointments_hint": "Demandes de rendez-vous pour toutes les commandes auxquelles vous avez accès.",
+  "appointments_empty": "Il n'y a aucune demande de rendez-vous."
 }

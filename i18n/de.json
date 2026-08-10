@@ -743,6 +743,7 @@
   "nav_login": "Login",
   "nav_logout": "Logout",
   "nav_new_order": "Neuer Auftrag",
+  "nav_appointments": "Termine",
   "nav_tutorials": "Tutorials",
   "nav_profile": "Mein Profil",
   "nav_theme": "Theme",
@@ -975,11 +976,16 @@
   "flash_email_test_sent": "Testmail gesendet an {recipient}.",
   "appointment_tab": "Termin",
   "appointment_request_title": "Terminanfrage starten",
-  "appointment_request_hint": "Schlage einen Wunschtermin für diesen Auftrag vor.",
+  "appointment_request_hint": "Beschreibe kurz, worum es bei dem Termin zu diesem Auftrag gehen soll.",
   "appointment_requested_at": "Wunschdatum und Uhrzeit",
-  "appointment_note": "Nachricht (optional)",
+  "appointment_note": "Kurze Nachricht",
+  "appointment_note_placeholder": "z. B. Abholung von Teilen, Einweisung in eine Maschine, Hilfe bei der Konstruktion oder Materialauswahl",
   "appointment_submit": "Anfragen",
   "appointment_history": "Bisherige Terminanfragen",
   "flash_appointment_datetime_required": "Bitte Wunschdatum und Uhrzeit angeben.",
-  "flash_appointment_requested": "Die Terminanfrage wurde gespeichert."
+  "flash_appointment_message_required": "Bitte beschreibe kurz, worum es bei dem Termin gehen soll.",
+  "flash_appointment_requested": "Die Terminanfrage wurde gespeichert.",
+  "appointments_title": "Termine",
+  "appointments_hint": "Terminanfragen zu allen Aufträgen, die du sehen kannst.",
+  "appointments_empty": "Es liegen keine Terminanfragen vor."
 }

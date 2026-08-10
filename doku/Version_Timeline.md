@@ -1,5 +1,13 @@
 # Timeline NeoFab
 
+## Version 0.9.54
+
+Wunschdatum aus der Terminanfrage entfernt und eine kurze Nachricht als Pflichtfeld eingefuehrt
+Neue zentrale Terminliste fuer Mitarbeitende und Administratoren in der Hauptnavigation ergaenzt
+Die Terminliste zeigt nur Anfragen zu Auftraegen, fuer die der jeweilige Mitarbeiter Zugriffsrechte besitzt
+
+Version in Anwendung und README auf 0.9.54 angehoben
+
 ## Version 0.9.53
 
 Order-Ansicht um den neuen Reiter Termin direkt nach dem Chat erweitert
