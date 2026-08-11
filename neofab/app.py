@@ -4374,8 +4374,6 @@ def order_detail(order_id):
             return order_detail_redirect("appointment")
 
         elif action == "select_appointment_time":
-            if order.user_id != current_user.id:
-                abort(403)
             selection_value = request.form.get("selected_time", "")
             try:
                 appointment_id = int(request.form.get("appointment_id", "0"))
@@ -4387,6 +4385,8 @@ def order_detail(order_id):
                 id=appointment_id,
                 order_id=order.id,
             ).first()
+            if appointment_request and appointment_request.user_id != current_user.id:
+                abort(403)
             if not appointment_request or (selection_value != "no_proposal_possible" and selected_time not in appointment_request.proposal_datetimes()):
                 flash(trans("flash_appointment_selection_invalid"), "danger")
             else:
