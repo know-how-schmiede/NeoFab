@@ -19,6 +19,8 @@
 
 {% if appointment_request.confirmed_at and appointment_request.selected_time %}
 <div class="alert alert-success"><i class="bi bi-calendar-check fs-5 me-2"></i><strong>{{ t("appointment_confirmed_label") }}:</strong> {{ fmt_datetime(appointment_request.selected_time) }}</div>
+{% elif appointment_request.no_proposal_possible %}
+<div class="alert alert-warning"><i class="bi bi-calendar-x me-1"></i>{{ t("appointment_no_proposal_selected") }}</div>
 {% elif appointment_request.selected_time %}
 <div class="alert alert-warning d-flex flex-wrap justify-content-between align-items-center gap-2">
   <div><i class="bi bi-calendar-event me-1"></i><strong>{{ t("appointment_user_selection") }}:</strong> {{ fmt_datetime(appointment_request.selected_time) }}</div>

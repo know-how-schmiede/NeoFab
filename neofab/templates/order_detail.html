@@ -1706,11 +1706,15 @@
                       {{ fmt_datetime(proposal) }} · {{ t('appointment_duration') }}: {{ t('appointment_duration_' ~ item.proposal_duration_for(loop.index0)) }}
                     </label>
                     {% endfor %}
+                    <label class="form-check border border-warning rounded p-2 ps-5 mb-0">
+                      <input class="form-check-input" type="radio" name="selected_time" value="no_proposal_possible" {% if item.no_proposal_possible %}checked{% endif %} required>
+                      {{ t("appointment_no_proposal_possible") }}
+                    </label>
                   </div>
                   <button class="btn btn-primary btn-sm mt-2" type="submit">{{ t("appointment_select_proposal") }}</button>
                 </form>
                 {% else %}
-                <div class="d-flex flex-wrap gap-2 mt-2">{% for proposal in item.proposal_datetimes() %}<span class="badge {% if item.selected_time == proposal %}bg-warning text-dark{% else %}bg-light text-dark border{% endif %}">{{ fmt_datetime(proposal) }} · {{ t('appointment_duration_' ~ item.proposal_duration_for(loop.index0)) }}</span>{% endfor %}</div>
+                {% if item.no_proposal_possible %}<div class="alert alert-warning py-2 mt-2 mb-0">{{ t("appointment_no_proposal_selected") }}</div>{% else %}<div class="d-flex flex-wrap gap-2 mt-2">{% for proposal in item.proposal_datetimes() %}<span class="badge {% if item.selected_time == proposal %}bg-warning text-dark{% else %}bg-light text-dark border{% endif %}">{{ fmt_datetime(proposal) }} · {{ t('appointment_duration_' ~ item.proposal_duration_for(loop.index0)) }}</span>{% endfor %}</div>{% endif %}
                 {% endif %}
               {% endif %}
             </div>

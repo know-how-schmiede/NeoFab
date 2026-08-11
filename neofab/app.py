@@ -1883,6 +1883,7 @@ def ensure_order_appointment_requests_table():
                 proposed_times TEXT,
                 proposed_durations TEXT,
                 selected_time DATETIME,
+                no_proposal_possible BOOLEAN NOT NULL DEFAULT 0,
                 confirmed_at DATETIME,
                 confirmed_by_user_id INTEGER,
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -1902,6 +1903,8 @@ def ensure_order_appointment_requests_table():
             db.session.execute(text("ALTER TABLE order_appointment_requests ADD COLUMN proposed_durations TEXT"))
         if "selected_time" not in columns:
             db.session.execute(text("ALTER TABLE order_appointment_requests ADD COLUMN selected_time DATETIME"))
+        if "no_proposal_possible" not in columns:
+            db.session.execute(text("ALTER TABLE order_appointment_requests ADD COLUMN no_proposal_possible BOOLEAN NOT NULL DEFAULT 0"))
         if "confirmed_at" not in columns:
             db.session.execute(text("ALTER TABLE order_appointment_requests ADD COLUMN confirmed_at DATETIME"))
         if "confirmed_by_user_id" not in columns:
@@ -4372,9 +4375,10 @@ def order_detail(order_id):
         elif action == "select_appointment_time":
             if order.user_id != current_user.id:
                 abort(403)
+            selection_value = request.form.get("selected_time", "")
             try:
                 appointment_id = int(request.form.get("appointment_id", "0"))
-                selected_time = datetime.fromisoformat(request.form.get("selected_time", ""))
+                selected_time = None if selection_value == "no_proposal_possible" else datetime.fromisoformat(selection_value)
             except (TypeError, ValueError):
                 appointment_id = 0
                 selected_time = None
@@ -4382,15 +4386,16 @@ def order_detail(order_id):
                 id=appointment_id,
                 order_id=order.id,
             ).first()
-            if not appointment_request or selected_time not in appointment_request.proposal_datetimes():
+            if not appointment_request or (selection_value != "no_proposal_possible" and selected_time not in appointment_request.proposal_datetimes()):
                 flash(trans("flash_appointment_selection_invalid"), "danger")
             else:
                 appointment_request.selected_time = selected_time
+                appointment_request.no_proposal_possible = selection_value == "no_proposal_possible"
                 appointment_request.confirmed_at = None
                 appointment_request.confirmed_by_user_id = None
                 db.session.commit()
                 write_audit_log(app, "appointment_selected", user=current_user, details={"order_id": order.id, "appointment_id": appointment_request.id})
-                flash(trans("flash_appointment_selection_saved"), "success")
+                flash(trans("flash_appointment_no_proposal_saved") if appointment_request.no_proposal_possible else trans("flash_appointment_selection_saved"), "success")
             return order_detail_redirect("appointment")
 
         # --- 3) Auftrag stornieren -----------------------------------------
@@ -6642,6 +6647,7 @@ def appointment_detail(appointment_id):
             appointment_request.response_by_user_id = current_user.id
             appointment_request.proposed_times = "\n".join(value.isoformat() for value in proposals)
             appointment_request.proposed_durations = "\n".join(proposal_durations)
+            appointment_request.no_proposal_possible = False
             if appointment_request.selected_time not in proposals:
                 appointment_request.selected_time = None
                 appointment_request.confirmed_at = None

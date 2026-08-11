@@ -1,5 +1,12 @@
 # Timeline NeoFab
 
+## Version 0.9.59
+
+Auftraggeber koennen angeben, dass keiner der vorgeschlagenen Termine moeglich ist
+Diese Rueckmeldung wird gespeichert und in der Terminverwaltung angezeigt
+
+Version in Anwendung und README auf 0.9.59 angehoben
+
 ## Version 0.9.58
 
 Terminvorschlaege zeigen Tabellenueberschriften und den Wochentag zum ausgewaehlten Datum

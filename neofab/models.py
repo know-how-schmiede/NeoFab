@@ -332,6 +332,7 @@ class OrderAppointmentRequest(db.Model):
     proposed_times = db.Column(db.Text)
     proposed_durations = db.Column(db.Text)
     selected_time = db.Column(db.DateTime)
+    no_proposal_possible = db.Column(db.Boolean, nullable=False, default=False)
     confirmed_at = db.Column(db.DateTime)
     confirmed_by_user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
