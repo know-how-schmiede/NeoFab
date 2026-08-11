@@ -530,6 +530,95 @@ def _send_message(settings: Mapping[str, object], msg: EmailMessage) -> None:
         server.send_message(msg, from_addr=smtp_user or smtp_from)
 
 
+def send_appointment_confirmation_notification(app, appointment_request) -> bool:
+    """Notify appointment participants and attach a calendar event."""
+    try:
+        settings = load_app_settings(app, force_reload=True)
+        smtp_host = settings.get("smtp_host")
+        smtp_port = settings.get("smtp_port")
+        smtp_from = settings.get("smtp_from_address")
+        selected_time = getattr(appointment_request, "selected_time", None)
+        order = getattr(appointment_request, "order", None)
+        if not smtp_host or not smtp_port or not smtp_from or not selected_time or not order:
+            app.logger.info("SMTP or appointment data missing, skipping appointment confirmation email.")
+            return False
+
+        recipients, recipient_languages = _collect_order_recipients(order, include_owner=True)
+        seen = {email.lower() for email in recipients}
+        for participant in (
+            getattr(appointment_request, "response_by", None),
+            getattr(appointment_request, "confirmed_by", None),
+        ):
+            if not participant:
+                continue
+            language = _normalize_language(getattr(participant, "language", None))
+            for email in _split_email_recipients(getattr(participant, "email", None)):
+                if email.lower() not in seen:
+                    seen.add(email.lower())
+                    recipients.append(email)
+                    recipient_languages[email.lower()] = language
+        if not recipients:
+            return False
+
+        try:
+            order_url = url_for("order_detail", order_id=order.id, tab="appointment", _external=True)
+        except Exception:
+            order_url = url_for("order_detail", order_id=order.id, tab="appointment")
+
+        start_utc = selected_time.strftime("%Y%m%dT%H%M%SZ")
+        stamp_utc = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+        title = f"NeoFab Termin #{order.id}: {order.title}"
+
+        def ical_escape(value: str) -> str:
+            return str(value).replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
+
+        ical_content = "\r\n".join([
+            "BEGIN:VCALENDAR",
+            "VERSION:2.0",
+            "PRODID:-//NeoFab//Appointment//DE",
+            "CALSCALE:GREGORIAN",
+            "METHOD:PUBLISH",
+            "BEGIN:VEVENT",
+            f"UID:neofab-appointment-{appointment_request.id}@neofab",
+            f"DTSTAMP:{stamp_utc}",
+            f"DTSTART:{start_utc}",
+            f"SUMMARY:{ical_escape(title)}",
+            f"DESCRIPTION:{ical_escape((appointment_request.response_note or '') + ' ' + order_url)}",
+            f"URL:{order_url}",
+            "STATUS:CONFIRMED",
+            "END:VEVENT",
+            "END:VCALENDAR",
+            "",
+        ])
+
+        for language, lang_recipients in _group_recipients_by_language(recipients, recipient_languages).items():
+            msg = EmailMessage()
+            if language == "de":
+                msg["Subject"] = f"NeoFab: Termin bestätigt – Auftrag #{order.id}"
+                body = ["Hallo,", "", "der Termin wurde verbindlich bestätigt.", "", f"Auftrag: #{order.id} · {order.title}", f"Termin: {_format_app_datetime(selected_time, settings)}", f"Nachricht: {appointment_request.response_note or '-'}", "", f"Auftrag öffnen: {order_url}"]
+            elif language == "fr":
+                msg["Subject"] = f"NeoFab : Rendez-vous confirmé – commande #{order.id}"
+                body = ["Bonjour,", "", "le rendez-vous a été confirmé.", "", f"Commande : #{order.id} · {order.title}", f"Rendez-vous : {_format_app_datetime(selected_time, settings)}", f"Message : {appointment_request.response_note or '-'}", "", f"Ouvrir la commande : {order_url}"]
+            else:
+                msg["Subject"] = f"NeoFab: Appointment confirmed – order #{order.id}"
+                body = ["Hello,", "", "the appointment has been confirmed.", "", f"Order: #{order.id} · {order.title}", f"Appointment: {_format_app_datetime(selected_time, settings)}", f"Message: {appointment_request.response_note or '-'}", "", f"Open order: {order_url}"]
+            msg["From"] = smtp_from
+            msg["To"] = ", ".join(lang_recipients)
+            msg.set_content("\n".join(body + _notification_footer(settings, order_url, language)))
+            msg.add_attachment(
+                ical_content.encode("utf-8"),
+                maintype="text",
+                subtype="calendar",
+                filename=f"neofab-termin-{order.id}.ics",
+                params={"method": "PUBLISH", "charset": "utf-8"},
+            )
+            _send_message(settings, msg)
+        return True
+    except Exception:
+        app.logger.exception("Failed to send appointment confirmation notification.")
+        return False
+
+
 def send_user_welcome_notification(app, new_user: User, source: str = "user_created") -> bool:
     """Notify the new user and admins that a user account has been created."""
     try:

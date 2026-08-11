@@ -1004,5 +1004,14 @@
   "flash_appointment_response_message_required": "Veuillez saisir un message pour la demande de rendez-vous.",
   "flash_appointment_proposal_required": "Veuillez saisir au moins une proposition de rendez-vous.",
   "flash_appointment_proposal_invalid": "Les horaires doivent respecter des intervalles de 15 minutes.",
-  "flash_appointment_response_saved": "La réponse et les propositions ont été enregistrées."
+  "flash_appointment_response_saved": "La réponse et les propositions ont été enregistrées.",
+  "appointment_select_proposal": "Sélectionner cet horaire",
+  "appointment_user_selection": "Sélectionné par l'utilisateur",
+  "appointment_waiting_for_selection": "L'utilisateur n'a pas encore sélectionné de proposition.",
+  "appointment_confirm_final": "Confirmer définitivement",
+  "appointment_confirmed_label": "Rendez-vous confirmé",
+  "flash_appointment_selection_invalid": "La proposition sélectionnée n'est pas valide.",
+  "flash_appointment_selection_saved": "La proposition a été sélectionnée et attend une confirmation.",
+  "flash_appointment_confirmation_selection_required": "L'utilisateur doit sélectionner une proposition avant la confirmation.",
+  "flash_appointment_confirmed": "Le rendez-vous a été confirmé. Les participants ont été informés par e-mail."
 }

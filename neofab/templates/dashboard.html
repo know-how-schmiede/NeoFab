@@ -73,7 +73,10 @@
         {% set status_text = t('posters_status_printed') %}
       {% endif %}
       <span class="badge {{ status_style }}">{{ status_text }}</span>
-      {% if o.id in appointment_order_ids %}
+      {% if confirmed_appointments.get(o.id) %}
+        {% set confirmed_appointment = confirmed_appointments.get(o.id) %}
+        <div class="mt-1"><span class="badge bg-success"><i class="bi bi-calendar-check me-1"></i>{{ fmt_datetime(confirmed_appointment.selected_time) }}</span></div>
+      {% elif o.id in appointment_order_ids %}
         <div class="mt-1"><span class="badge bg-info text-dark"><i class="bi bi-calendar-event me-1"></i>{{ t("appointment_badge") }}</span></div>
       {% endif %}
     </td>

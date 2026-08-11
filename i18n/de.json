@@ -1002,5 +1002,14 @@
   "flash_appointment_response_message_required": "Bitte gib eine Nachricht zur Terminanfrage ein.",
   "flash_appointment_proposal_required": "Bitte gib mindestens einen Terminvorschlag an.",
   "flash_appointment_proposal_invalid": "Terminvorschläge müssen im 15-Minuten-Raster liegen.",
-  "flash_appointment_response_saved": "Antwort und Terminvorschläge wurden gespeichert."
+  "flash_appointment_response_saved": "Antwort und Terminvorschläge wurden gespeichert.",
+  "appointment_select_proposal": "Diesen Termin auswählen",
+  "appointment_user_selection": "Vom User ausgewählt",
+  "appointment_waiting_for_selection": "Der User hat noch keinen Terminvorschlag ausgewählt.",
+  "appointment_confirm_final": "Termin endgültig bestätigen",
+  "appointment_confirmed_label": "Festgesetzter Termin",
+  "flash_appointment_selection_invalid": "Der ausgewählte Terminvorschlag ist ungültig.",
+  "flash_appointment_selection_saved": "Der Terminvorschlag wurde ausgewählt und wartet auf Bestätigung.",
+  "flash_appointment_confirmation_selection_required": "Vor der Bestätigung muss der User einen Terminvorschlag auswählen.",
+  "flash_appointment_confirmed": "Der Termin wurde verbindlich bestätigt. Die Beteiligten wurden per E-Mail informiert."
 }

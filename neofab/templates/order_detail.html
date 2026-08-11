@@ -1680,7 +1680,46 @@
           <div class="col-md-2"><button class="btn btn-primary w-100" type="submit"><i class="bi bi-calendar-plus me-1"></i>{{ t("appointment_submit") }}</button></div>
         </div></form>
       </div></div>
-      {% if appointment_requests %}<div class="card mt-3"><div class="card-header"><h5 class="mb-0">{{ t("appointment_history") }}</h5></div><div class="list-group list-group-flush">{% for item in appointment_requests %}<div class="list-group-item"><div class="small text-muted">{{ item.user.email }} · {{ fmt_datetime(item.created_at) }}</div>{% if item.note %}<div class="mt-1">{{ item.note }}</div>{% endif %}{% if item.response_note or item.proposal_datetimes() %}<div class="border-start border-info ps-3 mt-3"><div class="fw-semibold">{{ t("appointment_response_title") }}</div>{% if item.response_note %}<div>{{ item.response_note }}</div>{% endif %}{% if item.proposal_datetimes() %}<div class="d-flex flex-wrap gap-2 mt-2">{% for proposal in item.proposal_datetimes() %}<span class="badge bg-light text-dark border">{{ fmt_datetime(proposal) }}</span>{% endfor %}</div>{% endif %}</div>{% endif %}</div>{% endfor %}</div></div>{% endif %}
+      {% if appointment_requests %}
+      <div class="card mt-3">
+        <div class="card-header"><h5 class="mb-0">{{ t("appointment_history") }}</h5></div>
+        <div class="list-group list-group-flush">
+          {% for item in appointment_requests %}
+          <div class="list-group-item">
+            <div class="small text-muted">{{ item.user.email }} · {{ fmt_datetime(item.created_at) }}</div>
+            {% if item.note %}<div class="mt-1">{{ item.note }}</div>{% endif %}
+            {% if item.response_note or item.proposal_datetimes() %}
+            <div class="border-start border-info ps-3 mt-3">
+              <div class="fw-semibold">{{ t("appointment_response_title") }}</div>
+              {% if item.response_note %}<div>{{ item.response_note }}</div>{% endif %}
+              {% if item.confirmed_at and item.selected_time %}
+                <div class="alert alert-success py-2 mt-2 mb-0"><i class="bi bi-calendar-check me-1"></i><strong>{{ t("appointment_confirmed_label") }}:</strong> {{ fmt_datetime(item.selected_time) }}</div>
+              {% elif item.proposal_datetimes() %}
+                {% if order.user_id == current_user.id %}
+                <form method="post" action="{{ url_for('order_detail', order_id=order.id, tab='appointment') }}" class="mt-2">
+                  <input type="hidden" name="action" value="select_appointment_time">
+                  <input type="hidden" name="appointment_id" value="{{ item.id }}">
+                  <div class="vstack gap-2">
+                    {% for proposal in item.proposal_datetimes() %}
+                    <label class="form-check border rounded p-2 ps-5 mb-0">
+                      <input class="form-check-input" type="radio" name="selected_time" value="{{ proposal.isoformat() }}" {% if item.selected_time == proposal %}checked{% endif %} required>
+                      {{ fmt_datetime(proposal) }}
+                    </label>
+                    {% endfor %}
+                  </div>
+                  <button class="btn btn-primary btn-sm mt-2" type="submit">{{ t("appointment_select_proposal") }}</button>
+                </form>
+                {% else %}
+                <div class="d-flex flex-wrap gap-2 mt-2">{% for proposal in item.proposal_datetimes() %}<span class="badge {% if item.selected_time == proposal %}bg-warning text-dark{% else %}bg-light text-dark border{% endif %}">{{ fmt_datetime(proposal) }}</span>{% endfor %}</div>
+                {% endif %}
+              {% endif %}
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
     </div>
   {% endif %}
 </div>

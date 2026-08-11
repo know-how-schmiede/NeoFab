@@ -1004,5 +1004,14 @@
   "flash_appointment_response_message_required": "Please enter a message for the appointment request.",
   "flash_appointment_proposal_required": "Please enter at least one proposed time.",
   "flash_appointment_proposal_invalid": "Proposed times must use 15-minute increments.",
-  "flash_appointment_response_saved": "The response and proposed times have been saved."
+  "flash_appointment_response_saved": "The response and proposed times have been saved.",
+  "appointment_select_proposal": "Select this time",
+  "appointment_user_selection": "Selected by user",
+  "appointment_waiting_for_selection": "The user has not selected a proposed time yet.",
+  "appointment_confirm_final": "Confirm appointment",
+  "appointment_confirmed_label": "Confirmed appointment",
+  "flash_appointment_selection_invalid": "The selected proposed time is invalid.",
+  "flash_appointment_selection_saved": "The proposed time was selected and is awaiting confirmation.",
+  "flash_appointment_confirmation_selection_required": "The user must select a proposed time before confirmation.",
+  "flash_appointment_confirmed": "The appointment was confirmed. Participants were notified by email."
 }

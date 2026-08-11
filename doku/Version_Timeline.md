@@ -1,5 +1,14 @@
 # Timeline NeoFab
 
+## Version 0.9.56
+
+Auftraggeber koennen einen der vorgeschlagenen Termine auswaehlen
+Die Auswahl wird in der Terminliste angezeigt und kann durch Mitarbeitende oder Administratoren verbindlich bestaetigt werden
+Bestaetigte Termine werden im Auftrag und Dashboard deutlich mit Datum und Uhrzeit gekennzeichnet
+Bei der Bestaetigung erhalten alle Beteiligten eine E-Mail mit Termindaten und iCal-Anhang
+
+Version in Anwendung und README auf 0.9.56 angehoben
+
 ## Version 0.9.55
 
 Dashboard zeigt bei Auftraegen mit Terminanfrage einen zusaetzlichen Termin-Badge unter dem Status

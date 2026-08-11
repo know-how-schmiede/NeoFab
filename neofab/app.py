@@ -77,6 +77,7 @@ from legal_markdown import render_legal_markdown
 from notifications import (
     send_announcement_attention_notification,
     send_admin_order_notification,
+    send_appointment_confirmation_notification,
     send_order_status_change_notification,
     send_password_reset_notification,
     send_poster_printed_notification,
@@ -1878,7 +1879,11 @@ def ensure_order_appointment_requests_table():
                 requested_at DATETIME NOT NULL,
                 note TEXT,
                 response_note TEXT,
+                response_by_user_id INTEGER,
                 proposed_times TEXT,
+                selected_time DATETIME,
+                confirmed_at DATETIME,
+                confirmed_by_user_id INTEGER,
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
         """))
@@ -1888,8 +1893,16 @@ def ensure_order_appointment_requests_table():
         }
         if "response_note" not in columns:
             db.session.execute(text("ALTER TABLE order_appointment_requests ADD COLUMN response_note TEXT"))
+        if "response_by_user_id" not in columns:
+            db.session.execute(text("ALTER TABLE order_appointment_requests ADD COLUMN response_by_user_id INTEGER"))
         if "proposed_times" not in columns:
             db.session.execute(text("ALTER TABLE order_appointment_requests ADD COLUMN proposed_times TEXT"))
+        if "selected_time" not in columns:
+            db.session.execute(text("ALTER TABLE order_appointment_requests ADD COLUMN selected_time DATETIME"))
+        if "confirmed_at" not in columns:
+            db.session.execute(text("ALTER TABLE order_appointment_requests ADD COLUMN confirmed_at DATETIME"))
+        if "confirmed_by_user_id" not in columns:
+            db.session.execute(text("ALTER TABLE order_appointment_requests ADD COLUMN confirmed_by_user_id INTEGER"))
         db.session.commit()
     except Exception:
         app.logger.exception("Failed to ensure order_appointment_requests table exists")
@@ -4353,6 +4366,30 @@ def order_detail(order_id):
                 flash(trans("flash_appointment_requested"), "success")
             return order_detail_redirect("appointment")
 
+        elif action == "select_appointment_time":
+            if order.user_id != current_user.id:
+                abort(403)
+            try:
+                appointment_id = int(request.form.get("appointment_id", "0"))
+                selected_time = datetime.fromisoformat(request.form.get("selected_time", ""))
+            except (TypeError, ValueError):
+                appointment_id = 0
+                selected_time = None
+            appointment_request = OrderAppointmentRequest.query.filter_by(
+                id=appointment_id,
+                order_id=order.id,
+            ).first()
+            if not appointment_request or selected_time not in appointment_request.proposal_datetimes():
+                flash(trans("flash_appointment_selection_invalid"), "danger")
+            else:
+                appointment_request.selected_time = selected_time
+                appointment_request.confirmed_at = None
+                appointment_request.confirmed_by_user_id = None
+                db.session.commit()
+                write_audit_log(app, "appointment_selected", user=current_user, details={"order_id": order.id, "appointment_id": appointment_request.id})
+                flash(trans("flash_appointment_selection_saved"), "success")
+            return order_detail_redirect("appointment")
+
         # --- 3) Auftrag stornieren -----------------------------------------
         elif action == "cancel_order":
             app.logger.debug(
@@ -6551,6 +6588,19 @@ def appointment_detail(appointment_id):
     trans = inject_globals().get("t")
     settings = load_app_settings(app)
     if request.method == "POST":
+        action = request.form.get("action", "save_response")
+        if action == "confirm_appointment":
+            if not appointment_request.selected_time:
+                flash(trans("flash_appointment_confirmation_selection_required"), "danger")
+            else:
+                appointment_request.confirmed_at = datetime.utcnow()
+                appointment_request.confirmed_by_user_id = current_user.id
+                db.session.commit()
+                send_appointment_confirmation_notification(app, appointment_request)
+                write_audit_log(app, "appointment_confirmed", user=current_user, details={"order_id": appointment_request.order_id, "appointment_id": appointment_request.id})
+                flash(trans("flash_appointment_confirmed"), "success")
+            return redirect(url_for("appointment_detail", appointment_id=appointment_request.id))
+
         response_note = request.form.get("response_note", "").strip()
         raw_proposals = [
             value.strip()
@@ -6579,7 +6629,12 @@ def appointment_detail(appointment_id):
         else:
             proposals.sort()
             appointment_request.response_note = response_note
+            appointment_request.response_by_user_id = current_user.id
             appointment_request.proposed_times = "\n".join(value.isoformat() for value in proposals)
+            if appointment_request.selected_time not in proposals:
+                appointment_request.selected_time = None
+                appointment_request.confirmed_at = None
+                appointment_request.confirmed_by_user_id = None
             db.session.commit()
             write_audit_log(
                 app,
@@ -6997,6 +7052,7 @@ def dashboard():
     app.logger.debug(f"[dashboard] file_counts: {file_counts}")
 
     appointment_order_ids = set()
+    confirmed_appointments = {}
     if order_ids:
         appointment_order_ids = {
             order_id
@@ -7007,6 +7063,18 @@ def dashboard():
                 .all()
             )
         }
+        confirmed_rows = (
+            OrderAppointmentRequest.query
+            .filter(
+                OrderAppointmentRequest.order_id.in_(order_ids),
+                OrderAppointmentRequest.confirmed_at.isnot(None),
+                OrderAppointmentRequest.selected_time.isnot(None),
+            )
+            .order_by(OrderAppointmentRequest.confirmed_at.desc())
+            .all()
+        )
+        for item in confirmed_rows:
+            confirmed_appointments.setdefault(item.order_id, item)
 
     print_job_counts = {}
     if print_order_ids:
@@ -7093,6 +7161,7 @@ def dashboard():
         print_job_counts=print_job_counts,
         plotter_order_ids=set(plotter_order_ids),
         appointment_order_ids=appointment_order_ids,
+        confirmed_appointments=confirmed_appointments,
         announcements_unread=announcements_unread,
         announcements_read=announcements_read,
         announcement_reads=read_by_announcement,

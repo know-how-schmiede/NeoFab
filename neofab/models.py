@@ -328,10 +328,16 @@ class OrderAppointmentRequest(db.Model):
     requested_at = db.Column(db.DateTime, nullable=False)
     note = db.Column(db.Text)
     response_note = db.Column(db.Text)
+    response_by_user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
     proposed_times = db.Column(db.Text)
+    selected_time = db.Column(db.DateTime)
+    confirmed_at = db.Column(db.DateTime)
+    confirmed_by_user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     order = db.relationship("Order", back_populates="appointment_requests")
-    user = db.relationship("User")
+    user = db.relationship("User", foreign_keys=[user_id])
+    response_by = db.relationship("User", foreign_keys=[response_by_user_id])
+    confirmed_by = db.relationship("User", foreign_keys=[confirmed_by_user_id])
 
     def proposal_datetimes(self):
         values = []
