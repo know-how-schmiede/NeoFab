@@ -7127,13 +7127,19 @@ def dashboard():
             .order_by(OrderAppointmentRequest.created_at.desc(), OrderAppointmentRequest.id.desc())
             .all()
         )
+        latest_confirmed_ids = {}
+        for item in appointment_rows:
+            if item.confirmed_at and item.selected_time:
+                confirmed_appointments.setdefault(item.order_id, []).append(item)
+                latest_confirmed_ids[item.order_id] = max(latest_confirmed_ids.get(item.order_id, 0), item.id)
         for item in appointment_rows:
             if item.order_id in appointment_dashboard_states:
                 continue
-            if item.confirmed_at and item.selected_time:
-                confirmed_appointments[item.order_id] = item
-                appointment_dashboard_states[item.order_id] = "confirmed"
-            elif item.selected_time:
+            if item.confirmed_at:
+                continue
+            if item.id <= latest_confirmed_ids.get(item.order_id, 0):
+                continue
+            if item.selected_time:
                 appointment_dashboard_states[item.order_id] = "awaiting_confirmation"
             elif item.proposed_times and not item.no_proposal_possible:
                 appointment_dashboard_states[item.order_id] = "new_proposal"

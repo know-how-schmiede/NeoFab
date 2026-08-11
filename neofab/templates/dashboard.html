@@ -73,14 +73,14 @@
         {% set status_text = t('posters_status_printed') %}
       {% endif %}
       <span class="badge {{ status_style }}">{{ status_text }}</span>
-      {% if confirmed_appointments.get(o.id) %}
-        {% set confirmed_appointment = confirmed_appointments.get(o.id) %}
-        <div class="mt-1"><span class="badge bg-success"><i class="bi bi-calendar-event me-1"></i>{{ fmt_datetime(confirmed_appointment.selected_time) }}</span></div>
-      {% elif appointment_dashboard_states.get(o.id) == 'awaiting_confirmation' %}
+      {% for confirmed_appointment in confirmed_appointments.get(o.id, []) %}
+        <div class="mt-1"><span class="badge bg-success"><i class="bi bi-calendar-event me-1"></i>{{ t("appointment_confirmed_label") }}: {{ fmt_datetime(confirmed_appointment.selected_time) }}</span></div>
+      {% endfor %}
+      {% if appointment_dashboard_states.get(o.id) == 'awaiting_confirmation' %}
         <div class="mt-1"><span class="badge bg-warning text-dark"><i class="bi bi-calendar-event me-1"></i>{{ t("appointment_dashboard_awaiting_confirmation") }}</span></div>
       {% elif appointment_dashboard_states.get(o.id) == 'new_proposal' %}
         <div class="mt-1"><span class="badge bg-info text-dark"><i class="bi bi-calendar-event me-1"></i>{{ t("appointment_dashboard_new_proposal") }}</span></div>
-      {% elif o.id in appointment_order_ids %}
+      {% elif o.id in appointment_order_ids and not confirmed_appointments.get(o.id) %}
         <div class="mt-1"><span class="badge bg-info text-dark"><i class="bi bi-calendar-event me-1"></i>{{ t("appointment_badge") }}</span></div>
       {% endif %}
     </td>

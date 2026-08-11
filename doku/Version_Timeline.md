@@ -1,5 +1,13 @@
 # Timeline NeoFab
 
+## Version 0.9.62
+
+Das Dashboard zeigt mehrere bestaetigte Termine eines Auftrags gleichzeitig an
+Neuere zusaetzliche Terminvorschlaege und ausstehende Bestaetigungen bleiben neben bestaetigten Terminen sichtbar
+Der Design-Smoke-Test enthaelt eine kompakte Kalenderansicht mit den produktiven Kalenderstyles
+
+Version in Anwendung und README auf 0.9.62 angehoben
+
 ## Version 0.9.61
 
 Die Terminliste enthaelt einen kompakten Wochenkalender fuer Werktage und Geschaeftszeiten
