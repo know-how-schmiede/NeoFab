@@ -1,5 +1,12 @@
 # Timeline NeoFab
 
+## Version 0.9.57
+
+Die Minutenauswahl fuer Terminvorschlaege ist auf 00, 15, 30 und 45 begrenzt
+Zu jedem Terminvorschlag kann eine Dauer von 15 Minuten bis 3 Stunden oder Open End gewaehlt werden
+
+Version in Anwendung und README auf 0.9.57 angehoben
+
 ## Version 0.9.56
 
 Auftraggeber koennen einen der vorgeschlagenen Termine auswaehlen

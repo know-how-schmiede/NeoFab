@@ -1881,6 +1881,7 @@ def ensure_order_appointment_requests_table():
                 response_note TEXT,
                 response_by_user_id INTEGER,
                 proposed_times TEXT,
+                proposed_durations TEXT,
                 selected_time DATETIME,
                 confirmed_at DATETIME,
                 confirmed_by_user_id INTEGER,
@@ -1897,6 +1898,8 @@ def ensure_order_appointment_requests_table():
             db.session.execute(text("ALTER TABLE order_appointment_requests ADD COLUMN response_by_user_id INTEGER"))
         if "proposed_times" not in columns:
             db.session.execute(text("ALTER TABLE order_appointment_requests ADD COLUMN proposed_times TEXT"))
+        if "proposed_durations" not in columns:
+            db.session.execute(text("ALTER TABLE order_appointment_requests ADD COLUMN proposed_durations TEXT"))
         if "selected_time" not in columns:
             db.session.execute(text("ALTER TABLE order_appointment_requests ADD COLUMN selected_time DATETIME"))
         if "confirmed_at" not in columns:
@@ -6602,14 +6605,15 @@ def appointment_detail(appointment_id):
             return redirect(url_for("appointment_detail", appointment_id=appointment_request.id))
 
         response_note = request.form.get("response_note", "").strip()
-        raw_proposals = [
-            value.strip()
-            for value in request.form.getlist("proposed_times")
-            if value.strip()
-        ]
+        raw_proposals = [value.strip() for value in request.form.getlist("proposed_times")]
+        raw_durations = request.form.getlist("proposed_durations")
+        allowed_durations = {"15", "30", "45", "60", "90", "120", "150", "180", "open_end"}
         proposals = []
+        proposal_durations = []
         invalid_proposal = False
-        for raw_value in raw_proposals:
+        for index, raw_value in enumerate(raw_proposals):
+            if not raw_value:
+                continue
             try:
                 local_value = datetime.fromisoformat(raw_value)
                 if local_value.minute % 15 or local_value.second or local_value.microsecond:
@@ -6617,6 +6621,10 @@ def appointment_detail(appointment_id):
                 parsed_value = parse_app_datetime_input(raw_value, settings)
                 if parsed_value and parsed_value not in proposals:
                     proposals.append(parsed_value)
+                    duration = raw_durations[index] if index < len(raw_durations) else ""
+                    if duration not in allowed_durations:
+                        raise ValueError
+                    proposal_durations.append(duration)
             except (TypeError, ValueError):
                 invalid_proposal = True
 
@@ -6627,10 +6635,13 @@ def appointment_detail(appointment_id):
         elif invalid_proposal:
             flash(trans("flash_appointment_proposal_invalid"), "danger")
         else:
-            proposals.sort()
+            proposal_pairs = sorted(zip(proposals, proposal_durations), key=lambda pair: pair[0])
+            proposals = [pair[0] for pair in proposal_pairs]
+            proposal_durations = [pair[1] for pair in proposal_pairs]
             appointment_request.response_note = response_note
             appointment_request.response_by_user_id = current_user.id
             appointment_request.proposed_times = "\n".join(value.isoformat() for value in proposals)
+            appointment_request.proposed_durations = "\n".join(proposal_durations)
             if appointment_request.selected_time not in proposals:
                 appointment_request.selected_time = None
                 appointment_request.confirmed_at = None
@@ -6649,10 +6660,12 @@ def appointment_detail(appointment_id):
         to_app_datetime(value, settings).strftime("%Y-%m-%dT%H:%M")
         for value in appointment_request.proposal_datetimes()
     ]
+    proposal_duration_values = appointment_request.proposal_duration_values()
     return render_template(
         "appointment_detail.html",
         appointment_request=appointment_request,
         proposal_input_values=proposal_input_values,
+        proposal_duration_values=proposal_duration_values,
     )
 
 @app.route("/dashboard", methods=["GET", "POST"])

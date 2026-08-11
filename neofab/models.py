@@ -330,6 +330,7 @@ class OrderAppointmentRequest(db.Model):
     response_note = db.Column(db.Text)
     response_by_user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
     proposed_times = db.Column(db.Text)
+    proposed_durations = db.Column(db.Text)
     selected_time = db.Column(db.DateTime)
     confirmed_at = db.Column(db.DateTime)
     confirmed_by_user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
@@ -347,6 +348,13 @@ class OrderAppointmentRequest(db.Model):
             except (TypeError, ValueError):
                 continue
         return values
+
+    def proposal_duration_values(self):
+        return (self.proposed_durations or "").splitlines()
+
+    def proposal_duration_for(self, index):
+        values = self.proposal_duration_values()
+        return values[index] if index < len(values) and values[index] else "30"
 
 
 # --- OrderReadStatus (wann hat welcher User den Auftrag zuletzt gelesen) -----

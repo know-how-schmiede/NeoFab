@@ -1703,14 +1703,14 @@
                     {% for proposal in item.proposal_datetimes() %}
                     <label class="form-check border rounded p-2 ps-5 mb-0">
                       <input class="form-check-input" type="radio" name="selected_time" value="{{ proposal.isoformat() }}" {% if item.selected_time == proposal %}checked{% endif %} required>
-                      {{ fmt_datetime(proposal) }}
+                      {{ fmt_datetime(proposal) }} · {{ t('appointment_duration') }}: {{ t('appointment_duration_' ~ item.proposal_duration_for(loop.index0)) }}
                     </label>
                     {% endfor %}
                   </div>
                   <button class="btn btn-primary btn-sm mt-2" type="submit">{{ t("appointment_select_proposal") }}</button>
                 </form>
                 {% else %}
-                <div class="d-flex flex-wrap gap-2 mt-2">{% for proposal in item.proposal_datetimes() %}<span class="badge {% if item.selected_time == proposal %}bg-warning text-dark{% else %}bg-light text-dark border{% endif %}">{{ fmt_datetime(proposal) }}</span>{% endfor %}</div>
+                <div class="d-flex flex-wrap gap-2 mt-2">{% for proposal in item.proposal_datetimes() %}<span class="badge {% if item.selected_time == proposal %}bg-warning text-dark{% else %}bg-light text-dark border{% endif %}">{{ fmt_datetime(proposal) }} · {{ t('appointment_duration_' ~ item.proposal_duration_for(loop.index0)) }}</span>{% endfor %}</div>
                 {% endif %}
               {% endif %}
             </div>

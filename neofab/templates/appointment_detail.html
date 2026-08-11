@@ -45,7 +45,14 @@
       {% set input_values = proposal_input_values if proposal_input_values else ['', ''] %}
       {% for value in input_values %}
         <div class="input-group proposal-row">
-          <input class="form-control" type="datetime-local" name="proposed_times" value="{{ value }}" step="900">
+          <input class="form-control proposal-date" type="date" value="{{ value[:10] }}" aria-label="{{ t('appointment_date') }}">
+          <select class="form-select proposal-hour" aria-label="{{ t('appointment_hour') }}">{% for hour in range(24) %}<option value="{{ '%02d'|format(hour) }}" {% if value[11:13] == '%02d'|format(hour) %}selected{% endif %}>{{ '%02d'|format(hour) }}</option>{% endfor %}</select>
+          <select class="form-select proposal-minute" aria-label="{{ t('appointment_minute') }}">{% for minute in ['00', '15', '30', '45'] %}<option value="{{ minute }}" {% if value[14:16] == minute %}selected{% endif %}>{{ minute }}</option>{% endfor %}</select>
+          <input class="proposal-datetime" type="hidden" name="proposed_times" value="{{ value }}">
+          <select class="form-select" name="proposed_durations" aria-label="{{ t('appointment_duration') }}" required>
+            {% set selected_duration = proposal_duration_values[loop.index0] if loop.index0 < proposal_duration_values|length else '30' %}
+            {% for duration in ['15', '30', '45', '60', '90', '120', '150', '180', 'open_end'] %}<option value="{{ duration }}" {% if duration == selected_duration %}selected{% endif %}>{{ t('appointment_duration_' ~ duration) }}</option>{% endfor %}
+          </select>
           <button class="btn btn-outline-danger remove-proposal" type="button" title="{{ t('appointment_remove_proposal') }}"><i class="bi bi-trash"></i></button>
         </div>
       {% endfor %}
@@ -59,16 +66,24 @@
 <script>
 (() => {
   const fields = document.getElementById('proposalFields');
+  const durationOptions = `{% for duration in ['15', '30', '45', '60', '90', '120', '150', '180', 'open_end'] %}<option value="{{ duration }}"{% if duration == '30' %} selected{% endif %}>{{ t('appointment_duration_' ~ duration) }}</option>{% endfor %}`;
+  const hourOptions = Array.from({length: 24}, (_, hour) => `<option value="${String(hour).padStart(2, '0')}">${String(hour).padStart(2, '0')}</option>`).join('');
+  const syncRow = (row) => {
+    const date = row.querySelector('.proposal-date').value;
+    row.querySelector('.proposal-datetime').value = date ? `${date}T${row.querySelector('.proposal-hour').value}:${row.querySelector('.proposal-minute').value}` : '';
+  };
   document.getElementById('addProposal').addEventListener('click', () => {
     const row = document.createElement('div');
     row.className = 'input-group proposal-row';
-    row.innerHTML = '<input class="form-control" type="datetime-local" name="proposed_times" step="900"><button class="btn btn-outline-danger remove-proposal" type="button" title="{{ t("appointment_remove_proposal") }}"><i class="bi bi-trash"></i></button>';
+    row.innerHTML = `<input class="form-control proposal-date" type="date" aria-label="{{ t('appointment_date') }}"><select class="form-select proposal-hour" aria-label="{{ t('appointment_hour') }}">${hourOptions}</select><select class="form-select proposal-minute" aria-label="{{ t('appointment_minute') }}"><option>00</option><option>15</option><option>30</option><option>45</option></select><input class="proposal-datetime" type="hidden" name="proposed_times"><select class="form-select" name="proposed_durations" aria-label="{{ t('appointment_duration') }}" required>${durationOptions}</select><button class="btn btn-outline-danger remove-proposal" type="button" title="{{ t("appointment_remove_proposal") }}"><i class="bi bi-trash"></i></button>`;
     fields.appendChild(row);
   });
   fields.addEventListener('click', (event) => {
     const button = event.target.closest('.remove-proposal');
     if (button && fields.querySelectorAll('.proposal-row').length > 1) button.closest('.proposal-row').remove();
   });
+  fields.addEventListener('change', (event) => { if (event.target.closest('.proposal-row')) syncRow(event.target.closest('.proposal-row')); });
+  document.querySelector('form.card').addEventListener('submit', () => fields.querySelectorAll('.proposal-row').forEach(syncRow));
 })();
 </script>
 {% endblock %}
