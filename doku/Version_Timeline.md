@@ -1,5 +1,12 @@
 # Timeline NeoFab
 
+## Version 0.9.58
+
+Terminvorschlaege zeigen Tabellenueberschriften und den Wochentag zum ausgewaehlten Datum
+Das Formular startet mit nur einem Terminvorschlag und weist auf die erforderliche Terminbestaetigung per E-Mail hin
+
+Version in Anwendung und README auf 0.9.58 angehoben
+
 ## Version 0.9.57
 
 Die Minutenauswahl fuer Terminvorschlaege ist auf 00, 15, 30 und 45 begrenzt

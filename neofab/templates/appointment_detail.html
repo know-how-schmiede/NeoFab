@@ -41,13 +41,19 @@
       <button class="btn btn-outline-secondary btn-sm" type="button" id="addProposal"><i class="bi bi-plus-circle me-1"></i>{{ t("appointment_add_proposal") }}</button>
     </div>
     <p class="small text-muted">{{ t("appointment_proposals_hint") }}</p>
+    <p class="small text-warning"><i class="bi bi-info-circle me-1"></i>{{ t("appointment_proposals_confirmation_hint") }}</p>
+    <div class="proposal-grid proposal-head small fw-semibold text-muted mb-1">
+      <div>{{ t("appointment_proposal_date") }}</div>
+      <div>{{ t("appointment_proposal_time") }}</div>
+      <div>{{ t("appointment_duration") }}</div>
+      <div></div>
+    </div>
     <div id="proposalFields" class="vstack gap-2">
-      {% set input_values = proposal_input_values if proposal_input_values else ['', ''] %}
+      {% set input_values = proposal_input_values if proposal_input_values else [''] %}
       {% for value in input_values %}
-        <div class="input-group proposal-row">
-          <input class="form-control proposal-date" type="date" value="{{ value[:10] }}" aria-label="{{ t('appointment_date') }}">
-          <select class="form-select proposal-hour" aria-label="{{ t('appointment_hour') }}">{% for hour in range(24) %}<option value="{{ '%02d'|format(hour) }}" {% if value[11:13] == '%02d'|format(hour) %}selected{% endif %}>{{ '%02d'|format(hour) }}</option>{% endfor %}</select>
-          <select class="form-select proposal-minute" aria-label="{{ t('appointment_minute') }}">{% for minute in ['00', '15', '30', '45'] %}<option value="{{ minute }}" {% if value[14:16] == minute %}selected{% endif %}>{{ minute }}</option>{% endfor %}</select>
+        <div class="proposal-grid proposal-row">
+          <div class="input-group"><span class="input-group-text proposal-weekday">–</span><input class="form-control proposal-date" type="date" value="{{ value[:10] }}" aria-label="{{ t('appointment_date') }}"></div>
+          <div class="input-group"><select class="form-select proposal-hour" aria-label="{{ t('appointment_hour') }}">{% for hour in range(24) %}<option value="{{ '%02d'|format(hour) }}" {% if value[11:13] == '%02d'|format(hour) %}selected{% endif %}>{{ '%02d'|format(hour) }}</option>{% endfor %}</select><select class="form-select proposal-minute" aria-label="{{ t('appointment_minute') }}">{% for minute in ['00', '15', '30', '45'] %}<option value="{{ minute }}" {% if value[14:16] == minute %}selected{% endif %}>{{ minute }}</option>{% endfor %}</select></div>
           <input class="proposal-datetime" type="hidden" name="proposed_times" value="{{ value }}">
           <select class="form-select" name="proposed_durations" aria-label="{{ t('appointment_duration') }}" required>
             {% set selected_duration = proposal_duration_values[loop.index0] if loop.index0 < proposal_duration_values|length else '30' %}
@@ -63,19 +69,26 @@
 {% endblock %}
 
 {% block scripts %}
+<style>
+.proposal-grid { display:grid; grid-template-columns:minmax(250px,1.25fr) minmax(190px,1fr) minmax(180px,1fr) auto; gap:.5rem; align-items:center; }
+.proposal-weekday { min-width:7.5rem; justify-content:center; }
+@media (max-width:767.98px) { .proposal-head { display:none; } .proposal-grid { grid-template-columns:1fr; } .proposal-row .remove-proposal { justify-self:end; } }
+</style>
 <script>
 (() => {
   const fields = document.getElementById('proposalFields');
   const durationOptions = `{% for duration in ['15', '30', '45', '60', '90', '120', '150', '180', 'open_end'] %}<option value="{{ duration }}"{% if duration == '30' %} selected{% endif %}>{{ t('appointment_duration_' ~ duration) }}</option>{% endfor %}`;
   const hourOptions = Array.from({length: 24}, (_, hour) => `<option value="${String(hour).padStart(2, '0')}">${String(hour).padStart(2, '0')}</option>`).join('');
+  const weekdays = {{ t('appointment_weekdays')|tojson }}.split('|');
   const syncRow = (row) => {
     const date = row.querySelector('.proposal-date').value;
     row.querySelector('.proposal-datetime').value = date ? `${date}T${row.querySelector('.proposal-hour').value}:${row.querySelector('.proposal-minute').value}` : '';
+    row.querySelector('.proposal-weekday').textContent = date ? weekdays[new Date(`${date}T12:00:00`).getDay()] : '–';
   };
   document.getElementById('addProposal').addEventListener('click', () => {
     const row = document.createElement('div');
-    row.className = 'input-group proposal-row';
-    row.innerHTML = `<input class="form-control proposal-date" type="date" aria-label="{{ t('appointment_date') }}"><select class="form-select proposal-hour" aria-label="{{ t('appointment_hour') }}">${hourOptions}</select><select class="form-select proposal-minute" aria-label="{{ t('appointment_minute') }}"><option>00</option><option>15</option><option>30</option><option>45</option></select><input class="proposal-datetime" type="hidden" name="proposed_times"><select class="form-select" name="proposed_durations" aria-label="{{ t('appointment_duration') }}" required>${durationOptions}</select><button class="btn btn-outline-danger remove-proposal" type="button" title="{{ t("appointment_remove_proposal") }}"><i class="bi bi-trash"></i></button>`;
+    row.className = 'proposal-grid proposal-row';
+    row.innerHTML = `<div class="input-group"><span class="input-group-text proposal-weekday">–</span><input class="form-control proposal-date" type="date" aria-label="{{ t('appointment_date') }}"></div><div class="input-group"><select class="form-select proposal-hour" aria-label="{{ t('appointment_hour') }}">${hourOptions}</select><select class="form-select proposal-minute" aria-label="{{ t('appointment_minute') }}"><option>00</option><option>15</option><option>30</option><option>45</option></select></div><input class="proposal-datetime" type="hidden" name="proposed_times"><select class="form-select" name="proposed_durations" aria-label="{{ t('appointment_duration') }}" required>${durationOptions}</select><button class="btn btn-outline-danger remove-proposal" type="button" title="{{ t("appointment_remove_proposal") }}"><i class="bi bi-trash"></i></button>`;
     fields.appendChild(row);
   });
   fields.addEventListener('click', (event) => {
@@ -84,6 +97,7 @@
   });
   fields.addEventListener('change', (event) => { if (event.target.closest('.proposal-row')) syncRow(event.target.closest('.proposal-row')); });
   document.querySelector('form.card').addEventListener('submit', () => fields.querySelectorAll('.proposal-row').forEach(syncRow));
+  fields.querySelectorAll('.proposal-row').forEach(syncRow);
 })();
 </script>
 {% endblock %}
