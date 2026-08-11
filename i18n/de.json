@@ -989,6 +989,8 @@
   "appointments_hint": "Terminanfragen zu allen Aufträgen, die du sehen kannst.",
   "appointments_empty": "Es liegen keine Terminanfragen vor.",
   "appointment_badge": "Termin",
+  "appointment_dashboard_new_proposal": "Neuer Terminvorschlag",
+  "appointment_dashboard_awaiting_confirmation": "Warte auf Bestätigung",
   "appointment_detail_title": "Terminanfrage bearbeiten",
   "appointments_back": "Zur Terminliste",
   "appointment_request_message": "Nachricht der Terminanfrage",

@@ -991,6 +991,8 @@
   "appointments_hint": "Demandes de rendez-vous pour toutes les commandes auxquelles vous avez accès.",
   "appointments_empty": "Il n'y a aucune demande de rendez-vous.",
   "appointment_badge": "Rendez-vous",
+  "appointment_dashboard_new_proposal": "Nouvelle proposition de rendez-vous",
+  "appointment_dashboard_awaiting_confirmation": "En attente de confirmation",
   "appointment_detail_title": "Modifier la demande de rendez-vous",
   "appointments_back": "Retour aux rendez-vous",
   "appointment_request_message": "Message de la demande",

@@ -619,6 +619,60 @@ def send_appointment_confirmation_notification(app, appointment_request) -> bool
         return False
 
 
+def send_appointment_proposal_notification(app, appointment_request) -> bool:
+    """Notify the order owner and administrators about new or changed proposals."""
+    try:
+        settings = load_app_settings(app, force_reload=True)
+        smtp_host = settings.get("smtp_host")
+        smtp_port = settings.get("smtp_port")
+        smtp_from = settings.get("smtp_from_address")
+        order = getattr(appointment_request, "order", None)
+        if not smtp_host or not smtp_port or not smtp_from or not order:
+            app.logger.info("SMTP or appointment data missing, skipping appointment proposal email.")
+            return False
+
+        recipients, recipient_languages = _collect_order_recipients(
+            order,
+            include_owner=True,
+            respect_status_email_enabled=True,
+        )
+        if not recipients:
+            return False
+        try:
+            order_url = url_for("order_detail", order_id=order.id, tab="appointment", _external=True)
+        except Exception:
+            order_url = url_for("order_detail", order_id=order.id, tab="appointment")
+
+        duration_labels = {
+            "15": "15 min", "30": "30 min", "45": "45 min", "60": "1 h",
+            "90": "1.5 h", "120": "2 h", "150": "2.5 h", "180": "3 h", "open_end": "Open end",
+        }
+        proposal_lines = []
+        for index, proposal in enumerate(appointment_request.proposal_datetimes()):
+            duration = duration_labels.get(appointment_request.proposal_duration_for(index), "-")
+            proposal_lines.append(f"- {_format_app_datetime(proposal, settings)} ({duration})")
+
+        for language, lang_recipients in _group_recipients_by_language(recipients, recipient_languages).items():
+            msg = EmailMessage()
+            if language == "de":
+                msg["Subject"] = f"NeoFab: Neue Terminvorschläge – Auftrag #{order.id}"
+                body = ["Hallo,", "", "für den Auftrag wurden Terminvorschläge abgegeben oder geändert.", "", f"Auftrag: #{order.id} · {order.title}", "Terminvorschläge:", *proposal_lines, "", f"Nachricht: {appointment_request.response_note or '-'}", "", f"Auftrag öffnen: {order_url}"]
+            elif language == "fr":
+                msg["Subject"] = f"NeoFab : Nouvelles propositions de rendez-vous – commande #{order.id}"
+                body = ["Bonjour,", "", "des propositions de rendez-vous ont été ajoutées ou modifiées.", "", f"Commande : #{order.id} · {order.title}", "Propositions :", *proposal_lines, "", f"Message : {appointment_request.response_note or '-'}", "", f"Ouvrir la commande : {order_url}"]
+            else:
+                msg["Subject"] = f"NeoFab: New appointment proposals – order #{order.id}"
+                body = ["Hello,", "", "appointment proposals were added or changed.", "", f"Order: #{order.id} · {order.title}", "Proposals:", *proposal_lines, "", f"Message: {appointment_request.response_note or '-'}", "", f"Open order: {order_url}"]
+            msg["From"] = smtp_from
+            msg["To"] = ", ".join(lang_recipients)
+            msg.set_content("\n".join(body + _notification_footer(settings, order_url, language)))
+            _send_message(settings, msg)
+        return True
+    except Exception:
+        app.logger.exception("Failed to send appointment proposal notification.")
+        return False
+
+
 def send_user_welcome_notification(app, new_user: User, source: str = "user_created") -> bool:
     """Notify the new user and admins that a user account has been created."""
     try:

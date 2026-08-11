@@ -1,5 +1,12 @@
 # Timeline NeoFab
 
+## Version 0.9.60
+
+Neue, geaenderte oder ergaenzte Terminvorschlaege loesen eine Status-E-Mail aus
+Das Dashboard kennzeichnet neue Vorschlaege und zur Bestaetigung ausgewaehlte Termine mit eigenen Statushinweisen
+
+Version in Anwendung und README auf 0.9.60 angehoben
+
 ## Version 0.9.59
 
 Auftraggeber koennen angeben, dass keiner der vorgeschlagenen Termine moeglich ist

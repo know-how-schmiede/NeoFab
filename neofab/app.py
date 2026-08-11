@@ -78,6 +78,7 @@ from notifications import (
     send_announcement_attention_notification,
     send_admin_order_notification,
     send_appointment_confirmation_notification,
+    send_appointment_proposal_notification,
     send_order_status_change_notification,
     send_password_reset_notification,
     send_poster_printed_notification,
@@ -6659,6 +6660,7 @@ def appointment_detail(appointment_id):
                 user=current_user,
                 details={"order_id": appointment_request.order_id, "appointment_id": appointment_request.id},
             )
+            send_appointment_proposal_notification(app, appointment_request)
             flash(trans("flash_appointment_response_saved"), "success")
             return redirect(url_for("appointment_detail", appointment_id=appointment_request.id))
 
@@ -7072,6 +7074,7 @@ def dashboard():
 
     appointment_order_ids = set()
     confirmed_appointments = {}
+    appointment_dashboard_states = {}
     if order_ids:
         appointment_order_ids = {
             order_id
@@ -7082,18 +7085,24 @@ def dashboard():
                 .all()
             )
         }
-        confirmed_rows = (
+        appointment_rows = (
             OrderAppointmentRequest.query
-            .filter(
-                OrderAppointmentRequest.order_id.in_(order_ids),
-                OrderAppointmentRequest.confirmed_at.isnot(None),
-                OrderAppointmentRequest.selected_time.isnot(None),
-            )
-            .order_by(OrderAppointmentRequest.confirmed_at.desc())
+            .filter(OrderAppointmentRequest.order_id.in_(order_ids))
+            .order_by(OrderAppointmentRequest.created_at.desc(), OrderAppointmentRequest.id.desc())
             .all()
         )
-        for item in confirmed_rows:
-            confirmed_appointments.setdefault(item.order_id, item)
+        for item in appointment_rows:
+            if item.order_id in appointment_dashboard_states:
+                continue
+            if item.confirmed_at and item.selected_time:
+                confirmed_appointments[item.order_id] = item
+                appointment_dashboard_states[item.order_id] = "confirmed"
+            elif item.selected_time:
+                appointment_dashboard_states[item.order_id] = "awaiting_confirmation"
+            elif item.proposed_times and not item.no_proposal_possible:
+                appointment_dashboard_states[item.order_id] = "new_proposal"
+            else:
+                appointment_dashboard_states[item.order_id] = "requested"
 
     print_job_counts = {}
     if print_order_ids:
@@ -7181,6 +7190,7 @@ def dashboard():
         plotter_order_ids=set(plotter_order_ids),
         appointment_order_ids=appointment_order_ids,
         confirmed_appointments=confirmed_appointments,
+        appointment_dashboard_states=appointment_dashboard_states,
         announcements_unread=announcements_unread,
         announcements_read=announcements_read,
         announcement_reads=read_by_announcement,

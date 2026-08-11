@@ -991,6 +991,8 @@
   "appointments_hint": "Appointment requests for all orders you can view.",
   "appointments_empty": "There are no appointment requests.",
   "appointment_badge": "Appointment",
+  "appointment_dashboard_new_proposal": "New appointment proposal",
+  "appointment_dashboard_awaiting_confirmation": "Awaiting confirmation",
   "appointment_detail_title": "Edit appointment request",
   "appointments_back": "Back to appointments",
   "appointment_request_message": "Appointment request message",
