@@ -992,6 +992,7 @@
   "appointments_empty": "There are no appointment requests.",
   "appointment_badge": "Appointment",
   "appointment_dashboard_new_proposal": "New appointment proposal",
+  "appointment_proposals_sent": "Appointment proposals sent",
   "appointment_dashboard_awaiting_confirmation": "Awaiting confirmation",
   "appointment_detail_title": "Edit appointment request",
   "appointments_back": "Back to appointments",

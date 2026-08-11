@@ -990,6 +990,7 @@
   "appointments_empty": "Es liegen keine Terminanfragen vor.",
   "appointment_badge": "Termin",
   "appointment_dashboard_new_proposal": "Neuer Terminvorschlag",
+  "appointment_proposals_sent": "Terminvorschläge verschickt",
   "appointment_dashboard_awaiting_confirmation": "Warte auf Bestätigung",
   "appointment_detail_title": "Terminanfrage bearbeiten",
   "appointments_back": "Zur Terminliste",
