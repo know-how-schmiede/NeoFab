@@ -75,11 +75,11 @@
       <span class="badge {{ status_style }}">{{ status_text }}</span>
       {% if confirmed_appointments.get(o.id) %}
         {% set confirmed_appointment = confirmed_appointments.get(o.id) %}
-        <div class="mt-1"><span class="badge bg-success"><i class="bi bi-calendar-check me-1"></i>{{ fmt_datetime(confirmed_appointment.selected_time) }}</span></div>
+        <div class="mt-1"><span class="badge bg-success"><i class="bi bi-calendar-event me-1"></i>{{ fmt_datetime(confirmed_appointment.selected_time) }}</span></div>
       {% elif appointment_dashboard_states.get(o.id) == 'awaiting_confirmation' %}
-        <div class="mt-1"><span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>{{ t("appointment_dashboard_awaiting_confirmation") }}</span></div>
+        <div class="mt-1"><span class="badge bg-warning text-dark"><i class="bi bi-calendar-event me-1"></i>{{ t("appointment_dashboard_awaiting_confirmation") }}</span></div>
       {% elif appointment_dashboard_states.get(o.id) == 'new_proposal' %}
-        <div class="mt-1"><span class="badge bg-info text-dark"><i class="bi bi-calendar-plus me-1"></i>{{ t("appointment_dashboard_new_proposal") }}</span></div>
+        <div class="mt-1"><span class="badge bg-info text-dark"><i class="bi bi-calendar-event me-1"></i>{{ t("appointment_dashboard_new_proposal") }}</span></div>
       {% elif o.id in appointment_order_ids %}
         <div class="mt-1"><span class="badge bg-info text-dark"><i class="bi bi-calendar-event me-1"></i>{{ t("appointment_badge") }}</span></div>
       {% endif %}

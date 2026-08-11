@@ -1693,7 +1693,7 @@
               <div class="fw-semibold">{{ t("appointment_response_title") }}</div>
               {% if item.response_note %}<div>{{ item.response_note }}</div>{% endif %}
               {% if item.confirmed_at and item.selected_time %}
-                <div class="alert alert-success py-2 mt-2 mb-0"><i class="bi bi-calendar-check me-1"></i><strong>{{ t("appointment_confirmed_label") }}:</strong> {{ fmt_datetime(item.selected_time) }}</div>
+                <div class="alert alert-success py-2 mt-2 mb-0"><i class="bi bi-calendar-event me-1"></i><strong>{{ t("appointment_confirmed_label") }}:</strong> {{ fmt_datetime(item.selected_time) }}</div>
               {% elif item.proposal_datetimes() %}
                 {% if order.user_id == current_user.id %}
                 <form method="post" action="{{ url_for('order_detail', order_id=order.id, tab='appointment') }}" class="mt-2">
@@ -1714,7 +1714,7 @@
                   <button class="btn btn-primary btn-sm mt-2" type="submit">{{ t("appointment_select_proposal") }}</button>
                 </form>
                 {% else %}
-                {% if item.no_proposal_possible %}<div class="alert alert-warning py-2 mt-2 mb-0">{{ t("appointment_no_proposal_selected") }}</div>{% else %}<div class="d-flex flex-wrap gap-2 mt-2">{% for proposal in item.proposal_datetimes() %}<span class="badge {% if item.selected_time == proposal %}bg-warning text-dark{% else %}bg-light text-dark border{% endif %}">{{ fmt_datetime(proposal) }} · {{ t('appointment_duration_' ~ item.proposal_duration_for(loop.index0)) }}</span>{% endfor %}</div>{% endif %}
+                {% if item.no_proposal_possible %}<div class="alert alert-warning py-2 mt-2 mb-0"><i class="bi bi-calendar-event me-1"></i>{{ t("appointment_no_proposal_selected") }}</div>{% else %}<div class="d-flex flex-wrap gap-2 mt-2">{% for proposal in item.proposal_datetimes() %}<span class="badge {% if item.selected_time == proposal %}bg-warning text-dark{% else %}bg-light text-dark border{% endif %}">{{ fmt_datetime(proposal) }} · {{ t('appointment_duration_' ~ item.proposal_duration_for(loop.index0)) }}</span>{% endfor %}</div>{% endif %}
                 {% endif %}
               {% endif %}
             </div>
