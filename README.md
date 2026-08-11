@@ -142,7 +142,7 @@ The main scripts are:
 
 ## Current Version
 
-Current application version: **0.9.60**
+Current application version: **0.9.61**
 
 Recent changes include plotter master data, default paper per plotter type, ink cost per square meter, poster coverage analysis, and clearer poster size badges for plotter orders.
 

@@ -6581,7 +6581,43 @@ def appointments():
         item for item in appointment_requests
         if can_view_order(item.order, current_user)
     ]
-    return render_template("appointments.html", appointment_requests=appointment_requests)
+    settings = load_app_settings(app)
+    local_today = to_app_datetime(datetime.utcnow(), settings).date()
+    requested_week = (request.args.get("week") or "").strip()
+    try:
+        requested_date = datetime.strptime(requested_week, "%Y-%m-%d").date() if requested_week else local_today
+    except ValueError:
+        requested_date = local_today
+    week_start = requested_date - timedelta(days=requested_date.weekday())
+    week_days = [week_start + timedelta(days=offset) for offset in range(5)]
+    calendar_events = {}
+    for item in appointment_requests:
+        if not item.selected_time:
+            continue
+        local_time = to_app_datetime(item.selected_time, settings)
+        if local_time.date() not in week_days or not 8 <= local_time.hour < 18:
+            continue
+        duration_index = next(
+            (index for index, value in enumerate(item.proposal_datetimes()) if value == item.selected_time),
+            0,
+        )
+        calendar_events.setdefault((local_time.date().isoformat(), local_time.hour), []).append({
+            "request": item,
+            "time": local_time,
+            "duration": item.proposal_duration_for(duration_index),
+            "confirmed": bool(item.confirmed_at),
+        })
+    return render_template(
+        "appointments.html",
+        appointment_requests=appointment_requests,
+        week_start=week_start,
+        week_days=week_days,
+        business_hours=range(8, 18),
+        calendar_events=calendar_events,
+        previous_week=(week_start - timedelta(days=7)).isoformat(),
+        next_week=(week_start + timedelta(days=7)).isoformat(),
+        current_week=local_today.isoformat(),
+    )
 
 
 @app.route("/appointments/<int:appointment_id>", methods=["GET", "POST"])

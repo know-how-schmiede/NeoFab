@@ -1,5 +1,12 @@
 # Timeline NeoFab
 
+## Version 0.9.61
+
+Die Terminliste enthaelt einen kompakten Wochenkalender fuer Werktage und Geschaeftszeiten
+Ausgewaehlte Termine werden je nach Bestaetigungsstatus farblich im Kalender dargestellt
+
+Version in Anwendung und README auf 0.9.61 angehoben
+
 ## Version 0.9.60
 
 Neue, geaenderte oder ergaenzte Terminvorschlaege loesen eine Status-E-Mail aus

@@ -21,4 +21,54 @@
     <div class="card-body text-muted">{{ t("appointments_empty") }}</div>
   {% endif %}
 </div>
+
+<div class="card mt-4">
+  <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div><i class="bi bi-calendar-event me-1"></i>{{ t("appointment_calendar_title") }}</div>
+    <div class="btn-group btn-group-sm">
+      <a class="btn btn-outline-secondary" href="{{ url_for('appointments', week=previous_week) }}" title="{{ t('appointment_calendar_previous_week') }}"><i class="bi bi-chevron-left"></i></a>
+      <a class="btn btn-outline-secondary" href="{{ url_for('appointments', week=current_week) }}">{{ t("appointment_calendar_current_week") }}</a>
+      <a class="btn btn-outline-secondary" href="{{ url_for('appointments', week=next_week) }}" title="{{ t('appointment_calendar_next_week') }}"><i class="bi bi-chevron-right"></i></a>
+    </div>
+  </div>
+  <div class="card-body p-0 overflow-auto">
+    <table class="table table-bordered table-sm appointment-calendar mb-0">
+      <thead>
+        <tr>
+          <th class="calendar-hour">{{ t("appointment_calendar_time") }}</th>
+          {% for day in week_days %}<th>{{ t('appointment_weekday_' ~ day.weekday()) }}<br><span class="fw-normal text-muted">{{ day.strftime('%d.%m.%Y') }}</span></th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for hour in business_hours %}
+        <tr>
+          <th class="calendar-hour">{{ '%02d:00'|format(hour) }}</th>
+          {% for day in week_days %}
+          <td>
+            {% for event in calendar_events.get((day.isoformat(), hour), []) %}
+              <a class="calendar-event {% if event.confirmed %}calendar-event-confirmed{% else %}calendar-event-pending{% endif %}" href="{{ url_for('appointment_detail', appointment_id=event.request.id) }}">
+                <i class="bi bi-calendar-event me-1"></i>{{ event.time.strftime('%H:%M') }} · #{{ event.request.order.id }}<br>
+                <span>{{ event.request.order.title }} · {{ t('appointment_duration_' ~ event.duration) }}</span>
+              </a>
+            {% endfor %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card-footer small text-muted">{{ t("appointment_calendar_hint") }}</div>
+</div>
+
+<style>
+.appointment-calendar { min-width:900px; table-layout:fixed; }
+.appointment-calendar th { text-align:center; vertical-align:middle; }
+.appointment-calendar td { height:4.25rem; padding:.25rem; vertical-align:top; }
+.appointment-calendar .calendar-hour { width:5.5rem; white-space:nowrap; }
+.calendar-event { display:block; border-radius:.3rem; color:inherit; font-size:.75rem; line-height:1.25; margin-bottom:.2rem; padding:.3rem; text-decoration:none; }
+.calendar-event:hover { color:inherit; filter:brightness(.95); }
+.calendar-event-confirmed { background:var(--bs-success-bg-subtle); border-left:3px solid var(--bs-success); }
+.calendar-event-pending { background:var(--bs-warning-bg-subtle); border-left:3px solid var(--bs-warning); }
+</style>
 {% endblock %}
