@@ -61,14 +61,4 @@
   <div class="card-footer small text-muted">{{ t("appointment_calendar_hint") }}</div>
 </div>
 
-<style>
-.appointment-calendar { min-width:900px; table-layout:fixed; }
-.appointment-calendar th { text-align:center; vertical-align:middle; }
-.appointment-calendar td { height:4.25rem; padding:.25rem; vertical-align:top; }
-.appointment-calendar .calendar-hour { width:5.5rem; white-space:nowrap; }
-.calendar-event { display:block; border-radius:.3rem; color:inherit; font-size:.75rem; line-height:1.25; margin-bottom:.2rem; padding:.3rem; text-decoration:none; }
-.calendar-event:hover { color:inherit; filter:brightness(.95); }
-.calendar-event-confirmed { background:var(--bs-success-bg-subtle); border-left:3px solid var(--bs-success); }
-.calendar-event-pending { background:var(--bs-warning-bg-subtle); border-left:3px solid var(--bs-warning); }
-</style>
 {% endblock %}

@@ -202,6 +202,8 @@
   "admin_design_smoke_test_section_alerts": "Alertes",
   "admin_design_smoke_test_section_badges": "Badges",
   "admin_design_smoke_test_section_buttons": "Boutons",
+  "admin_design_smoke_test_section_calendar": "Vue calendrier",
+  "admin_design_smoke_test_calendar_hint": "Vérifiez la lisibilité, les couleurs d'état, le focus et le défilement horizontal dans les deux thèmes.",
   "admin_design_smoke_test_section_main_menu": "Menu principal",
   "admin_design_smoke_test_section_tabs": "Navigation par onglets",
   "admin_design_smoke_test_tabs_hint": "L'onglet actif, les onglets inactifs et les etats de survol/focus doivent etre clairement distinguables dans le theme actuel.",

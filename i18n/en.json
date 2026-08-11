@@ -202,6 +202,8 @@
   "admin_design_smoke_test_section_alerts": "Alerts",
   "admin_design_smoke_test_section_badges": "Badges",
   "admin_design_smoke_test_section_buttons": "Buttons",
+  "admin_design_smoke_test_section_calendar": "Calendar view",
+  "admin_design_smoke_test_calendar_hint": "Check readability, status colors, focus, and horizontal scrolling in both themes.",
   "admin_design_smoke_test_section_main_menu": "Main menu",
   "admin_design_smoke_test_section_tabs": "Tab navigation",
   "admin_design_smoke_test_tabs_hint": "The active tab, inactive tabs, and hover/focus states must be clearly distinguishable in the current theme.",

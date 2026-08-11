@@ -89,6 +89,43 @@
 </div>
 
 <div class="card mb-3">
+  <div class="card-header"><strong><i class="bi bi-calendar-event me-1"></i>{{ t("admin_design_smoke_test_section_calendar") }}</strong></div>
+  <div class="card-body p-0 overflow-auto">
+    <table class="table table-bordered table-sm appointment-calendar mb-0">
+      <thead>
+        <tr>
+          <th class="calendar-hour">{{ t("appointment_calendar_time") }}</th>
+          <th>{{ t("appointment_weekday_0") }}</th>
+          <th>{{ t("appointment_weekday_1") }}</th>
+          <th>{{ t("appointment_weekday_2") }}</th>
+          <th>{{ t("appointment_weekday_3") }}</th>
+          <th>{{ t("appointment_weekday_4") }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th class="calendar-hour">09:00</th>
+          <td></td>
+          <td><a class="calendar-event calendar-event-confirmed" href="#"><i class="bi bi-calendar-event me-1"></i>09:15 · #42<br><span>{{ t("appointment_confirmed_label") }} · 45 min</span></a></td>
+          <td></td><td></td><td></td>
+        </tr>
+        <tr>
+          <th class="calendar-hour">10:00</th>
+          <td></td><td></td><td></td>
+          <td><a class="calendar-event calendar-event-pending" href="#"><i class="bi bi-calendar-event me-1"></i>10:30 · #43<br><span>{{ t("appointment_dashboard_awaiting_confirmation") }} · 30 min</span></a></td>
+          <td></td>
+        </tr>
+        <tr>
+          <th class="calendar-hour">11:00</th>
+          <td></td><td></td><td></td><td></td><td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card-footer small text-muted">{{ t("admin_design_smoke_test_calendar_hint") }}</div>
+</div>
+
+<div class="card mb-3">
   <div class="card-header"><strong>{{ t("admin_design_smoke_test_section_main_menu") }}</strong></div>
   <div class="card-body">
     <nav class="navbar navbar-expand-lg navbar-light bg-primary rounded">

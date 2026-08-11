@@ -202,6 +202,8 @@
   "admin_design_smoke_test_section_alerts": "Alerts",
   "admin_design_smoke_test_section_badges": "Badges",
   "admin_design_smoke_test_section_buttons": "Buttons",
+  "admin_design_smoke_test_section_calendar": "Kalenderansicht",
+  "admin_design_smoke_test_calendar_hint": "Prüfe Lesbarkeit, Statusfarben, Fokus und horizontales Scrollen in beiden Themes.",
   "admin_design_smoke_test_section_main_menu": "Hauptmenue",
   "admin_design_smoke_test_section_tabs": "Reiter-Navigation",
   "admin_design_smoke_test_tabs_hint": "Aktiver Reiter, inaktive Reiter und Hover-/Fokuszustaende muessen im aktuellen Theme klar unterscheidbar sein.",
