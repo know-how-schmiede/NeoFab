@@ -4,6 +4,10 @@
 
 [Deutsch](README_DE.md)
 
+## Development status: NeoFab and NeoFab2
+
+Starting with NeoFab **0.9.62**, development of **NeoFab2** begins in parallel. NeoFab remains usable with its existing features and will receive **bug fixes only** from now on. New features and extensions will be developed exclusively in NeoFab2, which will use a **plugin system**.
+
 NeoFab is a Flask-based web application for managing fabrication orders in labs, workshops, maker spaces, and research environments. It supports 3D printing workflows and additional order categories such as plotter, CNC, and procurement work.
 
 The application is built for multilingual use with English as the default language and German and French support through the included translation files.

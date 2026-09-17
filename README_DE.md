@@ -4,6 +4,10 @@
 
 [English](README.md)
 
+## Entwicklungsstand: NeoFab und NeoFab2
+
+Ab NeoFab **0.9.62** beginnt parallel die Entwicklung von **NeoFab2**. NeoFab kann mit dem bestehenden Funktionsumfang weiterhin eingesetzt werden und erhaelt ab jetzt **ausschliesslich Bugfixes**. Neue Funktionen und Erweiterungen werden nur noch in NeoFab2 umgesetzt, das auf einem **Plugin-System** basieren wird.
+
 NeoFab ist eine Flask-basierte Webanwendung zur Verwaltung von Fertigungsauftraegen in Laboren, Werkstaetten, Makerspaces und Forschungsumgebungen. Die Anwendung unterstuetzt 3D-Druck-Workflows sowie weitere Auftragskategorien wie Plotter, CNC und Beschaffung.
 
 Die Anwendung ist fuer mehrsprachige Nutzung ausgelegt. Englisch ist die Standardsprache, Deutsch und Franzoesisch werden ueber die mitgelieferten Uebersetzungsdateien unterstuetzt.
