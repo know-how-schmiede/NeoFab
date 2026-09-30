@@ -1,14 +1,14 @@
 # Automatische Druckparameter aus G-Code
 
-NeoFab kann beim Upload einer G-Code-Datei Druckdauer, Filamentlaenge und Filamentgewicht automatisch in den Druckauftrag uebernehmen. Die Werte werden nur aus Kommentarzeilen gelesen, die der Slicer in die G-Code-Datei schreibt. Manuell eingetragene Werte im Upload-Formular haben Vorrang und werden nicht ueberschrieben.
+NeoFab kann beim Upload einer G-Code-Datei Druckdauer, Filamentlaenge und Filamentgewicht automatisch in den Druckauftrag uebernehmen. Die Werte werden aus Slicer-Kommentaren oder aus den Metadaten einer Prusa-Binaerdatei (.bgcode) gelesen. Manuell eingetragene Werte im Upload-Formular haben Vorrang und werden nicht ueberschrieben.
 
 ## Voraussetzungen
 
 Damit die automatische Uebernahme funktioniert:
 
-- Die Datei muss als `.gcode`, `.gco` oder `.gc` hochgeladen werden.
+- Die Datei muss als `.gcode`, `.gco`, `.gc` oder `.bgcode` hochgeladen werden.
 - Die Slicer-Kommentare duerfen beim Export nicht entfernt werden.
-- Die relevanten Werte muessen als Kommentarzeilen in der G-Code-Datei enthalten sein. NeoFab durchsucht die Datei beim Upload nach bekannten Statistik-Zeilen.
+- Die relevanten Werte muessen als Slicer-Kommentare oder BGCODE-Metadaten enthalten sein. Bei Textdateien liest NeoFab Dateianfang und Dateiende, bei BGCODE die Drucker- und Druckmetadaten.
 - Die Werte muessen nach dem Slicen bereits als konkrete Zahlen in der Datei stehen, nicht als Platzhalter wie `{print_time}`.
 - Druckdauer, Filamentlaenge und Filamentgewicht bleiben nach dem Upload manuell editierbar.
 
@@ -105,6 +105,18 @@ Wenn Bambu Studio die Werte nicht ausgibt:
 
 ## PrusaSlicer
 
+Ab Version 0.9.63 kann auch binaerer G-Code (`.bgcode`) direkt hochgeladen werden, etwa fuer den Prusa XL. NeoFab liest die INI-Metadaten aus BGCODE-Version 1, unkomprimiert oder mit Deflate komprimiert. Bilder und Werkzeugbahnen werden uebersprungen; die Datei muss nicht konvertiert werden. Andere Metadaten-Kompressionen (Heatshrink) werden nicht automatisch ausgewertet. Fehlende Werte bleiben manuell eintragbar.
+
+Bei mehreren Werkzeugen werden die Filamentlaengen und -gewichte aller Werkzeuge summiert. Die Datei `g-code/RAC_Boden_0.4n_0.2mm_PLA_XLIS_55m.bgcode` aus PrusaSlicer 2.9.6 liefert:
+
+- Normale Druckzeit: `55m 2s`, im Auftrag auf `55 min` gerundet.
+- Filament: `8604.24 mm`, im Auftrag `8.60 m`.
+- Gewicht: `25.66 g` (Werkzeug 2; die anderen Werkzeuge haben Verbrauch 0).
+
+Diese Werte fliessen in die bestehende Kostenermittlung mit dem ausgewaehlten Druckerprofil und Filament-Material ein. Slicer-Kosten werden nicht als NeoFab-Preise uebernommen. Bei mehreren unterschiedlichen Materialien verwendet die bestehende Kalkulation weiterhin den einen im Druckauftrag ausgewaehlten Materialpreis.
+
+Die folgenden Texteditor-Pruefungen gelten nur fuer normalen Text-G-Code, nicht fuer `.bgcode`.
+
 PrusaSlicer erzeugt in vielen Profilen ebenfalls Statistik-Kommentare am Ende der G-Code-Datei. NeoFab kann diese lesen, wenn sie in einem der oben genannten Formate enthalten sind.
 
 Vorgehen:
@@ -175,3 +187,5 @@ Falls bestehende Druckauftraege aus einer aelteren Version noch leere Felder zei
 - OrcaSlicer Placeholder Variables: https://www.orcaslicer.com/wiki/developer_reference/built_in_placeholders_variables
 - OrcaSlicer G-Code Output: https://www.orcaslicer.com/wiki/print_settings/others/others_settings_g_code_output
 - PrusaSlicer Placeholder-Liste: https://help.prusa3d.com/article/list-of-placeholders_205643
+
+- Prusa BGCODE-Spezifikation: https://github.com/prusa3d/libbgcode/blob/main/doc/specifications.md

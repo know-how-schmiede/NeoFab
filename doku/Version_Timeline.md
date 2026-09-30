@@ -1,5 +1,14 @@
 # Timeline NeoFab
 
+## Version 0.9.63
+
+Dateidialog und Upload-Pruefung akzeptieren PrusaSlicer-Druckdateien im Format .bgcode
+Druckdauer und Filamentverbrauch werden aus unkomprimierten und Deflate-komprimierten BGCODE-Metadaten fuer die Kostenermittlung uebernommen
+Filamentwerte mehrerer Werkzeuge werden summiert, damit Prusa-XL-Dateien mit ungenutztem ersten Werkzeug korrekt berechnet werden
+Mit RAC_Boden_0.4n_0.2mm_PLA_XLIS_55m.bgcode geprueft: 55 Minuten, 8,60 m und 25,66 g
+
+Version in Anwendung und README auf 0.9.63 angehoben
+
 ## Version 0.9.62
 
 Das Dashboard zeigt mehrere bestaetigte Termine eines Auftrags gleichzeitig an

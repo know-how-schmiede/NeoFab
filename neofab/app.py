@@ -10,6 +10,7 @@
 # ============================================================
 
 from version import APP_VERSION
+from gcode_metadata import extract_gcode_metadata
 from datetime import datetime, timedelta
 from email.utils import getaddresses
 from pathlib import Path
@@ -2702,137 +2703,6 @@ def update_order_file_preview(order_file: OrderFile, source_path: Path) -> None:
         order_file.preview_status = "ok" if (small_ok or large_ok) else "failed"
 
 
-def _parse_float_token(raw_value: str | None) -> float | None:
-    if not raw_value:
-        return None
-    normalized = raw_value.strip().replace(",", ".")
-    try:
-        return float(normalized)
-    except ValueError:
-        return None
-
-
-def _parse_gcode_duration_minutes(raw_value: str | None) -> int | None:
-    if not raw_value:
-        return None
-    value = raw_value.strip().lower()
-    total_minutes = 0.0
-
-    for pattern, factor in (
-        (r"(\d+(?:[.,]\d+)?)\s*(?:d|day|days)\b", 1440),
-        (r"(\d+(?:[.,]\d+)?)\s*(?:h|hr|hrs|hour|hours)\b", 60),
-        (r"(\d+(?:[.,]\d+)?)\s*(?:m|min|mins|minute|minutes)\b", 1),
-        (r"(\d+(?:[.,]\d+)?)\s*(?:s|sec|secs|second|seconds)\b", 1 / 60),
-    ):
-        match = re.search(pattern, value)
-        if match:
-            total_minutes += (_parse_float_token(match.group(1)) or 0.0) * factor
-
-    if total_minutes:
-        return max(0, int(round(total_minutes)))
-
-    colon_match = re.search(r"\b(\d{1,3}):(\d{2})(?::(\d{2}))?\b", value)
-    if colon_match:
-        first = int(colon_match.group(1))
-        second = int(colon_match.group(2))
-        third = int(colon_match.group(3) or 0)
-        total_minutes = first * 60 + second + (third / 60 if colon_match.group(3) else 0)
-        return max(0, int(round(total_minutes)))
-
-    numeric = _parse_float_token(value)
-    if numeric is not None:
-        return max(0, int(round(numeric / 60)))
-    return None
-
-
-GCODE_METADATA_SCAN_BYTES = 2 * 1024 * 1024
-
-
-def _read_gcode_metadata_lines(path: Path) -> list[str]:
-    """Read only the G-code regions where slicers normally store metadata."""
-    with path.open("rb") as handle:
-        head = handle.read(GCODE_METADATA_SCAN_BYTES)
-        file_size = handle.seek(0, os.SEEK_END)
-
-        tail = b""
-        if file_size > GCODE_METADATA_SCAN_BYTES:
-            handle.seek(max(GCODE_METADATA_SCAN_BYTES, file_size - GCODE_METADATA_SCAN_BYTES))
-            tail = handle.read(GCODE_METADATA_SCAN_BYTES)
-
-    content = head if not tail else head + b"\n" + tail
-    return content.decode("utf-8", errors="ignore").splitlines()
-
-
-def extract_gcode_metadata(path: Path) -> dict[str, float | int]:
-    metadata: dict[str, float | int] = {}
-    try:
-        for raw_line in _read_gcode_metadata_lines(path):
-            line = raw_line.strip()
-            lower = line.lower()
-
-            if "duration_min" not in metadata:
-                time_match = re.search(r";\s*time\s*:\s*(\d+(?:[.,]\d+)?)\s*$", lower)
-                if time_match:
-                    seconds = _parse_float_token(time_match.group(1))
-                    if seconds is not None:
-                        metadata["duration_min"] = max(0, int(round(seconds / 60)))
-
-            if "duration_min" not in metadata and any(
-                token in lower for token in ("estimated printing time", "estimated print time", "print time", "printing time")
-            ):
-                duration = _parse_gcode_duration_minutes(line)
-                if duration is not None:
-                    metadata["duration_min"] = duration
-
-            if "filament_m" not in metadata:
-                filament_bracket_m_match = re.search(r"filament\s+used\s*\[(mm|m)\]\s*=\s*(\d+(?:[.,]\d+)?)", lower)
-                if filament_bracket_m_match:
-                    value = _parse_float_token(filament_bracket_m_match.group(2))
-                    if value is not None:
-                        metadata["filament_m"] = value / 1000 if filament_bracket_m_match.group(1) == "mm" else value
-
-            if "filament_m" not in metadata:
-                filament_m_match = re.search(r"filament\s+used.*?(\d+(?:[.,]\d+)?)\s*m\b", lower)
-                if filament_m_match:
-                    value = _parse_float_token(filament_m_match.group(1))
-                    if value is not None:
-                        metadata["filament_m"] = value
-
-            if "filament_m" not in metadata:
-                filament_mm_match = re.search(r"filament\s+used.*?(\d+(?:[.,]\d+)?)\s*mm\b", lower)
-                if filament_mm_match:
-                    value = _parse_float_token(filament_mm_match.group(1))
-                    if value is not None:
-                        metadata["filament_m"] = value / 1000
-
-            if "filament_g" not in metadata:
-                filament_bracket_g_match = re.search(
-                    r"(?:filament\s+used|total\s+filament\s+used)\s*\[g\]\s*=\s*(\d+(?:[.,]\d+)?)",
-                    lower,
-                )
-                if filament_bracket_g_match:
-                    value = _parse_float_token(filament_bracket_g_match.group(1))
-                    if value is not None:
-                        metadata["filament_g"] = value
-
-            if "filament_g" not in metadata:
-                filament_g_match = re.search(
-                    r"(?:filament\s+used|filament\s+weight|total\s+filament).*?(\d+(?:[.,]\d+)?)\s*g\b",
-                    lower,
-                )
-                if filament_g_match:
-                    value = _parse_float_token(filament_g_match.group(1))
-                    if value is not None:
-                        metadata["filament_g"] = value
-
-            if len(metadata) == 3:
-                break
-    except OSError:
-        return metadata
-
-    return metadata
-
-
 def apply_gcode_metadata_to_job(job: OrderPrintJob, path: Path) -> bool:
     if job.duration_min is not None and job.filament_m is not None and job.filament_g is not None:
         return False
@@ -5456,7 +5326,7 @@ def order_detail(order_id):
 
             _, ext = os.path.splitext(safe_name)
             ext = ext.lower().lstrip(".")
-            allowed_ext = {"gcode", "gco", "gc"}
+            allowed_ext = {"gcode", "gco", "gc", "bgcode"}
             if ext not in allowed_ext:
                 flash(trans("flash_print_job_invalid_file"), "warning")
                 return order_detail_redirect("print-jobs")

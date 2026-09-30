@@ -146,7 +146,7 @@ Die wichtigsten Skripte sind:
 
 ## Aktuelle Version
 
-Aktuelle Anwendungsversion: **0.9.62**
+Aktuelle Anwendungsversion: **0.9.63**
 
 Zu den letzten Aenderungen gehoeren Plotter-Stammdaten, Standardpapier je Plotter-Typ, Tintenkosten pro Quadratmeter, Deckungsgradanalyse und klarere Plakatgroessen-Badges fuer Plotter-Auftraege.
 
