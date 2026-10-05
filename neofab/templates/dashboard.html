@@ -8,7 +8,7 @@
 {% set selected_area_query = selected_area_id if selected_area_id is not none else '' %}
 {% macro sort_link(key, label) %}
   {% set next_dir = 'desc' if sort_by == key and sort_dir == 'asc' else 'asc' %}
-  <a class="link-dark text-decoration-none nf-sort-link" href="{{ url_for('dashboard', sort=key, dir=next_dir, per_page=per_page, page=1, category=selected_category_query, area=selected_area_query, status=selected_status, q=dashboard_search_query) }}">
+  <a class="link-dark text-decoration-none nf-sort-link" href="{{ url_for('dashboard', sort=key, dir=next_dir, per_page=per_page, page=1, category=selected_category_query, area=selected_area_query, status=selected_status, hide_completed=1 if hide_completed else 0, q=dashboard_search_query) }}">
     {{ label }}
     {% if sort_by == key %}
       <i class="bi {% if sort_dir == 'asc' %}bi-caret-up-fill{% else %}bi-caret-down-fill{% endif %} ms-1"></i>
@@ -179,6 +179,13 @@
             <option value="{{ option }}" {% if selected_status == option %}selected{% endif %}>{{ status_labels.get(option, option) }}</option>
           {% endfor %}
         </select>
+        <div class="form-check ms-1">
+          <input type="checkbox" class="form-check-input" id="dashboard_hide_completed"
+                 name="hide_completed" value="1" {% if hide_completed %}checked{% endif %}
+                 onchange="this.form.submit()">
+          <label class="form-check-label small" for="dashboard_hide_completed">{{ t("dashboard_hide_completed") }}</label>
+        </div>
+        <input type="hidden" name="hide_completed" value="0">
       </form>
       <div class="d-flex flex-column align-items-end gap-1">
         <div class="small text-muted" id="dashboardCurrentDateTime" aria-live="polite"></div>
@@ -196,6 +203,7 @@
       <input type="hidden" name="category" value="{{ selected_category_query }}">
       <input type="hidden" name="area" value="{{ selected_area_query }}">
       <input type="hidden" name="status" value="{{ selected_status }}">
+      <input type="hidden" name="hide_completed" value="{{ 1 if hide_completed else 0 }}">
 
       <label for="dashboard_search_query" class="form-label small mb-0">{{ t("dashboard_search_label") }}</label>
       <input id="dashboard_search_query"
@@ -211,7 +219,7 @@
       </button>
       {% if dashboard_search_query %}
         <a class="btn btn-outline-secondary btn-sm"
-           href="{{ url_for('dashboard', sort=sort_by, dir=sort_dir, per_page=per_page, page=1, category=selected_category_query, area=selected_area_query, status=selected_status) }}">
+           href="{{ url_for('dashboard', sort=sort_by, dir=sort_dir, per_page=per_page, page=1, category=selected_category_query, area=selected_area_query, status=selected_status, hide_completed=1 if hide_completed else 0) }}">
           {{ t("dashboard_search_reset") }}
         </a>
       {% endif %}
@@ -246,6 +254,7 @@
           <input type="hidden" name="category" value="{{ selected_category_query }}">
           <input type="hidden" name="area" value="{{ selected_area_query }}">
           <input type="hidden" name="status" value="{{ selected_status }}">
+          <input type="hidden" name="hide_completed" value="{{ 1 if hide_completed else 0 }}">
           <input type="hidden" name="q" value="{{ dashboard_search_query }}">
           <label for="dashboard_per_page" class="form-label small mb-0">{{ t("dashboard_rows_per_page") }}</label>
           <select id="dashboard_per_page" name="per_page" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
@@ -258,7 +267,7 @@
         <nav aria-label="{{ t('dashboard_pagination_label') }}">
           <ul class="pagination pagination-sm mb-0">
             <li class="page-item {% if page <= 1 %}disabled{% endif %}">
-              <a class="page-link" href="{{ url_for('dashboard', sort=sort_by, dir=sort_dir, per_page=per_page, page=page - 1, category=selected_category_query, area=selected_area_query, status=selected_status, q=dashboard_search_query) }}" aria-label="{{ t('dashboard_previous_page') }}">
+              <a class="page-link" href="{{ url_for('dashboard', sort=sort_by, dir=sort_dir, per_page=per_page, page=page - 1, category=selected_category_query, area=selected_area_query, status=selected_status, hide_completed=1 if hide_completed else 0, q=dashboard_search_query) }}" aria-label="{{ t('dashboard_previous_page') }}">
                 <i class="bi bi-chevron-left"></i>
               </a>
             </li>
@@ -266,7 +275,7 @@
               <span class="page-link">{{ page }} / {{ total_pages }}</span>
             </li>
             <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
-              <a class="page-link" href="{{ url_for('dashboard', sort=sort_by, dir=sort_dir, per_page=per_page, page=page + 1, category=selected_category_query, area=selected_area_query, status=selected_status, q=dashboard_search_query) }}" aria-label="{{ t('dashboard_next_page') }}">
+              <a class="page-link" href="{{ url_for('dashboard', sort=sort_by, dir=sort_dir, per_page=per_page, page=page + 1, category=selected_category_query, area=selected_area_query, status=selected_status, hide_completed=1 if hide_completed else 0, q=dashboard_search_query) }}" aria-label="{{ t('dashboard_next_page') }}">
                 <i class="bi bi-chevron-right"></i>
               </a>
             </li>

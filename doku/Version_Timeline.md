@@ -1,5 +1,15 @@
 # Timeline NeoFab
 
+## Version 0.9.65
+
+Neue Option im Dashboard zum Ausblenden abgeschlossener Auftraege mit Status completed
+Die Auswahl bleibt innerhalb der Sitzung sowie beim Suchen, Sortieren und Blaettern erhalten und laesst sich jederzeit wieder ausschalten
+Auftragsanzahl und Seiteneinteilung beruecksichtigen den Filter; vorhandene Kategorie-, Bereichs- und Statusfilter bleiben kombinierbar
+Beschriftung auf Deutsch, Englisch und Franzoesisch ergaenzt
+Geprueft: Dashboard-Integration mit isolierter Testdatenbank fuer Ein-/Ausschalten, Sitzung, Seitenzaehlung, Suche, Sortierlinks und kombinierten Statusfilter; 19 automatisierte Tests erfolgreich; kein visueller Browsertest durchgefuehrt
+
+Version in Anwendung und README auf 0.9.65 angehoben
+
 ## Version 0.9.64
 
 Mehrfachauswahl von Auftraegen in der Auftragsverwaltung per Checkbox mit Auswahlzaehler und Alle-auswaehlen-Funktion

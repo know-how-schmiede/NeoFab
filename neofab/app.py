@@ -6635,6 +6635,7 @@ def dashboard():
         "category": "dashboard_filter_category",
         "area": "dashboard_filter_area",
         "status": "dashboard_filter_status",
+        "hide_completed": "dashboard_filter_hide_completed",
     }
 
     def _get_persistent_dashboard_filter(name):
@@ -6651,6 +6652,7 @@ def dashboard():
     selected_category_id_raw = _get_persistent_dashboard_filter("category")
     selected_area_id_raw = _get_persistent_dashboard_filter("area")
     selected_status = _get_persistent_dashboard_filter("status")
+    hide_completed = _get_persistent_dashboard_filter("hide_completed") == "1"
     dashboard_search_query = (request.args.get("q") or "").strip()
 
     if request.method == "POST":
@@ -6872,6 +6874,8 @@ def dashboard():
         orders = [order for order in orders if order.area_id == selected_area_id]
     if selected_status:
         orders = [order for order in orders if (order.status or "") == selected_status]
+    if hide_completed:
+        orders = [order for order in orders if order.status != "completed"]
     if dashboard_search_query:
         search_term = dashboard_search_query.lower()
 
@@ -7120,6 +7124,7 @@ def dashboard():
         selected_category_id=selected_category_id,
         selected_area_id=selected_area_id,
         selected_status=selected_status,
+        hide_completed=hide_completed,
         dashboard_search_query=dashboard_search_query,
         total_orders=total_orders,
         total_pages=total_pages,

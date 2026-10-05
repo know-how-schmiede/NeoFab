@@ -1,4 +1,5 @@
 {
+  "dashboard_hide_completed": "Hide completed orders",
   "admin_orders_invert": "Invert selection",
   "admin_orders_bulk_archive": "Archive selected",
   "admin_orders_bulk_delete": "Delete selected",

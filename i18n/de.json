@@ -1,4 +1,5 @@
 {
+  "dashboard_hide_completed": "Abgeschlossene Aufträge ausblenden",
   "admin_orders_invert": "Auswahl umkehren",
   "admin_orders_bulk_archive": "Ausgewählte archivieren",
   "admin_orders_bulk_delete": "Ausgewählte löschen",
