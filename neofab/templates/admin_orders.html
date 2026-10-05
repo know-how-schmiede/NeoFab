@@ -18,10 +18,17 @@
 
   <div class="card-body p-2">
     {% if orders %}
+      <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="invertOrderSelection">{{ t("admin_orders_invert") }}</button>
+        <span id="orderSelectionCount" class="small" aria-live="polite"></span>
+        <button type="button" class="btn btn-outline-warning btn-sm" id="bulkArchiveOrders" disabled>{{ t("admin_orders_bulk_archive") }}</button>
+        <button type="button" class="btn btn-outline-danger btn-sm" id="bulkDeleteOrders" disabled>{{ t("admin_orders_bulk_delete") }}</button>
+      </div>
       <div class="table-responsive nf-admin-wrap">
         <table class="table table-striped table-hover table-sm align-middle mb-0 nf-admin-table">
           <thead>
             <tr>
+              <th><input type="checkbox" class="form-check-input" id="selectAllOrders" aria-label="{{ t('admin_orders_select_all') }}"></th>
               <th>{{ t("table_id") }}</th>
               <th>{{ t("title") }}</th>
               <th>{{ t("owner") }}</th>
@@ -35,6 +42,7 @@
           <tbody>
             {% for o in orders %}
               <tr>
+                <td data-label="{{ t('admin_orders_selection') }}"><input type="checkbox" class="form-check-input order-selection" value="{{ o.id }}" data-order-title="{{ o.title|e }}" aria-label="{{ t('admin_orders_selection') }}: #{{ o.id }} – {{ o.title|e }}"></td>
                 <td data-label="{{ t('table_id') }}">{{ o.id }}</td>
                 <td data-label="{{ t('title') }}">
                   <a href="{{ url_for('order_detail', order_id=o.id) }}">#{{ o.id }}-{{ o.title }}</a>
@@ -146,8 +154,93 @@
   </div>
 </div>
 
+<div class="modal fade" id="bulkOrdersModal" tabindex="-1" aria-labelledby="bulkOrdersModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <form method="post" action="{{ url_for('admin.admin_orders_bulk') }}" id="bulkOrdersForm" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="bulkOrdersModalLabel"></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('btn_cancel') }}"></button>
+      </div>
+      <div class="modal-body">
+        <p id="bulkOrdersWarning" class="alert alert-warning"></p>
+        <p id="bulkOrdersCount" class="fw-semibold"></p>
+        <ul id="bulkOrdersList"></ul>
+        <input type="hidden" name="action" id="bulkOrdersAction">
+        <div id="bulkOrdersIds"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t("btn_cancel") }}</button>
+        <button type="submit" class="btn" id="bulkOrdersConfirm" name="confirmed" value="yes"></button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 document.addEventListener("DOMContentLoaded", function() {
+  const selections = Array.from(document.querySelectorAll(".order-selection"));
+  const selectAll = document.getElementById("selectAllOrders");
+  if (selectAll) {
+    const archiveButton = document.getElementById("bulkArchiveOrders");
+    const deleteButton = document.getElementById("bulkDeleteOrders");
+    const countText = {{ t("admin_orders_selected_count")|tojson }};
+    const selected = () => selections.filter((checkbox) => checkbox.checked);
+    const updateSelection = () => {
+      const count = selected().length;
+      selectAll.checked = count === selections.length;
+      selectAll.indeterminate = count > 0 && count < selections.length;
+      document.getElementById("orderSelectionCount").textContent = countText.replace("{count}", count);
+      archiveButton.disabled = deleteButton.disabled = count === 0;
+    };
+    selections.forEach((checkbox) => checkbox.addEventListener("change", updateSelection));
+    selectAll.addEventListener("change", () => {
+      selections.forEach((checkbox) => { checkbox.checked = selectAll.checked; });
+      updateSelection();
+    });
+    document.getElementById("invertOrderSelection").addEventListener("click", () => {
+      selections.forEach((checkbox) => { checkbox.checked = !checkbox.checked; });
+      updateSelection();
+    });
+    const bulkModal = new bootstrap.Modal(document.getElementById("bulkOrdersModal"));
+    const showBulkConfirmation = (action) => {
+      const checked = selected();
+      if (!checked.length) return;
+      const deleting = action === "delete";
+      const title = deleting ? {{ t("admin_orders_bulk_delete")|tojson }} : {{ t("admin_orders_bulk_archive")|tojson }};
+      document.getElementById("bulkOrdersModalLabel").textContent = title;
+      document.getElementById("bulkOrdersWarning").textContent = deleting
+        ? {{ t("admin_orders_bulk_delete_confirm")|tojson }}
+        : {{ t("admin_orders_bulk_archive_confirm")|tojson }};
+      document.getElementById("bulkOrdersCount").textContent = countText.replace("{count}", checked.length);
+      document.getElementById("bulkOrdersAction").value = action;
+      const confirm = document.getElementById("bulkOrdersConfirm");
+      confirm.textContent = title;
+      confirm.className = deleting ? "btn btn-danger" : "btn btn-warning";
+      const list = document.getElementById("bulkOrdersList");
+      const ids = document.getElementById("bulkOrdersIds");
+      list.replaceChildren();
+      ids.replaceChildren();
+      checked.forEach((checkbox) => {
+        const item = document.createElement("li");
+        item.textContent = "#" + checkbox.value + " – " + checkbox.dataset.orderTitle;
+        list.appendChild(item);
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = "order_ids";
+        input.value = checkbox.value;
+        ids.appendChild(input);
+      });
+      bulkModal.show();
+    };
+    archiveButton.addEventListener("click", () => showBulkConfirmation("archive"));
+    deleteButton.addEventListener("click", () => showBulkConfirmation("delete"));
+    let submitting = false;
+    document.getElementById("bulkOrdersForm").addEventListener("submit", (event) => {
+      if (submitting) event.preventDefault();
+      submitting = true;
+    });
+    updateSelection();
+  }
   const archiveModalEl = document.getElementById("archiveOrderModal");
   const deleteModalEl = document.getElementById("deleteOrderModal");
 

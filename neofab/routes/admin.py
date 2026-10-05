@@ -678,8 +678,15 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
     @bp.route("/orders/<int:order_id>/delete", methods=["POST"], endpoint="admin_order_delete")
     @roles_required("admin")
     def admin_order_delete(order_id: int):
-        trans = t
         order = Order.query.get_or_404(order_id)
+        if _delete_managed_order(order):
+            flash(t("flash_order_deleted"), "info")
+        else:
+            flash(t("flash_order_delete_failed"), "danger")
+        return redirect(url_for(".admin_orders"))
+
+    def _delete_managed_order(order: Order) -> bool:
+        order_id = order.id
         order_title = order.title
         try:
             write_audit_log(
@@ -717,7 +724,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 },
                 log_file=DELETE_LOG_FILE,
             )
-            flash(trans("flash_order_deleted"), "info")
+            return True
         except Exception as exc:
             db.session.rollback()
             current_app.logger.exception("Failed to delete order %s", order_id)
@@ -736,7 +743,55 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                 details={"order_id": order_id, "title": order_title, "error": str(exc)},
                 log_file=DELETE_LOG_FILE,
             )
-            flash(trans("flash_order_delete_failed"), "danger")
+            return False
+
+    @bp.route("/orders/bulk", methods=["POST"], endpoint="admin_orders_bulk")
+    @roles_required("admin")
+    def admin_orders_bulk():
+        action = request.form.get("action")
+        raw_ids = request.form.getlist("order_ids")
+        try:
+            order_ids = {int(value) for value in raw_ids}
+        except (ValueError, TypeError):
+            order_ids = set()
+        if (action not in ("archive", "delete") or not order_ids
+                or any(order_id <= 0 for order_id in order_ids)
+                or request.form.get("confirmed") != "yes"):
+            flash(t("flash_orders_bulk_invalid"), "warning")
+            return redirect(url_for(".admin_orders"))
+
+        orders = Order.query.filter(Order.id.in_(order_ids)).order_by(Order.id).all()
+        if len(orders) != len(order_ids):
+            flash(t("flash_orders_bulk_invalid"), "warning")
+            return redirect(url_for(".admin_orders"))
+
+        completed = skipped = failed = 0
+        for order in orders:
+            if action == "delete":
+                if _delete_managed_order(order):
+                    completed += 1
+                else:
+                    failed += 1
+            elif order.is_archived:
+                skipped += 1
+            else:
+                order_id = order.id
+                try:
+                    order.is_archived = True
+                    order.archived_at = datetime.utcnow()
+                    db.session.commit()
+                    write_audit_log(
+                        current_app, "order_archived", user=current_user,
+                        details={"order_id": order.id, "title": order.title},
+                    )
+                    completed += 1
+                except Exception:
+                    db.session.rollback()
+                    current_app.logger.exception("Failed to archive order %s", order_id)
+                    failed += 1
+        flash(t("flash_orders_bulk_" + action).format(
+            completed=completed, skipped=skipped, failed=failed,
+        ), "warning" if failed else "info")
         return redirect(url_for(".admin_orders"))
 
     @bp.route("/settings/orders/delete-all", methods=["POST"], endpoint="admin_orders_delete_all")

@@ -1,5 +1,17 @@
 # Timeline NeoFab
 
+## Version 0.9.64
+
+Mehrfachauswahl von Auftraegen in der Auftragsverwaltung per Checkbox mit Auswahlzaehler und Alle-auswaehlen-Funktion
+Auswahl umkehren, um beispielsweise aktuelle Auftraege auszuwaehlen und anschliessend alle uebrigen zu bearbeiten
+Ausgewaehlte Auftraege gemeinsam archivieren oder loeschen; bereits archivierte Auftraege werden beim Archivieren uebersprungen
+Sicherheitsdialog vor jeder Sammelaktion mit Anzahl und Liste der betroffenen Auftraege sowie ausdruecklicher Warnung vor endgueltigem Loeschen inklusive Dateien
+Sammelaktionen sind auf Administratoren beschraenkt, verlangen eine Bestaetigung und melden erfolgreiche, uebersprungene und fehlgeschlagene Verarbeitungen
+Oberflaechentexte auf Deutsch, Englisch und Franzoesisch ergaenzt
+Geprueft: 19 automatisierte Tests erfolgreich, einschliesslich Auswahlvalidierung, Berechtigungen, Dateiloeschung und Fehlerbehandlung; kein visueller Browsertest durchgefuehrt
+
+Version in Anwendung und README auf 0.9.64 angehoben
+
 ## Version 0.9.63
 
 Dateidialog und Upload-Pruefung akzeptieren PrusaSlicer-Druckdateien im Format .bgcode
