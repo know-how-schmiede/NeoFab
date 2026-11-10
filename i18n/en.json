@@ -1061,5 +1061,7 @@
   "flash_appointment_selection_invalid": "The selected proposed time is invalid.",
   "flash_appointment_selection_saved": "The proposed time was selected and is awaiting confirmation.",
   "flash_appointment_confirmation_selection_required": "The user must select a proposed time before confirmation.",
-  "flash_appointment_confirmed": "The appointment was confirmed. Participants were notified by email."
+  "flash_appointment_confirmed": "The appointment was confirmed. Participants were notified by email.",
+  "profile_dashboard_hide_completed_label": "Hide completed orders by default",
+  "profile_dashboard_hide_completed_help": "Sets the default for \"Hide completed orders\" on the Orders page. The filter can be changed there for the current session."
 }

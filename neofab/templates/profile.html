@@ -105,6 +105,18 @@
 
         {% if user.role in ['worker', 'admin'] %}
           <div class="col-12">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox"
+                     id="dashboard_hide_completed" name="dashboard_hide_completed"
+                     {% if user.dashboard_hide_completed %}checked{% endif %}>
+              <label class="form-check-label" for="dashboard_hide_completed">
+                {{ t("profile_dashboard_hide_completed_label") }}
+              </label>
+            </div>
+            <div class="form-text">{{ t("profile_dashboard_hide_completed_help") }}</div>
+          </div>
+
+          <div class="col-12">
             <hr class="my-1">
             <div class="fw-semibold">{{ t("profile_pickup_info_section_title") }}</div>
             <div class="form-text">{{ t("profile_pickup_info_section_help") }}</div>

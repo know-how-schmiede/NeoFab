@@ -1,5 +1,17 @@
 # Timeline NeoFab
 
+## Version 0.9.66
+
+Admins und Mitarbeiter koennen unter Mein Profil abgeschlossene Auftraege standardmaessig ein- oder ausblenden
+Die persoenliche Voreinstellung wird dauerhaft gespeichert und beim Aufruf der Auftragsseite ohne Sitzungsfilter angewendet; der Filter bleibt fuer die Sitzung umschaltbar
+Das Speichern des Profils setzt den bisherigen Sitzungsfilter zurueck, damit die gewaehlte Voreinstellung sofort greift
+Bestehende Datenbanken werden automatisch um die Benutzereinstellung ergaenzt; bisherige Standardansicht bleibt erhalten
+Beschriftung und Hilfetext auf Deutsch, Englisch und Franzoesisch ergaenzt
+Geprueft: 3 gezielte automatisierte Tests fuer Profilspeicherung, Rollenrechte, Standardwerte, Sitzungs-/URL-Vorrang und wiederholbare Datenbankmigration erfolgreich; 11 G-Code-Tests erfolgreich; Python-Syntax, Profiltemplate und Uebersetzungsdateien geprueft
+Vollstaendiger Testlauf durch lokale Python-Umgebung blockiert (Store-Python startet nicht; Ersatzinterpreter ohne kompatibles _cffi_backend fuer Admin-Tests); kein visueller Browsertest durchgefuehrt
+
+Version in Anwendung und README auf 0.9.66 angehoben
+
 ## Version 0.9.65
 
 Neue Option im Dashboard zum Ausblenden abgeschlossener Auftraege mit Status completed

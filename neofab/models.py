@@ -19,6 +19,7 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(50), nullable=False, default="user")
     language = db.Column(db.String(5), nullable=False, default="en")
     theme_mode = db.Column(db.String(10), nullable=False, default="light")
+    dashboard_hide_completed = db.Column(db.Boolean, nullable=False, default=False)
     status_email_enabled = db.Column(db.Boolean, nullable=False, default=True)
     pickup_hours_enabled = db.Column(db.Boolean, nullable=False, default=False)
     pickup_hours_text = db.Column(db.Text)

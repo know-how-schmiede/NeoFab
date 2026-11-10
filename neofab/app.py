@@ -2010,6 +2010,8 @@ def ensure_user_preference_columns():
         statements = []
         if "theme_mode" not in cols:
             statements.append("ALTER TABLE user ADD COLUMN theme_mode VARCHAR(10) NOT NULL DEFAULT 'light'")
+        if "dashboard_hide_completed" not in cols:
+            statements.append("ALTER TABLE user ADD COLUMN dashboard_hide_completed BOOLEAN NOT NULL DEFAULT 0")
         if "status_email_enabled" not in cols:
             statements.append("ALTER TABLE user ADD COLUMN status_email_enabled BOOLEAN NOT NULL DEFAULT 1")
         if "pickup_hours_enabled" not in cols:
@@ -3487,6 +3489,7 @@ def profile():
                 user.theme_mode = theme_mode
                 user.status_email_enabled = status_email_enabled
                 if user.role in {"admin", "worker"}:
+                    user.dashboard_hide_completed = bool(request.form.get("dashboard_hide_completed"))
                     user.pickup_hours_enabled = pickup_hours_enabled
                     user.pickup_hours_text = pickup_hours_text
                     user.pickup_contact_enabled = pickup_contact_enabled
@@ -3557,6 +3560,8 @@ def profile():
                     UserOrderAreaPreference.query.filter_by(user_id=user.id).delete()
 
                 db.session.commit()
+                if user.role in {"admin", "worker"}:
+                    session.pop("dashboard_filter_hide_completed", None)
                 flash(trans("flash_profile_updated"), "success")
                 return redirect(url_for("profile"))
 
@@ -6647,6 +6652,8 @@ def dashboard():
             else:
                 session.pop(session_key, None)
             return value
+        if name == "hide_completed" and session_key not in session:
+            return "1" if current_user.role in {"admin", "worker"} and current_user.dashboard_hide_completed else "0"
         return (session.get(session_key) or "").strip()
 
     selected_category_id_raw = _get_persistent_dashboard_filter("category")

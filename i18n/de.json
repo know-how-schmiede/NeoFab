@@ -1059,5 +1059,7 @@
   "flash_appointment_selection_invalid": "Der ausgewählte Terminvorschlag ist ungültig.",
   "flash_appointment_selection_saved": "Der Terminvorschlag wurde ausgewählt und wartet auf Bestätigung.",
   "flash_appointment_confirmation_selection_required": "Vor der Bestätigung muss der User einen Terminvorschlag auswählen.",
-  "flash_appointment_confirmed": "Der Termin wurde verbindlich bestätigt. Die Beteiligten wurden per E-Mail informiert."
+  "flash_appointment_confirmed": "Der Termin wurde verbindlich bestätigt. Die Beteiligten wurden per E-Mail informiert.",
+  "profile_dashboard_hide_completed_label": "Abgeschlossene Aufträge standardmäßig ausblenden",
+  "profile_dashboard_hide_completed_help": "Legt die Vorauswahl für „Abgeschlossene Aufträge ausblenden“ auf der Seite Aufträge fest. Dort kann der Filter für die Sitzung geändert werden."
 }

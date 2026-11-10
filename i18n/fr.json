@@ -1061,5 +1061,7 @@
   "flash_appointment_selection_invalid": "La proposition sélectionnée n'est pas valide.",
   "flash_appointment_selection_saved": "La proposition a été sélectionnée et attend une confirmation.",
   "flash_appointment_confirmation_selection_required": "L'utilisateur doit sélectionner une proposition avant la confirmation.",
-  "flash_appointment_confirmed": "Le rendez-vous a été confirmé. Les participants ont été informés par e-mail."
+  "flash_appointment_confirmed": "Le rendez-vous a été confirmé. Les participants ont été informés par e-mail.",
+  "profile_dashboard_hide_completed_label": "Masquer les commandes terminées par défaut",
+  "profile_dashboard_hide_completed_help": "Définit la sélection par défaut de « Masquer les commandes terminées » sur la page Commandes. Le filtre peut y être modifié pour la session en cours."
 }
