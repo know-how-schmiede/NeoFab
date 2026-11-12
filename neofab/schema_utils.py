@@ -5,6 +5,22 @@ from sqlalchemy import text
 from models import db
 
 
+def ensure_new_order_notification_schema() -> None:
+    """Suppress historical orders and remember successful deliveries per address."""
+    columns = {row[1] for row in db.session.execute(text("PRAGMA table_info(orders)"))}
+    if "new_order_notified_at" not in columns:
+        db.session.execute(text("ALTER TABLE orders ADD COLUMN new_order_notified_at DATETIME"))
+        db.session.execute(text("UPDATE orders SET new_order_notified_at = CURRENT_TIMESTAMP"))
+    db.session.execute(text("""
+        CREATE TABLE IF NOT EXISTS new_order_email_deliveries (
+            order_id INTEGER NOT NULL,
+            email VARCHAR(255) NOT NULL,
+            PRIMARY KEY (order_id, email)
+        )
+    """))
+    db.session.commit()
+
+
 def ensure_order_id_sequence_table() -> None:
     """
     Maintain a monotonic order id sequence independent of SQLite rowid reuse.

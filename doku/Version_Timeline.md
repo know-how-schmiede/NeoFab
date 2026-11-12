@@ -1,5 +1,20 @@
 # Timeline NeoFab
 
+## Version 0.9.67
+
+Neue Auftraege werden erst nach dem erfolgreichen Speichern der ersten Modelldatei, eines Plakats oder eines Beschaffungsartikels per E-Mail gemeldet
+Empfaenger sind ausschliesslich aktive, nicht geloeschte Mitarbeiter und Admins mit gesetzter Bearbeitungsberechtigung fuer die Auftragskategorie
+Versand erfolgt einzeln in der Sprache des Empfaengers mit Auftragsdetails, Auftraggeber und Direktlink; bestehende globale E-Mail-Aktion fuer neue Auftraege wird beruecksichtigt
+Dauerhafter Benachrichtigungsstand und Zustellnachweise je Adresse verhindern erneute Meldungen bei weiteren Inhalten und parallelen Anfragen
+Bei Versandfehlern wird beim naechsten Hinzufuegen von Inhalten erneut versucht; bereits erfolgreich belieferte Adressen werden uebersprungen
+Bestehende Auftraege werden bei der automatischen Datenbankmigration als bereits benachrichtigt markiert, damit keine historischen Neumeldungen entstehen
+Beim Loeschen eines Auftrags werden auch seine Zustellnachweise entfernt
+Geprueft: 9 neue automatisierte Tests erfolgreich, einschliesslich echter Dateiupload-/Plakat-/Artikelrouten mit isolierter Datenbank, Empfaengerfilter, Sprachwahl, Teilfehler, parallele Anfragen und wiederholbare Migration; Python-Syntax und git diff --check erfolgreich
+Gesamtlauf: 30 von 31 Tests erfolgreich; ein bestehender Admin-Loeschtest scheitert an einem falsch codierten Umlaut im Erwartungstext, auch mit dem unveraenderten Admin-Code aus HEAD reproduziert
+Kein Versand ueber einen echten SMTP-Server und kein visueller Browsertest durchgefuehrt
+
+Version in Anwendung und README auf 0.9.67 angehoben
+
 ## Version 0.9.66
 
 Admins und Mitarbeiter koennen unter Mein Profil abgeschlossene Auftraege standardmaessig ein- oder ausblenden

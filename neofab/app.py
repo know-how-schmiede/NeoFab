@@ -87,7 +87,7 @@ from notifications import (
     send_user_activation_notification,
     send_user_welcome_notification,
 )
-from schema_utils import ensure_order_id_sequence_table, ensure_training_playlist_schema, reserve_next_order_id
+from schema_utils import ensure_new_order_notification_schema, ensure_order_id_sequence_table, ensure_training_playlist_schema, reserve_next_order_id
 from status_messages import (
     ORDER_STATUS_DEFS,
     PRINT_JOB_STATUS_DEFS,
@@ -2235,6 +2235,7 @@ with app.app_context():
     ensure_order_archive_columns()
     ensure_order_category_schema()
     ensure_order_area_schema()
+    ensure_new_order_notification_schema()
     ensure_order_print_jobs_table()
     ensure_order_read_status_table()
     ensure_order_appointment_requests_table()
@@ -4407,6 +4408,7 @@ def order_detail(order_id):
             )
 
             flash(trans("flash_file_uploaded"), "success")
+            send_admin_order_notification(app, order, get_status_context(trans).get("order_status_labels", {}))
             return order_detail_redirect("files")
 
         # --- 4b) Datei bearbeiten (Notiz + Anzahl) ----------------------------
@@ -4788,6 +4790,7 @@ def order_detail(order_id):
                 },
             )
             flash(trans("flash_poster_uploaded"), "success")
+            send_admin_order_notification(app, order, get_status_context(trans).get("order_status_labels", {}))
             return order_detail_redirect("posters")
 
         elif action == "update_poster_file":
@@ -5099,6 +5102,7 @@ def order_detail(order_id):
                 get_status_context(trans).get("order_status_labels", {}),
             )
             flash(trans("flash_procurement_article_created"), "success")
+            send_admin_order_notification(app, order, get_status_context(trans).get("order_status_labels", {}))
             return order_detail_redirect("articles")
 
         elif action == "update_procurement_article":

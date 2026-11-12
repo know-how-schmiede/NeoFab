@@ -8,11 +8,12 @@ from email.message import EmailMessage
 
 from flask import url_for
 from flask_login import current_user
+from sqlalchemy import text
 
 from audit_logs import write_audit_log
 from config import DEFAULT_SETTINGS, coerce_positive_int, is_email_action_enabled, load_app_settings
 from i18n_utils import DEFAULT_LANG, SUPPORTED_LANGS
-from models import Announcement, Order, User
+from models import Announcement, Order, User, UserOrderCategoryPermission, db
 from time_utils import format_app_datetime
 
 
@@ -787,8 +788,71 @@ def send_user_welcome_notification(app, new_user: User, source: str = "user_crea
 
 
 def send_admin_order_notification(app, order: Order, status_labels: Mapping[str, str] | None = None) -> bool:
+    """Notify category staff once content has been committed by the caller.
+
+    The SQLite write transaction serializes concurrent upload requests. Successful
+    addresses are committed separately so a partial SMTP failure can be retried
+    on the next content addition without resending successful deliveries.
     """
-    Send a notification email to all admin users (plus order creator) for a newly created order.
+    order_id = order.id
+    try:
+        if order.new_order_notified_at or not (
+            order.files or order.poster_files or order.procurement_articles
+        ):
+            return False
+        staff = (
+            User.query.join(UserOrderCategoryPermission, User.id == UserOrderCategoryPermission.user_id)
+            .filter(
+                User.role.in_(("admin", "worker")),
+                User.is_active.is_(True),
+                User.deleted_at.is_(None),
+                UserOrderCategoryPermission.category_id == order.category_id,
+                UserOrderCategoryPermission.can_manage.is_(True),
+            ).all()
+        )
+        recipients = {}
+        for user in staff:
+            for email in _split_email_recipients(user.email):
+                recipients.setdefault(email.lower(), (email, _normalize_language(user.language)))
+        if not recipients:
+            return False
+        for key, (email, language) in recipients.items():
+            # Acquire the write lock before reading delivery state.
+            db.session.execute(text("UPDATE orders SET id = id WHERE id = :id"), {"id": order_id})
+            notified = db.session.execute(
+                text("SELECT new_order_notified_at FROM orders WHERE id = :id"), {"id": order_id}
+            ).scalar()
+            if notified:
+                db.session.rollback()
+                return False
+            delivered = db.session.execute(
+                text("SELECT 1 FROM new_order_email_deliveries WHERE order_id = :id AND email = :email"),
+                {"id": order_id, "email": key},
+            ).scalar()
+            if not delivered:
+                if not _send_new_order_email(app, order, status_labels, email, language):
+                    db.session.rollback()
+                    return False
+                db.session.execute(
+                    text("INSERT INTO new_order_email_deliveries (order_id, email) VALUES (:id, :email)"),
+                    {"id": order_id, "email": key},
+                )
+            db.session.commit()
+        db.session.execute(
+            text("UPDATE orders SET new_order_notified_at = CURRENT_TIMESTAMP WHERE id = :id"),
+            {"id": order_id},
+        )
+        db.session.commit()
+        return True
+    except Exception:
+        db.session.rollback()
+        app.logger.exception("Failed to notify category staff for order %s", order_id)
+        return False
+
+
+def _send_new_order_email(app, order, status_labels, email, language) -> bool:
+    """
+    Send the existing localized new-order message to one category staff member.
     Never raises; returns True on success, False otherwise.
     """
     try:
@@ -805,7 +869,7 @@ def send_admin_order_notification(app, order: Order, status_labels: Mapping[str,
             app.logger.info("SMTP not configured, skipping admin notification.")
             return False
 
-        recipients, recipient_languages = _collect_order_recipients(order, include_owner=True)
+        recipients, recipient_languages = [email], {email.lower(): language}
         if not recipients:
             app.logger.info("No recipients found, skipping admin notification.")
             return False
@@ -818,7 +882,7 @@ def send_admin_order_notification(app, order: Order, status_labels: Mapping[str,
 
         status_labels = status_labels or {}
         status_label = status_labels.get(order.status, order.status)
-        created_by = current_user.email if current_user.is_authenticated else ""
+        created_by = order.user.email if order.user else ""
         created_at = _format_app_datetime(order.created_at, settings)
 
         category_name = order.category.name if order.category else "3D Print"

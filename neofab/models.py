@@ -91,6 +91,7 @@ class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
     title = db.Column(db.String(200), nullable=False)
+    new_order_notified_at = db.Column(db.DateTime, nullable=True)
     description = db.Column(db.Text, nullable=True)
 
     # Oeffentlichkeits-/Projektfelder
@@ -157,6 +158,13 @@ class Order(db.Model):
 
 
 # --- OrderCategory -----------------------------------------------------------
+
+
+class NewOrderEmailDelivery(db.Model):
+    __tablename__ = "new_order_email_deliveries"
+
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), primary_key=True)
+    email = db.Column(db.String(255), primary_key=True)
 
 
 class OrderCategory(db.Model):
@@ -706,6 +714,7 @@ __all__ = [
     "UserActivationToken",
     "UserPasswordResetToken",
     "Order",
+    "NewOrderEmailDelivery",
     "OrderCategory",
     "OrderArea",
     "OrderWorkJob",

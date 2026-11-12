@@ -70,6 +70,7 @@ from models import (
     Color,
     CostCenter,
     Material,
+    NewOrderEmailDelivery,
     TrainingPlaylist,
     TrainingVideo,
     User,
@@ -551,6 +552,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
             "order_print_jobs": OrderPrintJob.query.filter_by(order_id=order_id).delete(synchronize_session=False),
             "order_tags": OrderTag.query.filter_by(order_id=order_id).delete(synchronize_session=False),
         }
+        NewOrderEmailDelivery.query.filter_by(order_id=order_id).delete(synchronize_session=False)
         db.session.delete(order)
         return deleted_counts
 
