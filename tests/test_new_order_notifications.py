@@ -9,7 +9,7 @@ from flask_login import LoginManager
 from sqlalchemy import text
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "neofab"))
-from models import db, Order, OrderCategory, OrderFile, OrderPosterFile, OrderProcurementArticle, User, UserOrderCategoryPermission
+from models import db, Order, OrderArea, OrderCategory, OrderFile, OrderPosterFile, OrderProcurementArticle, User, UserOrderAreaPreference, UserOrderCategoryPermission
 from notifications import send_admin_order_notification
 from schema_utils import ensure_new_order_notification_schema
 
@@ -97,6 +97,62 @@ class NewOrderNotificationTests(unittest.TestCase):
             self.assertTrue(send_admin_order_notification(self.app, self.order))
             self.assertEqual({call.args[3] for call in send.call_args_list},
                              {"worker@example.test", "admin@example.test"})
+
+    def test_area_filter_for_workers_and_admins(self):
+        areas = [OrderArea(name=name, short_name=name) for name in ("A", "B", "C")]
+        db.session.add_all(areas)
+        db.session.flush()
+        self.order.area_id = areas[0].id
+        expected = set()
+        for role in ("worker", "admin"):
+            for name, indices in (("matching", (0,)), ("multiple", (0, 1)),
+                                  ("other", (1, 2)), ("unrestricted", ())):
+                user = self.staff(f"{role}-{name}@example.test", role=role)
+                for index in indices:
+                    db.session.add(UserOrderAreaPreference(user_id=user.id, area_id=areas[index].id))
+                if name != "other":
+                    expected.add(user.email)
+            user = self.staff(f"{role}-wrong-category@example.test", role=role, assigned=False)
+            db.session.add(UserOrderAreaPreference(user_id=user.id, area_id=areas[0].id))
+        db.session.commit()
+        self.content(OrderPosterFile)
+        with patch("notifications._send_new_order_email", return_value=True) as send:
+            self.assertTrue(send_admin_order_notification(self.app, self.order))
+            self.assertEqual({call.args[3] for call in send.call_args_list}, expected)
+            self.assertEqual(send.call_count, len(expected))
+
+    def test_order_without_area_only_reaches_unrestricted_staff(self):
+        area = OrderArea(name="A", short_name="A")
+        db.session.add(area)
+        db.session.commit()
+        expected = set()
+        for role in ("worker", "admin"):
+            user = self.staff(f"{role}-restricted@example.test", role=role)
+            db.session.add(UserOrderAreaPreference(user_id=user.id, area_id=area.id))
+            user = self.staff(f"{role}-unrestricted@example.test", role=role)
+            expected.add(user.email)
+        db.session.commit()
+        self.content(OrderPosterFile)
+        with patch("notifications._send_new_order_email", return_value=True) as send:
+            self.assertTrue(send_admin_order_notification(self.app, self.order))
+            self.assertEqual({call.args[3] for call in send.call_args_list}, expected)
+
+    def test_no_matching_area_keeps_order_pending(self):
+        area = OrderArea(name="A", short_name="A")
+        db.session.add(area)
+        db.session.commit()
+        user = self.staff("worker@example.test")
+        db.session.add(UserOrderAreaPreference(user_id=user.id, area_id=area.id))
+        db.session.commit()
+        self.content(OrderPosterFile)
+        with patch("notifications._send_new_order_email", return_value=True) as send:
+            self.assertFalse(send_admin_order_notification(self.app, self.order))
+            send.assert_not_called()
+            self.assertIsNone(self.order.new_order_notified_at)
+            self.order.area_id = area.id
+            db.session.commit()
+            self.assertTrue(send_admin_order_notification(self.app, self.order))
+            self.assertEqual(send.call_count, 1)
 
     def test_partial_failure_retries_only_failed_address(self):
         self.staff("first@example.test")

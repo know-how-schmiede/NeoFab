@@ -8,12 +8,12 @@ from email.message import EmailMessage
 
 from flask import url_for
 from flask_login import current_user
-from sqlalchemy import text
+from sqlalchemy import or_, text
 
 from audit_logs import write_audit_log
 from config import DEFAULT_SETTINGS, coerce_positive_int, is_email_action_enabled, load_app_settings
 from i18n_utils import DEFAULT_LANG, SUPPORTED_LANGS
-from models import Announcement, Order, User, UserOrderCategoryPermission, db
+from models import Announcement, Order, User, UserOrderAreaPreference, UserOrderCategoryPermission, db
 from time_utils import format_app_datetime
 
 
@@ -800,6 +800,9 @@ def send_admin_order_notification(app, order: Order, status_labels: Mapping[str,
             order.files or order.poster_files or order.procurement_articles
         ):
             return False
+        selected_areas = db.session.query(UserOrderAreaPreference.id).filter(
+            UserOrderAreaPreference.user_id == User.id
+        )
         staff = (
             User.query.join(UserOrderCategoryPermission, User.id == UserOrderCategoryPermission.user_id)
             .filter(
@@ -808,6 +811,10 @@ def send_admin_order_notification(app, order: Order, status_labels: Mapping[str,
                 User.deleted_at.is_(None),
                 UserOrderCategoryPermission.category_id == order.category_id,
                 UserOrderCategoryPermission.can_manage.is_(True),
+                or_(
+                    ~selected_areas.exists(),
+                    selected_areas.filter(UserOrderAreaPreference.area_id == order.area_id).exists(),
+                ),
             ).all()
         )
         recipients = {}
@@ -816,8 +823,8 @@ def send_admin_order_notification(app, order: Order, status_labels: Mapping[str,
                 recipients.setdefault(email.lower(), (email, _normalize_language(user.language)))
         if not recipients:
             app.logger.warning(
-                "New order notification pending: no active category staff for order %s (category %s)",
-                order_id, order.category_id,
+                "New order notification pending: no matching active staff for order %s (category %s, area %s)",
+                order_id, order.category_id, order.area_id,
             )
             return False
         for key, (email, language) in recipients.items():

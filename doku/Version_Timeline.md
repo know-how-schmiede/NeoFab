@@ -1,5 +1,18 @@
 # Timeline NeoFab
 
+## Version 0.9.69
+
+E-Mails zu neuen Auftraegen beruecksichtigen zusaetzlich zur Kategoriezuordnung die im Profil ausgewaehlten Bereiche von Mitarbeitern und Admins
+Bei gesetzter Bereichsauswahl werden nur Auftraege aus einem dieser Bereiche gemeldet; ohne Auswahl gelten alle Bereiche
+Bestehende Auftraege ohne Bereich erreichen nur Empfaenger ohne Bereichseinschraenkung
+Beschriftung und Hilfetext der Bereichsauswahl auf Deutsch, Englisch und Franzoesisch um die Wirkung auf Auftragsbenachrichtigungen ergaenzt
+Warnmeldung bei fehlenden passenden Empfaengern enthaelt Kategorie und Bereich des Auftrags
+Geprueft: alle 12 Benachrichtigungstests erfolgreich; drei neue Regressionstests decken Mitarbeiter und Admins, mehrere Bereiche, fehlende Kategoriezuordnung, fehlenden Auftragsbereich und ausbleibenden Versand ohne passenden Empfaenger ab
+Gesamtlauf: 35 von 36 Tests erfolgreich; bekannter Umlautfehler im Erwartungstext eines Admin-Loeschtests weiterhin vorhanden
+Python- und JSON-Syntax, konsistente Versionsangaben und git diff --check geprueft; kein echter SMTP-Versand und kein visueller Browsertest durchgefuehrt
+
+Version in Anwendung und README auf 0.9.69 angehoben
+
 ## Version 0.9.68
 
 Kategorieauswahl fuer Admins im eigenen Profil und in der Benutzerverwaltung ergaenzt; ausgewaehlte Kategorien werden beim Speichern erhalten und fuer Auftragsbenachrichtigungen beruecksichtigt
