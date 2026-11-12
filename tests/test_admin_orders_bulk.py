@@ -107,6 +107,21 @@ class BulkOrderTests(unittest.TestCase):
         db.session.get(User, 1).role = 'user'
         db.session.commit()
         self.assertEqual(self.post('delete').status_code, 403)
+
+    def test_admin_category_selection_can_be_saved_in_user_management(self):
+        from models import OrderCategory, UserOrderCategoryPermission
+        category = OrderCategory(key='plotter', name='Plotter')
+        db.session.add(category)
+        db.session.commit()
+        data = {'email': 'admin@example.test', 'role': 'admin',
+                'worker_category_ids': str(category.id)}
+        response = self.client.post('/admin/users/1/edit', data=data)
+        self.assertEqual(response.status_code, 302)
+        permission = UserOrderCategoryPermission.query.filter_by(user_id=1, category_id=category.id).one()
+        self.assertTrue(permission.can_manage)
+        data.pop('worker_category_ids')
+        self.client.post('/admin/users/1/edit', data=data)
+        self.assertEqual(UserOrderCategoryPermission.query.filter_by(user_id=1).count(), 0)
         self.assertEqual(Order.query.count(), 4)
 
     def test_post_required(self):

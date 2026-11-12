@@ -74,6 +74,34 @@ class ProfileOrderDefaultsTests(unittest.TestCase):
         with self.app.test_request_context('/'):
             self.assertEqual(get_filter('hide_completed'), '0')
 
+    def test_category_selection_is_saved_for_admins_and_workers(self):
+        category = models.OrderCategory(key='plotter', name='Plotter')
+        models.db.session.add(category)
+        models.db.session.commit()
+        for role in ('admin', 'worker', 'user'):
+            user = models.User(email=role+'@example.test', password_hash='unused', role=role)
+            models.db.session.add(user)
+            models.db.session.commit()
+            ns = vars(models).copy()
+            ns.update(current_user=user, request=request, session=session,
+                      inject_globals=lambda: {'t': lambda key: key},
+                      flash=lambda *args: None, redirect=lambda url: url,
+                      url_for=lambda endpoint: '/'+endpoint, SUPPORTED_LANGS=('en', 'de', 'fr'))
+            profile = load_function('profile', ns)
+            with self.app.test_request_context('/profile', method='POST', data={
+                'email': user.email, 'worker_category_ids': str(category.id),
+            }):
+                self.assertEqual(profile(), '/profile')
+            permission = models.UserOrderCategoryPermission.query.filter_by(user_id=user.id).first()
+            if role in ('admin', 'worker'):
+                self.assertEqual(permission.category_id, category.id)
+                self.assertTrue(permission.can_manage)
+            else:
+                self.assertIsNone(permission)
+            with self.app.test_request_context('/profile', method='POST', data={'email': user.email}):
+                profile()
+            self.assertIsNone(models.UserOrderCategoryPermission.query.filter_by(user_id=user.id).first())
+
     def test_existing_database_migration_is_repeatable(self):
         models.db.session.execute(text('DROP TABLE user'))
         models.db.session.execute(text('CREATE TABLE user (id INTEGER PRIMARY KEY)'))

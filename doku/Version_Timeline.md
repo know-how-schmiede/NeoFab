@@ -1,5 +1,20 @@
 # Timeline NeoFab
 
+## Version 0.9.68
+
+Kategorieauswahl fuer Admins im eigenen Profil und in der Benutzerverwaltung ergaenzt; ausgewaehlte Kategorien werden beim Speichern erhalten und fuer Auftragsbenachrichtigungen beruecksichtigt
+In 0.9.67 wurden Admins nach Kategoriezuordnung gefiltert, obwohl diese Zuordnung nur fuer Mitarbeiter angeboten und beim Speichern eines Admins geloescht wurde
+Beschriftungen und Hilfetexte fuer Kategoriezuordnung und E-Mail-Benachrichtigungen auf Deutsch, Englisch und Franzoesisch angepasst
+Fehlende aktive Empfaenger einer Auftragskategorie werden mit Auftragsnummer und Kategorie-ID als Warnung im Serverlog protokolliert
+Vollstaendige Logdetails lassen sich per Klick auf Details aufklappen und als formatierten JSON-Text markieren und kopieren; Anzeige funktioniert auch ohne JavaScript und Bootstrap-Tooltip
+Geprueft: zwei neue Regressionstests fuer das Setzen und Entfernen von Admin-Kategorien ueber Profil und Benutzerverwaltung erfolgreich; alle 9 Benachrichtigungstests einschliesslich Plakatupload erfolgreich
+Python-, Jinja- und JSON-Syntax sowie git diff --check erfolgreich geprueft
+Logtemplate mit vollstaendigen Empfaengerdetails gerendert; JSON-Inhalt und sicheres Escaping geprueft; kein visueller Browsertest durchgefuehrt
+Gesamtlauf: 32 von 33 Tests erfolgreich; bekannter Umlautfehler im Erwartungstext eines Admin-Loeschtests weiterhin vorhanden
+Kein Zugriff auf das Produktivsystem und kein echter SMTP-Versand durchgefuehrt; die Ursache des gemeldeten produktiven Ausfalls ist ohne Empfaengerrolle beziehungsweise Serverlogs noch nicht abschliessend bestaetigt
+
+Version in Anwendung und README auf 0.9.68 angehoben
+
 ## Version 0.9.67
 
 Neue Auftraege werden erst nach dem erfolgreichen Speichern der ersten Modelldatei, eines Plakats oder eines Beschaffungsartikels per E-Mail gemeldet

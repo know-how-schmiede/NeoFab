@@ -2109,7 +2109,7 @@ def create_admin_blueprint(get_translator: Callable[[], Optional[Callable[[str],
                     if new_password:
                         user.set_password(new_password)
 
-                    if user.role == "worker":
+                    if user.role in {"admin", "worker"}:
                         selected_ids = set()
                         for raw_id in request.form.getlist("worker_category_ids"):
                             try:

@@ -815,6 +815,10 @@ def send_admin_order_notification(app, order: Order, status_labels: Mapping[str,
             for email in _split_email_recipients(user.email):
                 recipients.setdefault(email.lower(), (email, _normalize_language(user.language)))
         if not recipients:
+            app.logger.warning(
+                "New order notification pending: no active category staff for order %s (category %s)",
+                order_id, order.category_id,
+            )
             return False
         for key, (email, language) in recipients.items():
             # Acquire the write lock before reading delivery state.

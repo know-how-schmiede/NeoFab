@@ -74,14 +74,10 @@
                 <td data-label="{{ t('admin_logs_event') }}">{{ entry.event or entry.raw or "" }}</td>
                 <td class="small" data-label="{{ t('admin_logs_details') }}">
                   {% if entry.details %}
-                    {% set details_json = entry.details|tojson %}
-                    <code class="d-inline-block text-truncate"
-                          style="max-width: 28rem;"
-                          data-bs-toggle="tooltip"
-                          data-bs-placement="top"
-                          data-bs-title="{{ details_json|forceescape }}">
-                      {{ details_json }}
-                    </code>
+                    <details style="max-width: 28rem;">
+                      <summary>{{ t("admin_logs_details") }}</summary>
+                      <pre class="mt-2 mb-0" style="white-space: pre-wrap; overflow-wrap: anywhere; user-select: text;">{{ entry.details|tojson(indent=2) }}</pre>
+                    </details>
                   {% endif %}
                 </td>
                 <td data-label="{{ t('table_email') }}">{{ entry.email or "" }}</td>
@@ -140,9 +136,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
-    new bootstrap.Tooltip(el);
-  });
 });
 </script>
 {% endblock %}

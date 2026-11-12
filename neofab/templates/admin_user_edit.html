@@ -224,7 +224,7 @@
           >{{ user.note if user and user.note else '' }}</textarea>
         </div>
 
-        {% if user and user.role == 'worker' %}
+        {% if user and user.role in ['admin', 'worker'] %}
           <div class="col-12">
             <label class="form-label d-block">
               <i class="bi bi-grid-3x3-gap me-1"></i>
